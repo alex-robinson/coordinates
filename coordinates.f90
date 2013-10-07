@@ -145,7 +145,7 @@ contains
         if (present(x0)) then 
             x = x + x0 
         else
-            x = x + (-floor((nx+1.d0)/2.d0)*dx_tmp)
+            x = x + (-(nx-1.d0)/2.d0*dx_tmp)
         end if 
 
         return 
