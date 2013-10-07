@@ -1,0 +1,1575 @@
+!> ####################################################################
+!! **Module**     : coordinates \n
+!! **Author**     : Alex Robinson \n 
+!! **Purpose**    : This module defines the coordinate classes to handle
+!!                  grids and points in a given reference space. This module can
+!!                  be used to interpolate and project between different
+!!                  grids and points. Coordinates are represented by lon, lat at 
+!!                  each point, and cartesian x,y values for stereographic grids.
+!!                  Mapping classes store interpolation information for
+!!                  'fast mapping' between different grids and sets of points, 
+!!                  using projection routines from the oblimap2 package.
+!! ####################################################################
+module coordinates
+
+    use oblimap_projection_module
+    use planet 
+    use ncio 
+
+    implicit none 
+
+    !! real(dp) definition and some internal constants
+    integer,  parameter :: dp  = kind(1.0d0)
+    real(dp), parameter :: ERR_DIST = 1E8_dp 
+    integer,  parameter :: ERR_IND = -1 
+
+    type points_class 
+
+        character (len=128) :: name 
+        character (len=128) :: mtype    ! latlon, cartesian, stereographic, etc
+        character (len=128) :: units
+
+        integer :: npts
+        real(dp), allocatable, dimension(:)   :: x, y, lon, lat, area
+        integer,  allocatable, dimension(:)   :: border
+        real(dp) :: xy_conv 
+
+        ! Projection parameters
+        logical :: is_cartesian, is_projection
+        logical :: is_lon180
+        type(projection_class) :: proj
+
+        type(planet_class) :: planet 
+            
+    end type 
+
+    type grid_axis_class
+        integer :: nx, ny
+        real(dp) :: x0, dx, y0, dy
+        real(dp), allocatable, dimension(:) :: x, y    
+    end type
+
+    type grid_class 
+
+        character (len=128) :: name 
+        character (len=128) :: mtype     ! latlon, cartesian, stereographic, etc
+        character (len=128) :: units
+
+        type(grid_axis_class) :: G
+        integer :: npts
+        real(dp), allocatable, dimension(:,:) :: x, y, lon, lat, area
+        integer,  allocatable, dimension(:,:) :: border
+        real(dp) :: xy_conv
+
+        ! Projection parameters
+        logical :: is_cartesian, is_projection
+        logical :: is_lon180
+        type(projection_class) :: proj
+
+        type(planet_class) :: planet 
+
+    end type 
+
+    type map_class
+        character (len=128) :: name1, name2     ! Names of coordinate set1 and set2
+        character (len=128) :: mtype
+        character (len=128) :: units 
+
+        ! Projection parameters
+        logical  :: is_cartesian, is_projection, is_same_map
+        logical  :: is_lon180
+        type(projection_class) :: proj
+
+        type(planet_class) :: planet 
+
+        ! Grid related variables
+        logical :: is_grid
+        type(grid_axis_class) :: G    ! Used if is_grid==.TRUE. 
+
+        logical :: is_extended 
+        integer :: nbnd               ! Number of boundary points 
+
+        ! Vectors of x, y, lon and lat points (will be allocated to size npts)
+        integer :: npts
+        real(dp), allocatable, dimension(:) :: x, y, lon, lat
+        real(dp) :: xy_conv
+
+        ! Neighbor arrays (will be allocated to size npts,nmax)
+        integer :: nmax 
+        integer,  dimension(:,:), allocatable :: i, quadrant, border
+        real(dp), dimension(:,:), allocatable :: dist, weight
+
+    end type
+
+    interface grid_allocate 
+        module procedure grid_allocate_integer, grid_allocate_float
+        module procedure grid_allocate_double,  grid_allocate_logical
+    end interface
+
+    interface map_init 
+        module procedure map_init_points_points,  map_init_grid_grid 
+        module procedure map_init_grid_points, map_init_points_grid
+    end interface
+
+    interface map_field 
+        module procedure map_field_grid_grid, map_field_points_points
+    end interface
+
+    private
+    public :: points_class, points_init !, points_write 
+    public :: grid_class, grid_init, grid_allocate, grid_write, grid_print
+    public :: map_class, map_init, map_field, map_print
+
+contains
+
+    subroutine axis_init(x,x0,dx)
+
+        implicit none 
+
+        real(dp) :: x(:)
+        real(dp), optional :: x0, dx
+        real(dp) :: dx_tmp 
+        integer :: i, nx  
+
+        nx = size(x) 
+
+        do i = 1, nx 
+            x(i) = dble(i-1)
+        end do 
+
+        dx_tmp = 1.d0 
+        if (present(dx)) dx_tmp = dx 
+        
+        x = x*dx 
+
+        if (present(x0)) then 
+            x = x + x0 
+        else
+            x = x + (-floor((nx+1.d0)/2.d0)*dx_tmp)
+        end if 
+
+        return 
+    end subroutine axis_init 
+
+    subroutine grid_area(grid)
+        ! Calculate the area of the cell each grid point represents
+
+        implicit none 
+
+        type(grid_class) :: grid 
+        real(dp) :: x1, x2, y1, y2 
+        real(dp) :: vertx(4), verty(4) 
+        integer  :: i, j 
+        
+        do j = 1, grid%G%ny 
+            do i = 1, grid%G%nx 
+
+                ! Get vertices of cell around current grid point
+                if (i .eq. 1) then 
+                    x1 =  grid%G%x(i) - (grid%G%x(i+1)-grid%G%x(i)) / 2.0_dp
+                    x2 = (grid%G%x(i) + grid%G%x(i+1)) / 2.0_dp
+                else if (i .eq. grid%G%nx) then 
+                    x1 = (grid%G%x(i) + grid%G%x(i-1)) / 2.0_dp
+                    x2 =  grid%G%x(i) + (grid%G%x(i)-grid%G%x(i-1)) / 2.0_dp
+                else
+                    x1 = (grid%G%x(i) + grid%G%x(i-1)) / 2.0_dp
+                    x2 = (grid%G%x(i) + grid%G%x(i+1)) / 2.0_dp
+                end if 
+
+                if (j .eq. 1) then 
+                    y1 =  grid%G%y(j) - (grid%G%y(j+1)-grid%G%y(j)) / 2.0_dp
+                    y2 = (grid%G%y(j) + grid%G%y(j+1)) / 2.0_dp
+                else if (j .eq. grid%G%ny) then 
+                    y1 = (grid%G%y(j) + grid%G%y(j-1)) / 2.0_dp
+                    y2 =  grid%G%y(j) + (grid%G%y(j)-grid%G%y(j-1)) / 2.0_dp
+                else
+                    y1 = (grid%G%y(j) + grid%G%y(j-1)) / 2.0_dp
+                    y2 = (grid%G%y(j) + grid%G%y(j+1)) / 2.0_dp
+                end if 
+
+                ! Convert grid points to meters as necessary
+                vertx = (/x1,x1,x2,x2/) * grid%xy_conv 
+                verty = (/y1,y2,y2,y1/) * grid%xy_conv 
+                
+                if (grid%is_cartesian) then 
+                    grid%area(i,j) = cartesian_area(vertx,verty)
+                else
+                    grid%area(i,j) = planet_area(grid%planet%a,grid%planet%f,vertx,verty)
+                end if 
+
+            end do 
+        end do 
+
+        return
+
+    end subroutine grid_area 
+
+    subroutine grid_init(grid,name,mtype,units,planet,lon180, &
+                         x,y,x0,dx,nx,y0,dy,ny,lambda,phi,alpha,x_e,y_n)
+
+        implicit none 
+
+        type(grid_class)   :: grid 
+        type(points_class) :: pts
+        character(len=*)   :: name, mtype, units
+        character(len=*), optional :: planet  
+        logical, optional  :: lon180
+        integer, optional  :: nx, ny 
+        real(dp), optional :: x(:), y(:), x0, dx, y0, dy 
+        real(dp), optional :: lambda, phi, alpha, x_e, y_n 
+        real(dp) :: tmp1, tmp2 
+        integer :: i, j 
+
+        ! Initially deallocate grid arrays just in case 
+        if (allocated(grid%G%x))     deallocate(grid%G%x)
+        if (allocated(grid%G%y))     deallocate(grid%G%y)
+        if (allocated(grid%x))       deallocate(grid%x)
+        if (allocated(grid%y))       deallocate(grid%y)
+        if (allocated(grid%lon))     deallocate(grid%lon)
+        if (allocated(grid%lat))     deallocate(grid%lat)
+
+        ! Set up the grid axis info
+        ! Note: axis values can represent cartesian or latlon dimensions
+        ! depending on map type (mtype)
+        
+        ! x-axis
+        if (present(x)) then 
+            grid%G%nx = size(x) 
+            allocate(grid%G%x(grid%G%nx))
+            grid%G%x  = x 
+        else 
+            grid%G%nx = nx 
+            allocate(grid%G%x(grid%G%nx))
+            call axis_init(grid%G%x,x0=x0,dx=dx)
+        end if 
+
+        ! y-axis
+        if (present(y)) then 
+            grid%G%ny = size(y) 
+            allocate(grid%G%y(grid%G%ny))
+            grid%G%y  = y
+        else 
+            grid%G%ny = ny
+            allocate(grid%G%y(grid%G%ny))
+            call axis_init(grid%G%y,x0=y0,dx=dy)
+        end if
+
+        ! How many points does grid contain?
+        grid%npts = grid%G%nx * grid%G%ny 
+
+        ! Allocate and generate 2D point sets (x,y)
+        ! Note x,y represent cartesian values or latlon 
+        ! depending on mtype
+        ! lon,lat allocated as duplicates in latlon case, for consistency
+        allocate(grid%x(grid%G%nx,grid%G%ny))
+        allocate(grid%y(grid%G%nx,grid%G%ny))
+        allocate(grid%lon(grid%G%nx,grid%G%ny))
+        allocate(grid%lat(grid%G%nx,grid%G%ny))
+
+        ! Store axis values in 2D arrays too
+        do i = 1, grid%G%nx 
+            grid%y(i,:) = grid%G%y 
+        end do 
+
+        do j = 1, grid%G%ny 
+            grid%x(:,j) = grid%G%x 
+        end do 
+
+        ! Initialize data as points, then convert back to grid using axis info
+        call points_init(pts,name,mtype,units,planet,lon180,reshape(grid%x,(/grid%npts/)),&
+                         reshape(grid%y,(/grid%npts/)),lambda,phi,alpha,x_e,y_n)
+        call points_to_grid(pts,grid)
+
+        ! Calculate grid cell areas 
+        if (allocated(grid%area))   deallocate(grid%area)
+        allocate(grid%area(grid%G%nx,grid%G%ny))
+        call grid_area(grid) 
+        
+        ! Assign border points
+        if (allocated(grid%border)) deallocate(grid%border)
+        allocate(grid%border(grid%G%nx,grid%G%ny))
+        grid%border              = 0
+        grid%border(1,:)         = 1 
+        grid%border(:,1)         = 1 
+        grid%border(grid%G%nx,:) = 1 
+        grid%border(:,grid%G%ny) = 1 
+
+        ! Adjust border points if global latlon grid is being used 
+        if ( trim(grid%mtype) .eq. "latlon" ) then 
+
+            ! First check longitude distances
+            tmp1 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(2),grid%G%y(1))
+            tmp2 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(grid%G%nx),grid%G%y(1))
+            
+            ! If distance between first and last longitude is less than 
+            ! twice the distance of the first and second longitude,
+            ! then grid wraps around the globe longitudinally
+            if (tmp2 .le. tmp1*2.0_dp) then 
+                grid%border(1,:)         = 0
+                grid%border(grid%G%nx,:) = 0 
+            end if 
+
+            ! Next check latitude distances
+
+            ! First check lower latitude
+            tmp1 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(1),grid%G%y(2))
+            tmp2 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(1),-90.0_dp)
+            if (tmp2 .le. tmp1*2.0_dp) grid%border(:,1)         = 0
+
+            ! Next check upper latitude
+            tmp1 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(grid%G%ny),grid%G%x(1),grid%G%y(grid%G%ny-1))
+            tmp2 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(grid%G%ny),grid%G%x(1),90.0_dp)
+            if (tmp2 .le. tmp1*2.0_dp) grid%border(:,grid%G%ny) = 0 
+
+        end if 
+
+        ! Make sure final lon/lat values are in desired range
+        ! (default range is 0=>360)
+        if ( grid%is_projection .or. .not. grid%is_cartesian ) then 
+            if ( grid%is_lon180 ) &  ! Then make range -180=>180
+                where( grid%G%x .gt. 180.0_dp ) grid%G%x = grid%G%x - 360.0_dp 
+
+                ! Also for plotting programs, we need to shift matrix, so that
+                ! axis goes from -180 to 180
+
+        end if 
+
+        ! Output a summary of grid axis information
+        call grid_print(grid)
+
+        return 
+
+    end subroutine grid_init
+
+    subroutine points_init(pts,name,mtype,units,planet,lon180,x,y,lambda,phi,alpha,x_e,y_n)
+
+        use oblimap_projection_module 
+
+        implicit none 
+
+        type(points_class) :: pts 
+        real(dp)           :: x(:), y(:)
+        character(len=*) :: name, mtype, units 
+        character(len=*), optional :: planet
+        character(len=256) :: planet_name
+        logical, optional  :: lon180
+        real(dp), optional :: lambda, phi, alpha, x_e, y_n 
+        integer :: i, nborder 
+        integer, allocatable :: tmpi(:)
+
+        ! Assign basic dataset info 
+        pts%name  = trim(name)
+        pts%mtype = trim(mtype)
+        pts%units = trim(units)
+        
+        ! Define map characteristics
+        select case(trim(pts%mtype))
+            case("latlon")
+                pts%is_cartesian  = .FALSE. 
+                pts%is_projection = .FALSE. 
+            case("stereographic","polar stereographic")
+                pts%is_cartesian  = .TRUE. 
+                pts%is_projection = .TRUE. 
+            case("cartesian")
+                pts%is_cartesian  = .TRUE. 
+                pts%is_projection = .FALSE. 
+            case DEFAULT 
+                write(*,"(a7,a20,a)")  &
+                    "coord::","points_init: ","error: map type not allowed:"//trim(pts%mtype)
+                stop 
+        end select 
+
+        ! Make sure we can convert the units of the points as needed
+        select case(trim(pts%units))
+            case("kilometers")
+                pts%xy_conv = 1.d3  ! To convert from km => m (for cartesian grids)
+            case DEFAULT
+                pts%xy_conv = 1.d0 
+        end select
+
+        ! Check latlon range (0=>360 or -180=>180)
+        pts%is_lon180 = .FALSE.
+        if (present(lon180)) pts%is_lon180 = lon180 
+
+        ! Make sure x and y vectors have the same length
+        if (size(x) .ne. size(y)) then
+            write(*,"(a7,a20,a)") "coord::","points_init: ", &
+                       "error: x and y points must have the same length."
+            stop
+        end if
+
+        ! Assign point information
+        pts%npts = size(x)
+
+        ! Reallocate point vectors
+        if (allocated(pts%x))      deallocate(pts%x)
+        if (allocated(pts%y))      deallocate(pts%y)
+        if (allocated(pts%lon))    deallocate(pts%lon)
+        if (allocated(pts%lat))    deallocate(pts%lat)
+        if (allocated(pts%border)) deallocate(pts%border)
+        if (allocated(pts%area))   deallocate(pts%area)
+        allocate(pts%x(pts%npts),pts%y(pts%npts))
+        allocate(pts%border(pts%npts))
+        allocate(pts%area(pts%npts))
+
+        ! Careful here: if the argument x = pts%x, the reallocation
+        ! causes a memory gap sometimes. Is there a check for this?
+        ! (ajr, 2013-09-28)
+        pts%x = x 
+        pts%y = y 
+
+        ! For now set points cell areas to 1
+        ! (if it is a grid, area will be calculated afterwards in grid_init)
+        pts%area   = 1.0_dp
+
+        ! If it is just a set of points, none are considered border points
+        pts%border = 0
+
+        ! Initialize planetary reference information
+        planet_name = "WGS84"
+        if (present(planet)) planet_name = trim(planet)
+        call planet_init(pts%planet,planet_name)
+
+        ! If cartesian grid is a projection, calculate the corresponding latlon points
+        ! Note: xy points not needed for a latlon grid except during mapping
+        if ( pts%is_projection ) then
+            ! Points are projected from latlon space, find latlon coordinates
+            allocate(pts%lon(pts%npts),pts%lat(pts%npts))
+
+            ! Initialize projection information
+            call projection_init(pts%proj,"stereographic",pts%planet, &
+                                 lambda,phi,alpha,x_e,y_n)
+
+            do i = 1, pts%npts       
+                call inverse_oblique_sg_projection(pts%x(i)*pts%xy_conv,pts%y(i)*pts%xy_conv, &
+                                                   pts%lon(i),pts%lat(i),pts%proj)
+            end do
+
+        else if ( .not. pts%is_cartesian ) then 
+            ! Points are defined in latlon space
+            allocate(pts%lon(pts%npts),pts%lat(pts%npts))
+
+            pts%lon = pts%x 
+            pts%lat = pts%y 
+
+            ! Initialize projection information with planet information
+            ! (to ensure parameters a and f are defined)
+            call projection_init(pts%proj,"Undefined",pts%planet)
+
+        end if 
+
+        ! Make sure final lon/lat values are in desired range
+        ! (default range is 0=>360)
+        if ( pts%is_projection .or. .not. pts%is_cartesian ) then 
+            if ( pts%is_lon180 ) &  ! Then make range -180=>180
+                where( pts%lon .gt. 180.0_dp ) pts%lon = pts%lon - 360.0_dp 
+        end if 
+
+        ! Print a summary of the set of points 
+        call points_print(pts)
+
+        return 
+
+    end subroutine points_init
+
+    subroutine grid_to_points(grid,pts)
+        ! Converts a grid class to points class
+        ! (ie, 2D grid => 1D vector of points)
+
+        implicit none 
+
+        type(grid_class)   :: grid 
+        type(points_class) :: pts 
+
+        ! Assign points constants
+        pts%name          = trim(grid%name) 
+        pts%mtype         = trim(grid%mtype)
+        pts%units         = trim(grid%units)
+        pts%npts          = grid%npts
+        pts%is_cartesian  = grid%is_cartesian 
+        pts%is_projection = grid%is_projection 
+        pts%is_lon180     = grid%is_lon180
+        pts%planet        = grid%planet
+        pts%proj          = grid%proj
+        pts%xy_conv       = grid%xy_conv 
+
+        ! Deallocate all points fields 
+        if (allocated(pts%x))   deallocate(pts%x)
+        if (allocated(pts%y))   deallocate(pts%y)
+        if (allocated(pts%lon)) deallocate(pts%lon)
+        if (allocated(pts%lat)) deallocate(pts%lat)
+
+        ! Store x,y points
+        allocate(pts%x(pts%npts),pts%y(pts%npts))
+        pts%x   = reshape(grid%x,  (/pts%npts/))
+        pts%y   = reshape(grid%y,  (/pts%npts/))
+
+        ! Store area 
+        if (allocated(pts%area)) deallocate(pts%area)
+        allocate(pts%area(pts%npts))
+        pts%area = reshape(grid%area, (/pts%npts/))
+
+        ! Store border 
+        if (allocated(pts%border)) deallocate(pts%border)
+        allocate(pts%border(pts%npts))
+        pts%border = reshape(grid%border, (/pts%npts/))
+
+        ! If lon,lat points exist on grid, store them too
+        if (allocated(grid%lon) .and. allocated(grid%lat)) then 
+            allocate(pts%lon(pts%npts),pts%lat(pts%npts))
+            pts%lon = reshape(grid%lon,(/pts%npts/))
+            pts%lat = reshape(grid%lat,(/pts%npts/))
+        end if 
+
+        return
+
+    end subroutine grid_to_points
+
+    subroutine points_to_grid(pts,grid)
+        ! Converts pts class to a grid class
+        ! (ie 1D vector => 2D grid points),
+        ! assuming that grid axis info (grid%G) has 
+        ! already been defined.
+
+        implicit none 
+
+        type(grid_class)   :: grid 
+        type(points_class) :: pts 
+
+        ! Assign grid constants
+        grid%name          = trim(pts%name) 
+        grid%mtype         = trim(pts%mtype)
+        grid%units         = trim(pts%units)
+        grid%npts          = pts%npts
+        grid%is_cartesian  = pts%is_cartesian 
+        grid%is_projection = pts%is_projection 
+        grid%is_lon180     = pts%is_lon180
+        grid%planet        = pts%planet 
+        grid%proj          = pts%proj
+        grid%xy_conv       = pts%xy_conv 
+
+        ! Reallocate all grid fields 
+        if (allocated(grid%x))   deallocate(grid%x)
+        if (allocated(grid%y))   deallocate(grid%y)
+        if (allocated(grid%lon)) deallocate(grid%lon)
+        if (allocated(grid%lat)) deallocate(grid%lat)
+        
+        allocate(grid%x(grid%G%nx,grid%G%ny),grid%y(grid%G%nx,grid%G%ny))
+        grid%x   = reshape(pts%x,  (/grid%G%nx,grid%G%ny/))
+        grid%y   = reshape(pts%y,  (/grid%G%nx,grid%G%ny/))
+
+        ! Store area 
+        if (allocated(grid%area)) deallocate(grid%area)
+        allocate(grid%area(grid%G%nx,grid%G%ny))
+        grid%area = reshape(pts%area,  (/grid%G%nx,grid%G%ny/))
+
+        ! Store border 
+        if (allocated(grid%border)) deallocate(grid%border)
+        allocate(grid%border(grid%G%nx,grid%G%ny))
+        grid%border = reshape(pts%border,  (/grid%G%nx,grid%G%ny/))
+
+        if (allocated(pts%lon) .and. allocated(pts%lat)) then 
+            allocate(grid%lon(grid%G%nx,grid%G%ny),grid%lat(grid%G%nx,grid%G%ny))
+            grid%lon = reshape(pts%lon,(/grid%G%nx,grid%G%ny/))
+            grid%lat = reshape(pts%lat,(/grid%G%nx,grid%G%ny/))
+        end if 
+
+        return
+
+    end subroutine points_to_grid
+
+    subroutine map_init_grid_grid(map,grid1,grid2,max_neighbors,lat_lim,fldr,load,save)
+        ! Generate mapping weights from grid1 to grid2
+
+        implicit none 
+
+        type(points_class) :: pts1, pts2
+        type(grid_class)   :: grid1, grid2 
+        type(map_class) :: map 
+        integer :: max_neighbors                 ! maximum number of neighbors to allocate 
+        real(dp), optional :: lat_lim            ! Latitude limit to search for neighbors
+        character(len=*), optional :: fldr       ! Directory in which to save/load map
+        logical, optional :: load                ! Whether loading is desired if map exists already
+        logical, optional :: save                ! Whether to save map to file after it's generated
+
+        ! Initialize map grid axis info (since mapping to grid2)
+        map%is_grid = .TRUE. 
+        map%G%nx    = grid2%G%nx 
+        map%G%ny    = grid2%G%ny 
+        if (allocated(map%G%x)) deallocate(map%G%x)
+        if (allocated(map%G%y)) deallocate(map%G%y)
+        allocate(map%G%x(map%G%nx),map%G%y(map%G%ny))
+        map%G%x = grid2%G%x 
+        map%G%y = grid2%G%y 
+
+        call grid_to_points(grid1,pts1)
+        call grid_to_points(grid2,pts2)
+        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+
+        return 
+
+    end subroutine map_init_grid_grid
+
+    subroutine map_init_grid_points(map,grid1,pts2,max_neighbors,lat_lim,fldr,load,save)
+        ! Generate mapping weights from grid to set of points
+
+        implicit none 
+
+        type(points_class) :: pts1, pts2
+        type(grid_class)   :: grid1 
+        type(map_class) :: map 
+        integer :: max_neighbors                 ! maximum number of neighbors to allocate 
+        real(dp), optional :: lat_lim            ! Latitude limit to search for neighbors
+        character(len=*), optional :: fldr       ! Directory in which to save/load map
+        logical, optional :: load                ! Whether loading is desired if map exists already
+        logical, optional :: save                ! Whether to save map to file after it's generated
+
+        map%is_grid = .FALSE. 
+        call grid_to_points(grid1,pts1)
+        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+
+        return 
+
+    end subroutine map_init_grid_points
+
+    subroutine map_init_points_grid(map,pts1,grid2,max_neighbors,lat_lim,fldr,load,save)
+        ! Generate mapping weights from set of points to grid
+
+        implicit none 
+
+        type(points_class) :: pts1, pts2
+        type(grid_class)   :: grid2
+        type(map_class) :: map 
+        integer :: max_neighbors                 ! maximum number of neighbors to allocate 
+        real(dp), optional :: lat_lim            ! Latitude limit to search for neighbors
+        character(len=*), optional :: fldr       ! Directory in which to save/load map
+        logical, optional :: load                ! Whether loading is desired if map exists already
+        logical, optional :: save                ! Whether to save map to file after it's generated
+
+        ! Initialize map grid axis info (since mapping to grid2)
+        map%is_grid = .TRUE. 
+        map%G%nx    = grid2%G%nx 
+        map%G%ny    = grid2%G%ny 
+        if (allocated(map%G%x)) deallocate(map%G%x)
+        if (allocated(map%G%y)) deallocate(map%G%y)
+        allocate(map%G%x(map%G%nx),map%G%y(map%G%ny))
+        map%G%x = grid2%G%x 
+        map%G%y = grid2%G%y 
+
+        ! Convert grid2 to points for map initialization
+        call grid_to_points(grid2,pts2)
+        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+
+        return 
+
+    end subroutine map_init_points_grid 
+
+    subroutine map_init_points_points(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+        ! Generate mapping weights from set of points to another set of points
+
+        implicit none 
+
+        type(points_class) :: pts1, pts2
+        type(map_class) :: map 
+        integer :: max_neighbors                 ! maximum number of neighbors to allocate 
+        real(dp), optional :: lat_lim            ! Latitude limit to search for neighbors
+        character(len=*), optional :: fldr       ! Directory in which to save/load map
+        logical, optional :: load                ! Whether loading is desired if map exists already
+        logical, optional :: save                ! Whether to save map to file after it's generated
+
+        map%is_grid = .FALSE. 
+        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+
+        return 
+
+    end subroutine map_init_points_points
+
+    subroutine map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+        ! Generate mapping weights between sets of pointss
+
+        implicit none 
+
+        type(points_class) :: pts1, pts2
+        type(map_class) :: map 
+        integer :: max_neighbors                 ! maximum number of neighbors to allocate 
+        real(dp), optional :: lat_lim            ! Latitude limit to search for neighbors
+        character(len=*), optional :: fldr       ! Directory in which to save/load map
+        logical, optional :: load                ! Whether loading is desired if map exists already
+        logical, optional :: save                ! Whether to save map to file after it's generated
+        logical :: load_file, save_file, fldr_exists, file_exists 
+        character(len=256) :: mapfldr 
+
+        ! Load file if it exists by default
+        load_file = .TRUE. 
+        if (present(load)) load_file = load 
+
+        ! Save generated map to file by default
+        save_file = .TRUE. 
+        if (present(save)) save_file = save 
+
+        mapfldr = "maps"
+        if (present(fldr)) mapfldr = trim(fldr)
+
+        ! Assign map constant information
+        map%name1         = trim(pts1%name) 
+        map%name2         = trim(pts2%name)
+        map%mtype         = trim(pts2%mtype)
+        map%units         = trim(pts2%units)
+        map%is_projection = pts2%is_projection 
+        map%is_cartesian  = pts2%is_cartesian
+        map%is_lon180     = pts2%is_lon180
+        map%planet        = pts2%planet
+        map%proj          = pts2%proj 
+        map%npts          = pts2%npts
+        map%nmax          = max_neighbors 
+        map%xy_conv       = pts2%xy_conv 
+
+        ! Check if both maps use the same projection  
+        if (pts1%is_projection .and. pts2%is_projection) then 
+
+            if (trim(pts1%mtype)       .eq. trim(pts2%mtype)       .and. &
+                trim(pts1%planet%name) .eq. trim(pts2%planet%name) .and. &
+                   pts1%proj%lambda .eq. pts2%proj%lambda    .and. &
+                   pts1%proj%phi    .eq. pts2%proj%phi       .and. &
+                   pts1%proj%alpha  .eq. pts2%proj%alpha     .and. &
+                   pts1%proj%x_e    .eq. pts2%proj%x_e       .and. &
+                   pts1%proj%y_n    .eq. pts2%proj%y_n ) then 
+                ! Both maps come from the same projection
+                map%is_same_map = .TRUE. 
+            end if 
+
+        else if (pts1%is_cartesian .and. .not. pts1%is_projection .and. &
+                 pts2%is_cartesian .and. .not. pts2%is_projection) then 
+            ! Both maps are generic cartesian grids (assume origin is the same)
+            map%is_same_map = .TRUE. 
+
+        else if (.not. pts1%is_cartesian .and. .not. pts2%is_cartesian) then 
+            ! Both maps are latlon maps
+            map%is_same_map = .TRUE. 
+
+        else
+            map%is_same_map = .FALSE.
+
+        end if 
+
+        ! Note: do not assign max distance here, save all distances
+        ! up until the maximum number of neighbors
+        ! Later, when loading map, let use choose max_distance
+        ! In this way, less recalculation of maps will be needed
+        ! when the max_distance changes.
+
+        ! Determine if file matching these characteristics exists
+        inquire(file=map_filename(map,mapfldr),exist=file_exists)
+
+        !! Now load map information from file if exists and is desired
+        !! or else calculate weights and store in file. 
+        if ( load_file .and. file_exists ) then 
+
+            ! Read map weights and info from file
+            call map_read(map,mapfldr)
+
+        else
+
+            ! Reallocate and assign map point arrays
+            if(allocated(map%x)) deallocate(map%x)
+            if(allocated(map%y)) deallocate(map%y)
+            if(allocated(map%lon)) deallocate(map%lon)
+            if(allocated(map%lat)) deallocate(map%lat)
+            allocate(map%x(map%npts),map%y(map%npts))
+            allocate(map%lon(map%npts),map%lat(map%npts))
+            
+            map%x   = pts2%x
+            map%y   = pts2%y 
+            map%lon = pts2%lon
+            map%lat = pts2%lat
+
+            ! Reallocate map neighborhood arrays
+            if (allocated(map%i)) deallocate(map%i)
+            if (allocated(map%dist)) deallocate(map%dist)
+            if (allocated(map%weight)) deallocate(map%weight)
+            if (allocated(map%quadrant)) deallocate(map%quadrant)
+            if (allocated(map%border)) deallocate(map%border)
+            allocate(map%i(map%npts,map%nmax))
+            allocate(map%dist(map%npts,map%nmax))
+            allocate(map%weight(map%npts,map%nmax))
+            allocate(map%quadrant(map%npts,map%nmax))
+            allocate(map%border(map%npts,map%nmax))
+
+            ! Calculate map weights (time consuming!)
+            call map_calc_weights(map,pts1,pts2,4.0_dp,2.0_dp)
+
+            ! Write new map to file
+            if (save_file) call map_write(map,mapfldr) 
+
+        end if 
+
+        ! Print map summary
+        call map_print(map)
+
+        return
+
+    end subroutine map_init_internal
+
+    subroutine map_calc_weights(map,pts1,pts2,lat_lim,shepard_exponent)
+        implicit none 
+
+        type(map_class) :: map 
+        type(points_class),   intent(IN)  :: pts1, pts2 
+        real(dp),             intent(IN)  :: shepard_exponent
+        real(dp), optional :: lat_lim 
+
+        real(dp), parameter :: DIST_ZERO_OFFSET = 1.0_dp  ! Change dist of zero to 1 m
+        integer :: i, i1, kc, k
+        real(dp) :: x, y, lon, lat
+        real(dp) :: dist, lat_limit
+
+        real :: start, finish
+
+        map%i        = ERR_IND 
+        map%dist     = ERR_DIST  
+        map%quadrant = 0 
+        map%border   = 0 
+
+        lat_limit = 2.0_dp 
+        if (present(lat_lim)) lat_limit = lat_lim 
+        write(*,*) "lat_lim=",lat_limit
+        write(*,*) "Total points to calculate=",pts2%npts
+
+        ! For each grid point in the new grid,
+        ! Find points within a rough radius,
+        ! calculate the distance to the current point
+        ! and store in map
+        call cpu_time(start)
+        do i = 1, pts2%npts
+                
+            ! Get current xy and latlon coordinates
+            x   = pts2%x(i)*pts2%xy_conv
+            y   = pts2%y(i)*pts2%xy_conv
+            lon = pts2%lon(i)
+            lat = pts2%lat(i)
+
+            ! Get distance in meters to current point on grid2
+            ! for each point on grid1
+            do i1 = 1, pts1%npts
+
+                if ( dabs(pts1%lat(i1)-lat) .le. lat_limit ) then
+ 
+                    if (map%is_same_map .and. map%is_cartesian) then
+                        ! Use cartesian values to determine distance
+                        dist = cartesian_distance(x,y,pts1%x(i1)*pts1%xy_conv,pts1%y(i1)*pts1%xy_conv)
+
+                    else
+                        ! Use planetary (latlon) values
+                        !dist = spherical_distance(map%planet%a,map%planet%f,lon,lat,pts1%lon(i1),pts1%lat(i1))
+                        dist = planet_distance(map%planet%a,map%planet%f,lon,lat,pts1%lon(i1),pts1%lat(i1))
+
+                    end if 
+
+                    ! Make sure no zero distances exist!
+                    if (dist .lt. DIST_ZERO_OFFSET) dist = DIST_ZERO_OFFSET
+
+                    do kc = 1, map%nmax
+                        if (dist .lt. map%dist(i,kc)) exit
+                    end do 
+
+                    if (kc .le. map%nmax) then 
+
+                        if (kc .le. map%nmax-1) then 
+                            map%dist(i,kc:map%nmax)     = cshift(map%dist(i,kc:map%nmax),-1)
+                            map%i(i,kc:map%nmax)        = cshift(map%i(i,kc:map%nmax),-1)
+                            map%quadrant(i,kc:map%nmax) = cshift(map%quadrant(i,kc:map%nmax),-1)
+                            map%border(i,kc:map%nmax)   = cshift(map%border(i,kc:map%nmax),-1)
+                        end if 
+
+                        map%dist(i,kc)   = dist 
+                        map%i(i,kc)      = i1 
+                        map%border(i,kc) = pts1%border(i1)
+
+                        ! Get quandrants of neighbors
+                        if (map%is_same_map .and. map%is_cartesian) then
+                            ! Use cartesian points to determine quadrants
+                            map%quadrant(i,kc) = quadrant_cartesian(x,y,pts1%x(i1)*pts1%xy_conv,pts1%y(i1)*pts1%xy_conv)
+                        else
+                            ! Use planetary (latlon) points
+                            map%quadrant(i,kc) = quadrant_latlon(lon,lat,pts1%lon(i1),pts1%lat(i1))
+                        end if 
+
+                    end if 
+                end if 
+
+            end do
+
+            ! Output every 1000 rows to check progress
+            if (mod(i,1000)==0) write(*,*) "  ",i, " / ",pts2%npts,"   : ",map%dist(i,1)
+        end do
+
+        call cpu_time(finish)
+        write(*,"(a,a,f7.2)") "map_calc_weights:: "//trim(map%name1)//" => "//trim(map%name2)//": ", &
+                              "Calculation time (min.) =", (finish-start)/60.0_dp
+
+        ! Also calculate shephard weights
+        map%weight = 1.0_dp / (map%dist**shepard_exponent)
+
+        return
+    end subroutine map_calc_weights
+
+    subroutine map_field_grid_grid(map,name,var1,var2,mask2,method,radius)
+
+        implicit none 
+
+        type(map_class), intent(IN)           :: map 
+        real(dp), dimension(:,:), intent(IN)  :: var1
+        real(dp), dimension(:,:), intent(OUT) :: var2
+        integer, dimension(:,:),  intent(OUT) :: mask2
+        character(len=*) :: name, method
+        real(dp), optional :: radius 
+        real(dp) :: shephard_exponent
+
+        real(dp), dimension(:), allocatable   :: var2_vec
+        integer,  dimension(:), allocatable   :: mask2_vec
+        integer :: nx2, ny2, npts2, npts1 
+
+        nx2   = size(var2,1)
+        ny2   = size(var2,2)
+        npts2  = nx2*ny2 
+        npts1 = size(var1,1)*size(var1,2)
+
+        allocate(var2_vec(npts2),mask2_vec(npts2))
+        var2_vec = reshape(var2, (/npts2 /))
+
+        call map_field_points_points(map,name,reshape(var1,(/npts1/)), &
+                                     var2_vec,mask2_vec,method,radius)
+        
+        var2  = reshape(var2_vec, (/nx2,ny2/))
+        mask2 = reshape(mask2_vec,(/nx2,ny2/))
+
+        return
+
+    end subroutine map_field_grid_grid
+
+    subroutine map_field_points_points(map,name,var1,var2,mask2,method,radius)
+        ! Methods include "radius", "nn" = nearest neighbor
+        ! (and in the future "quadrant")
+        
+        implicit none 
+
+        type(map_class), intent(IN)           :: map 
+        real(dp), dimension(:), intent(IN)    :: var1
+        real(dp), dimension(:), intent(OUT)   :: var2
+        integer,  dimension(:), intent(OUT)   :: mask2
+        character(len=*) :: name, method
+        real(dp), optional :: radius 
+        real(dp) :: shephard_exponent
+        real(dp) :: max_distance
+        integer,  dimension(:), allocatable   :: i_neighb, quad_neighb
+        real(dp), dimension(:), allocatable   :: dist_neighb, weight_neighb, v_neighb
+
+        integer :: i, k, q, j, ntot 
+
+        allocate(i_neighb(map%nmax),dist_neighb(map%nmax), &
+                 weight_neighb(map%nmax),v_neighb(map%nmax), &
+                 quad_neighb(map%nmax))
+
+        ! Initialize mask to show which points have been mapped
+        mask2 = 0 
+
+        do i = 1, map%npts 
+
+            if (maxval(map%i(i,:)) .gt. size(var1,1)) then
+                write(*,*) "Problem! Indices get too big."
+                write(*,*) maxval(map%i(i,:)), size(var1,1)
+            end if 
+
+            ! Set neighborhood radius to very large value (to include all neighbors)
+            ! or to radius specified by user
+            max_distance = 1E7_dp
+            if (present(radius)) max_distance = radius  
+
+            ! Check number of neighbors available, also applying distance limit (in meters)
+            ntot = count(map%i(i,:) .gt. 0 .and. map%dist(i,:) .le. max_distance)
+
+            ! Check if a large fraction of neighbors are border points
+            ! (if so, do not interpolate here)
+            if ( ntot .gt. 0) then 
+                if ( sum(map%border(i,1:ntot))/dble(ntot) .gt. 0.25_dp ) ntot = 0
+            end if 
+
+            ! Initialize temporary neighbor vectors to error values
+            i_neighb      = ERR_IND 
+            dist_neighb   = ERR_DIST
+            weight_neighb = 0.0_dp 
+            quad_neighb   = 0
+
+            ! If method is 
+            if (method .eq. "nn") then
+                ! For nearest neighbor method, limit ntot to 1
+                ntot = min(1,ntot)
+
+            else if (method .eq. "quadrant" .and. ntot .gt. 0) then 
+                ! For quadrant method, limit the number of neighbors to 
+                ! 4 points in different quadrants
+
+                j = 0 
+                do q = 1, 4 
+                    do k = 1, ntot 
+                        if (map%quadrant(i,k) .eq. q ) then
+                            ! If point in this quadrant is found,
+                            ! store it in neighbor vectors and move on
+                            ! to next quadrant
+                            j = j + 1
+                            i_neighb(j)      = map%i(i,k)
+                            dist_neighb(j)   = map%dist(i,k)
+                            weight_neighb(j) = map%weight(i,k)
+                            quad_neighb(j)   = map%quadrant(i,k)
+                            exit 
+                        end if 
+                    end do 
+                end do 
+
+                ! Recount eligible neighbors
+                ntot = count(i_neighb .gt. 0) 
+
+            else                            
+                ! Standard radius method is used
+                ! (proceed as normal)
+
+                ! Store eligible neighbors in neighbor vectors
+                if (ntot .gt. 0) then 
+                    i_neighb      = map%i(i,1:ntot)
+                    dist_neighb   = map%dist(i,1:ntot)
+                    weight_neighb = map%weight(i,1:ntot)
+                    quad_neighb   = map%quadrant(i,1:ntot)
+                end if 
+
+            end if 
+
+            if ( ntot .gt. 1) then 
+
+                ! Store available neighbor data in temp vector
+                v_neighb = ERR_DIST
+                do k = 1, ntot
+                    v_neighb(k) = var1(i_neighb(k))
+                end do
+
+                ! Calculate the weighted average
+                var2(i)  = weighted_ave(v_neighb(1:ntot),weight_neighb(1:ntot))
+                mask2(i) = 1
+
+            else if (ntot .eq. 1) then
+                var2(i)  = v_neighb(1)
+                mask2(i) = 1 
+            else
+                ! If no neighbors exist, field not mapped here.
+                mask2(i) = 0 
+            end if 
+                
+        end do 
+
+        write(*,*) "Mapped field: "//trim(name)
+
+        return
+    end subroutine map_field_points_points
+
+    function n_quadrants(quadrant)
+
+        implicit none 
+
+        integer, intent(IN) :: quadrant(:) 
+        integer :: n_quadrants, q, k 
+
+        n_quadrants = 0 
+        do q = 1, 4
+            do k = 1, size(quadrant)
+                if (quadrant(k) .eq. q) then 
+                    n_quadrants = n_quadrants + 1
+                    exit 
+                end if 
+            end do 
+        end do 
+
+        return
+
+    end function n_quadrants
+
+
+    subroutine points_density(density,pts,max_distance)
+        ! Get the density of neighbors
+        ! for each point in a set within a given radius
+        ! NOT TESTED, 2013-10-07, ajr 
+
+        implicit none 
+
+        real(dp) :: density(:), max_distance
+        type(points_class) :: pts 
+
+        real(dp), dimension(:), allocatable :: dist
+
+        integer :: i, i1 
+
+        allocate(dist(pts%npts))
+
+        do i = 1, pts%npts 
+
+            dist = ERR_DIST
+
+            do i1 = 1, pts%npts 
+                dist(i1) = planet_distance(pts%planet%a,pts%planet%f,pts%lon(i),pts%lat(i),pts%lon(i1),pts%lat(i1))
+                density(i) = count(dist .le. max_distance) / (max_distance*max_distance*pi)
+            end do 
+        end do 
+
+        return 
+
+    end subroutine points_density
+
+    function map_filename(map,fldr)
+        ! Output the standard map filename with input folder name
+        implicit none 
+
+        type(map_class),  intent(IN) :: map 
+        character(len=*), intent(IN) :: fldr 
+        character(len=256) :: map_filename
+        character(len=2) :: char2
+
+        if (map%nmax .ge. 10) then
+            write(char2,"(i2)") map%nmax
+        else
+            write(char2,"(i1,i1)") 0, map%nmax 
+        end if 
+
+        map_filename = trim(fldr)//"/map_"//trim(map%name1)//"_"//trim(map%name2)//"_"//trim(char2)//".nc"
+
+        return
+    end function map_filename
+
+    subroutine map_write(map,fldr)
+
+        implicit none 
+
+        type(map_class),  intent(IN) :: map 
+        character(len=*), intent(IN) :: fldr 
+        character(len=256) :: fnm 
+        character(len=128) :: dim1, dim2 
+
+        fnm = map_filename(map,fldr)
+
+        ! Create the netcdf file and the dimension variables
+        call nc_create(fnm)
+        call nc_write_global(fnm,"title","Mapping "//trim(map%name1)//" => "//trim(map%name2))
+
+        ! Write generic dimensions
+        call nc_write_dim(fnm,"point",    x=1,nx=map%npts,units="n")
+        call nc_write_dim(fnm,"neighbor", x=1,nx=map%nmax,units="n")
+        call nc_write_dim(fnm,"parameter",x=1,units="")
+        call nc_write_dim(fnm,"planetpar",x=1,nx=3,units="")
+        call nc_write_dim(fnm,"projpar",  x=1,nx=5,units="")
+
+        ! Write grid/vector specific dimensions and variables
+        if (map%is_grid) then
+            ! Write variables in a gridded format
+
+            if (trim(map%mtype) .eq. "latlon") then 
+                dim1 = "lon"
+                dim2 = "lat"
+                call nc_write_dim(fnm,dim1,x=map%G%x)
+                call nc_write_dim(fnm,dim2,x=map%G%y)
+            else 
+                dim1 = "xc"
+                dim2 = "yc" 
+                call nc_write_dim(fnm,dim1,x=map%G%x,units=trim(map%units))
+                call nc_write_dim(fnm,dim2,x=map%G%y,units=trim(map%units))
+            end if 
+
+            !call nc_write(fnm,map%x,"x2D",  dim1=dim1,dim2=dim2)
+            call nc_write(fnm,reshape(map%x,  (/map%G%nx,map%G%ny/)),"x2D",  dim1=dim1,dim2=dim2)
+            call nc_write(fnm,reshape(map%y,  (/map%G%nx,map%G%ny/)),"y2D",  dim1=dim1,dim2=dim2)
+            call nc_write(fnm,reshape(map%lon,(/map%G%nx,map%G%ny/)),"lon2D",dim1=dim1,dim2=dim2)
+            call nc_write(fnm,reshape(map%lat,(/map%G%nx,map%G%ny/)),"lat2D",dim1=dim1,dim2=dim2)
+
+            call nc_write(fnm,reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),"i",       dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,reshape(map%dist,    (/map%G%nx,map%G%ny,map%nmax/)),"dist",    dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,reshape(map%weight,  (/map%G%nx,map%G%ny,map%nmax/)),"weight",  dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,reshape(map%quadrant,(/map%G%nx,map%G%ny,map%nmax/)),"quadrant",dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,reshape(map%border,  (/map%G%nx,map%G%ny,map%nmax/)),"border",  dim1=dim1,dim2=dim2,dim3="neighbor")
+
+            ! Write grid specific parameters
+            call nc_write(fnm,map%G%nx,"nx",dim1="parameter")
+            call nc_write(fnm,map%G%ny,"ny",dim1="parameter")
+
+        else
+            ! Write variables in a vector format
+
+            call nc_write(fnm,map%x,       "x",       dim1="point",dim2="neighbor")
+            call nc_write(fnm,map%y,       "y",       dim1="point",dim2="neighbor")
+            call nc_write(fnm,map%lon,     "lon",     dim1="point",dim2="neighbor")
+            call nc_write(fnm,map%lat,     "lat",     dim1="point",dim2="neighbor")
+            call nc_write(fnm,map%i,       "i",       dim1="point",dim2="neighbor")
+            call nc_write(fnm,map%dist,    "dist",    dim1="point",dim2="neighbor")
+            call nc_write(fnm,map%weight,  "weight",  dim1="point",dim2="neighbor")
+            call nc_write(fnm,map%quadrant,"quadrant",dim1="point",dim2="neighbor")
+            call nc_write(fnm,map%border,  "border",  dim1="point",dim2="neighbor")
+
+        end if 
+
+        ! Write generic map parameters
+        call nc_write(fnm,map%mtype,        "mtype")
+        call nc_write(fnm,map%units,        "units")
+        call nc_write(fnm,map%is_cartesian, "is_cartesian", dim1="parameter")
+        call nc_write(fnm,map%is_projection,"is_projection",dim1="parameter")
+        call nc_write(fnm,map%is_lon180,    "is_lon180",    dim1="parameter")
+        call nc_write(fnm,map%is_same_map,  "is_same_map",  dim1="parameter")
+        call nc_write(fnm,map%is_grid,      "is_grid",      dim1="parameter")
+        call nc_write(fnm,map%npts,         "npts",         dim1="parameter")  
+        call nc_write(fnm,map%nmax,         "nmax",         dim1="parameter")        
+        call nc_write(fnm,map%xy_conv,      "xy_conv",      dim1="parameter") 
+
+        if (map%is_projection .or. .not. map%is_cartesian) then 
+            call nc_write(fnm,map%planet%name,  "planet_name")
+            call nc_write(fnm,(/ map%planet%a, map%planet%f, map%planet%R /), &
+                          "planet_info",dim1="planetpar")
+        end if 
+
+        if (map%is_projection) then 
+            call nc_write(fnm,map%proj%name,    "proj_name")
+            call nc_write(fnm,(/ map%proj%lambda, map%proj%phi, map%proj%alpha, &
+                                 map%proj%x_e, map%proj%y_n /), "proj_info",dim1="projpar")    
+        end if 
+        
+        write(*,*) "Map written to file: "//trim(fnm)
+
+        return 
+    end subroutine map_write
+
+    subroutine map_read(map,fldr)
+
+        implicit none 
+
+        type(map_class),  intent(INOUT) :: map 
+        character(len=*), intent(IN)    :: fldr 
+        character(len=256) :: fnm  
+
+        integer,          dimension(:,:,:), allocatable :: tmpi
+        real(dp), dimension(:,:,:), allocatable :: tmpd
+        real(dp) :: tmp5(5) 
+
+        fnm = map_filename(map,fldr)
+
+        ! Deallocate all map fields initially
+        if (allocated(map%G%x))      deallocate(map%G%x)
+        if (allocated(map%G%y))      deallocate(map%G%y)
+        if (allocated(map%x))        deallocate(map%x) 
+        if (allocated(map%y))        deallocate(map%y) 
+        if (allocated(map%lon))      deallocate(map%lon) 
+        if (allocated(map%lat))      deallocate(map%lat) 
+        if (allocated(map%i))        deallocate(map%i) 
+        if (allocated(map%dist))     deallocate(map%dist) 
+        if (allocated(map%weight))   deallocate(map%weight) 
+        if (allocated(map%quadrant)) deallocate(map%quadrant) 
+        if (allocated(map%border))   deallocate(map%border) 
+
+        ! Read generic map parameters
+        call nc_read(fnm,map%mtype,        "mtype")
+        call nc_read(fnm,map%units,        "units")
+        call nc_read(fnm,map%is_cartesian, "is_cartesian")
+        call nc_read(fnm,map%is_projection,"is_projection")
+        call nc_read(fnm,map%is_lon180,    "is_lon180")
+        call nc_read(fnm,map%is_same_map,  "is_same_map")
+        call nc_read(fnm,map%is_grid,      "is_grid")
+        call nc_read(fnm,map%npts,         "npts") 
+        call nc_read(fnm,map%nmax,         "nmax")        
+        call nc_read(fnm,map%xy_conv,      "xy_conv")        
+        
+        if (map%is_projection .or. .not. map%is_cartesian) then 
+            call nc_read(fnm,map%planet%name, "planet_name")
+            call nc_read(fnm,tmp5(1:3), "planet_info")
+            map%planet%a = tmp5(1)
+            map%planet%f = tmp5(2)
+            map%planet%R = tmp5(3)
+        end if 
+
+        if (map%is_projection) then 
+            call nc_read(fnm,map%proj%name,   "proj_name")
+            call nc_read(fnm,tmp5(1:5),       "proj_info")
+            map%proj%lambda = tmp5(1)
+            map%proj%phi    = tmp5(2)
+            map%proj%alpha  = tmp5(3) 
+            map%proj%x_e    = tmp5(4) 
+            map%proj%y_n    = tmp5(5) 
+        end if 
+
+        ! Allocate map fields 
+        allocate(map%x(map%npts),map%y(map%npts))
+        allocate(map%lon(map%npts),map%lat(map%npts))
+        allocate(map%i(map%npts,map%nmax),map%dist(map%npts,map%nmax))
+        allocate(map%weight(map%npts,map%nmax),map%quadrant(map%npts,map%nmax))
+        allocate(map%border(map%npts,map%nmax))
+
+        ! Read grid/vector specific dimensions and variables
+        if (map%is_grid) then
+            ! Read variables in a gridded format
+
+            call nc_read(fnm,map%G%nx,"nx")
+            call nc_read(fnm,map%G%ny,"ny")
+
+            ! Allocate grid fields
+            allocate(map%G%x(map%G%nx))
+            allocate(map%G%y(map%G%ny))
+
+            if (trim(map%mtype) .eq. "latlon") then 
+                call nc_read(fnm,map%G%x,"lon")
+                call nc_read(fnm,map%G%y,"lat")
+            else 
+                call nc_read(fnm,map%G%x,"xc")
+                call nc_read(fnm,map%G%y,"yc")
+            end if 
+
+            if (allocated(tmpd)) deallocate(tmpd)
+            allocate(tmpd(map%G%nx,map%G%ny,1))
+
+            call nc_read(fnm,tmpd,"x2D")
+            map%x   = reshape(tmpd,(/map%npts/))
+            call nc_read(fnm,tmpd,"y2D")
+            map%y   = reshape(tmpd,(/map%npts/))
+            call nc_read(fnm,tmpd,"lon2D")
+            map%lon = reshape(tmpd,(/map%npts/))
+            call nc_read(fnm,tmpd,"lat2D")
+            map%lat = reshape(tmpd,(/map%npts/))
+            
+            if (allocated(tmpi)) deallocate(tmpi)
+            if (allocated(tmpd)) deallocate(tmpd)
+            allocate(tmpi(map%G%nx,map%G%ny,map%nmax),tmpd(map%G%nx,map%G%ny,map%nmax))
+
+            call nc_read(fnm,tmpi,"i")
+            map%i = reshape(tmpi,(/map%npts,map%nmax/))
+            call nc_read(fnm,tmpd,"dist")
+            map%dist = reshape(tmpd,(/map%npts,map%nmax/))
+            call nc_read(fnm,tmpd,"weight")
+            map%weight = reshape(tmpd,(/map%npts,map%nmax/))
+            call nc_read(fnm,tmpd,"quadrant")
+            map%quadrant = reshape(tmpd,(/map%npts,map%nmax/))
+            call nc_read(fnm,tmpi,"border")
+            map%border = reshape(tmpi,(/map%npts,map%nmax/))
+            
+        else
+            ! Read variables in a vector format
+
+            call nc_read(fnm,map%x,       "x")
+            call nc_read(fnm,map%y,       "y")
+            call nc_read(fnm,map%lon,     "lon")
+            call nc_read(fnm,map%lat,     "lat")
+            call nc_read(fnm,map%i,       "i")
+            call nc_read(fnm,map%dist,    "dist")
+            call nc_read(fnm,map%weight,  "weight")
+            call nc_read(fnm,map%quadrant,"quadrant")
+            call nc_read(fnm,map%border,  "border")
+
+        end if 
+
+        write(*,*) "Map read from file: "//trim(fnm)
+
+        return 
+    end subroutine map_read
+
+    subroutine grid_allocate_integer(grid,var)
+
+        implicit none 
+
+        type(grid_class) :: grid 
+        integer, allocatable :: var(:,:)
+
+        if (allocated(var)) deallocate(var)
+        allocate(var(grid%G%nx,grid%G%ny))
+
+        return 
+
+    end subroutine grid_allocate_integer
+
+    subroutine grid_allocate_double(grid,var)
+
+        implicit none 
+
+        type(grid_class) :: grid 
+        real(dp), allocatable :: var(:,:)
+
+        if (allocated(var)) deallocate(var)
+        allocate(var(grid%G%nx,grid%G%ny))
+
+        return 
+
+    end subroutine grid_allocate_double
+
+    subroutine grid_allocate_float(grid,var)
+
+        implicit none 
+
+        type(grid_class) :: grid 
+        real(4), allocatable :: var(:,:)
+
+        if (allocated(var)) deallocate(var)
+        allocate(var(grid%G%nx,grid%G%ny))
+
+        return 
+
+    end subroutine grid_allocate_float
+
+    subroutine grid_allocate_logical(grid,var)
+
+        implicit none 
+
+        type(grid_class) :: grid 
+        logical, allocatable :: var(:,:)
+
+        if (allocated(var)) deallocate(var)
+        allocate(var(grid%G%nx,grid%G%ny))
+
+        return 
+
+    end subroutine grid_allocate_logical 
+
+    subroutine grid_write(grid,fnm,xnm,ynm,create)
+
+        implicit none 
+        type(grid_class) :: grid 
+        character(len=*) :: fnm,xnm,ynm
+        logical :: create  
+
+        ! Create the netcdf file if desired
+        if (create) then 
+            call nc_create(fnm)
+        
+            ! Add grid axis variables to netcdf file
+            call nc_write_dim(fnm,xnm,x=grid%G%x,units=grid%units)
+            call nc_write_dim(fnm,ynm,x=grid%G%y,units=grid%units)
+        end if 
+
+        ! Add projection information if needed
+        if (grid%is_projection) &
+            call nc_write_map(fnm,grid%mtype,grid%proj%lambda,phi=grid%proj%phi,x_e=0.d0,y_n=0.d0)
+
+        if (grid%is_projection .or. grid%is_cartesian) then 
+            call nc_write(fnm,grid%x,"x2D",dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+            call nc_write(fnm,grid%y,"y2D",dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+        end if 
+        if (.not. (grid%is_cartesian .and. .not. grid%is_projection)) then 
+            call nc_write(fnm,grid%lon,"lon2D",dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+            call nc_write(fnm,grid%lat,"lat2D",dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+        end if 
+
+        call nc_write(fnm,grid%area,  "area",  dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+        call nc_write(fnm,grid%border,"border",dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+
+        return
+    end subroutine grid_write
+
+    subroutine grid_print(grid)
+
+        implicit none 
+
+        type(grid_class), intent(IN) :: grid
+        type(points_class) :: pts 
+
+        write(*,*) "== Grid summary   ========================="
+        write(*,"(a16,i6,i6)")     "nx,ny = ",grid%G%nx, grid%G%ny 
+        write(*,"(a16,2g12.5)") "range(x-axis) = ",minval(grid%G%x),maxval(grid%G%x)
+        write(*,"(a16,2g12.5)") "range(y-axis) = ",minval(grid%G%y),maxval(grid%G%y)
+        write(*,*) 
+
+        return
+
+    end subroutine grid_print  
+
+    subroutine points_print(pts)
+
+        implicit none 
+
+        type(points_class), intent(IN) :: pts 
+
+        write(*,*) "== Points summary ========================="
+        write(*,"(a24,a)") "Data set: ",trim(pts%name)
+        write(*,"(a24,a)") "Map type: ",trim(pts%mtype)
+        write(*,"(a24,a)") "Coordinate units: ",trim(pts%units)
+        write(*,"(a16,i8)")           "Total points = ",pts%npts
+        if (pts%is_cartesian) then 
+            write(*,"(a16,2g12.5)")    "range(x) = ",minval(pts%x),maxval(pts%x)
+            write(*,"(a16,2g12.5)")    "range(y) = ",minval(pts%y),maxval(pts%y)
+        end if 
+        if (pts%is_projection .or. .not. pts%is_cartesian) then 
+            write(*,"(a16,2g12.5)")    "range(lon) = ",minval(pts%lon),maxval(pts%lon)
+            write(*,"(a16,2g12.5)")    "range(lat) = ",minval(pts%lat),maxval(pts%lat)
+        end if 
+
+        if (pts%is_projection) then 
+            write(*,*) "Projection information"
+            write(*,"(a16,g12.5)")     "a = ",     pts%proj%a
+            write(*,"(a16,g12.5)")     "f = ",     pts%proj%f
+            write(*,"(a16,g12.5)")     "lambda = ",pts%proj%lambda
+            write(*,"(a16,g12.5)")     "phi = ",   pts%proj%phi
+            write(*,"(a16,g12.5)")     "alpha = ", pts%proj%alpha
+            write(*,"(a16,g12.5)")     "x_e = ",   pts%proj%x_e
+            write(*,"(a16,g12.5)")     "y_n = ",   pts%proj%y_n
+        end if 
+        
+        write(*,*)
+
+        return
+    end subroutine points_print
+    
+    subroutine map_print(map)
+
+        implicit none 
+
+        type(map_class), intent(IN) :: map 
+
+        write(*,*) "== Mapping summary ========================="
+        write(*,*) trim(map%name1)," => ",trim(map%name2)
+        write(*,"(a16,g12.5)")     "             a = ",map%planet%a
+        write(*,"(a16,g12.5)")     "             f = ",map%planet%f
+        write(*,"(a16,i8,i6)")    "     npts,nmax = ",map%npts,map%nmax 
+        if (map%is_grid) then
+            write(*,*) "  Grid axis information"
+            write(*,"(a16,i8,i6)") "         nx,ny = ",map%G%nx, map%G%ny 
+        end if 
+
+        write(*,"(a,g10.4,a)") " ** Size in memory ~", &
+                   ( (map%npts*map%nmax)*2.d0*8.d0 + (map%npts*map%nmax)*3.d0*4.d0 + &
+                     (map%npts)*2.d0*8.d0 )  *7.6294d-6,"Mb"
+        ! 2 double arrays (8 bytes per value): dist, weight
+        ! 3 integer array (4 bytes per value): i, quadrant, border
+        ! 4 double arrays (8 bytes per value): x, y, lon, lat
+
+        write(*,*)
+        write(*,*) 
+
+        return
+    end subroutine map_print
+
+    subroutine progress(j,ntot)
+        ! Progress bar, thanks to:
+        ! http://thelazycatholic.wordpress.com/2010/08/19/progress-bar-in-fortran/
+
+        implicit none
+        integer :: j,k,ntot
+        character(len=18) :: bar="\r???% |          |"
+        real(dp), parameter :: perc_out = 5.d0 
+        real(dp) :: perc
+        perc = dble(j)/dble(ntot)*100.d0
+
+        if (mod(perc,perc_out).le.0.1d-3) then 
+            ! updates the fraction of calculation done
+            write(unit=bar(2:4),fmt="(i3)") 10*j
+            do k = 1, j
+            bar(7+k:7+k)="*"
+            enddo
+
+            ! print the progress bar.
+            write(*,'(a)',advance='no') bar
+
+            if (perc==100) write(*,*)
+        end if 
+
+        return
+
+    end subroutine progress
+
+end module coordinates 
+
