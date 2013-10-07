@@ -1,8 +1,8 @@
 
 !! TO COMPILE : 
-!! gfortran -fcheck=all -I/opt/local/include -o test_ccsm3.x ../ncio/ncio3.f90 oblimap_projection_module.f90 geodesic.f90 planet.f90 coordinates.f90 test_ccsm3.f90 -L/opt/local/lib -lnetcdff -lnetcdf
+!! gfortran -fcheck=all -I/opt/local/include -o test_ccsm3.x ../ncio/ncio3.f90 geodesic.f90 planet.f90 projection_oblimap2.f90 coordinates.f90 test_ccsm3.f90 -L/opt/local/lib -lnetcdff -lnetcdf
 !! or
-!! ifort -g -I/home/robinson/apps/netcdf/netcdf/include -o test_ccsm3.x ../ncio/ncio3.f90 oblimap_projection_module.f90 geodesic.f90 planet.f90 coordinates.f90 test_ccsm3.f90 -L/home/robinson/apps/netcdf/netcdf/lib -lnetcdf
+!! ifort -g -I/home/robinson/apps/netcdf/netcdf/include -o test_ccsm3.x ../ncio/ncio3.f90 geodesic.f90 planet.f90 projection_oblimap2.f90 coordinates.f90 test_ccsm3.f90 -L/home/robinson/apps/netcdf/netcdf/lib -lnetcdf
 
 program test_ccsm3
 
@@ -36,7 +36,7 @@ program test_ccsm3
     ! =======================================================================
 
     ! Define file names for input and output of global grids
-    file_input     = "ccsm_example_dec_feb_pd.nc"
+    file_input     = "data/ccsm_example_dec_feb_pd.nc"
     file_gCCSM3a   = "maps/grid_CCSM3-T42a.nc"
     file_gCCSM3b   = "maps/grid_CCSM3-T42b.nc"
     
