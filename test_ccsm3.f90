@@ -8,7 +8,6 @@ program test_ccsm3
 
     use ncio 
     use coordinates
-    use planet 
 
     implicit none
 
