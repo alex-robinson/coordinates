@@ -725,18 +725,17 @@ contains
         map%xy_conv       = pts2%xy_conv 
 
         ! Check if both maps use the same projection  
-        if (pts1%is_projection .and. pts2%is_projection) then 
-
-            if (trim(pts1%mtype)       .eq. trim(pts2%mtype)       .and. &
-                trim(pts1%planet%name) .eq. trim(pts2%planet%name) .and. &
-                   pts1%proj%lambda .eq. pts2%proj%lambda    .and. &
-                   pts1%proj%phi    .eq. pts2%proj%phi       .and. &
-                   pts1%proj%alpha  .eq. pts2%proj%alpha     .and. &
-                   pts1%proj%x_e    .eq. pts2%proj%x_e       .and. &
-                   pts1%proj%y_n    .eq. pts2%proj%y_n ) then 
-                ! Both maps come from the same projection
-                map%is_same_map = .TRUE. 
-            end if 
+        if (pts1%is_projection .and. pts2%is_projection        .and. &
+            trim(pts1%mtype)       .eq. trim(pts2%mtype)       .and. &
+            trim(pts1%planet%name) .eq. trim(pts2%planet%name) .and. &
+            pts1%proj%lambda .eq. pts2%proj%lambda    .and. &
+            pts1%proj%phi    .eq. pts2%proj%phi       .and. &
+            pts1%proj%alpha  .eq. pts2%proj%alpha     .and. &
+            pts1%proj%x_e    .eq. pts2%proj%x_e       .and. &
+            pts1%proj%y_n    .eq. pts2%proj%y_n ) then 
+            
+            ! Both maps come from the same projection
+            map%is_same_map = .TRUE. 
 
         else if (pts1%is_cartesian .and. .not. pts1%is_projection .and. &
                  pts2%is_cartesian .and. .not. pts2%is_projection) then 
