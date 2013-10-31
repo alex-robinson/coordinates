@@ -912,7 +912,7 @@ contains
         return
     end subroutine map_calc_weights
 
-    subroutine map_field_grid_grid(map,name,var1,var2,mask2,method,radius)
+    subroutine map_field_grid_grid(map,name,var1,var2,mask2,method,radius,fill)
 
         implicit none 
 
@@ -922,6 +922,7 @@ contains
         integer, dimension(:,:),  intent(OUT) :: mask2
         character(len=*) :: name, method
         real(dp), optional :: radius 
+        logical,  optional :: fill 
         real(dp) :: shephard_exponent
 
         real(dp), dimension(:), allocatable   :: var2_vec
@@ -937,7 +938,7 @@ contains
         var2_vec = reshape(var2, (/npts2 /))
 
         call map_field_points_points(map,name,reshape(var1,(/npts1/)), &
-                                     var2_vec,mask2_vec,method,radius)
+                                     var2_vec,mask2_vec,method,radius,fill)
         
         var2  = reshape(var2_vec, (/nx2,ny2/))
         mask2 = reshape(mask2_vec,(/nx2,ny2/))
@@ -946,7 +947,7 @@ contains
 
     end subroutine map_field_grid_grid
 
-    subroutine map_field_points_points(map,name,var1,var2,mask2,method,radius)
+    subroutine map_field_points_points(map,name,var1,var2,mask2,method,radius,fill)
         ! Methods include "radius", "nn" = nearest neighbor
         ! (and in the future "quadrant")
         
@@ -958,6 +959,7 @@ contains
         integer,  dimension(:), intent(OUT)   :: mask2
         character(len=*) :: name, method
         real(dp), optional :: radius 
+        logical,  optional :: fill 
         real(dp) :: shephard_exponent
         real(dp) :: max_distance
         integer,  dimension(:), allocatable   :: i_neighb, quad_neighb
@@ -1060,6 +1062,15 @@ contains
             else
                 ! If no neighbors exist, field not mapped here.
                 mask2(i) = 0 
+
+                ! Fill in these points with nearest neighbor if desired
+                if (present(fill)) then 
+                    if (fill) then 
+                        var2(i)  = var1(map%i(i,1))
+                        mask2(i) = 2 
+                    end if 
+                end if 
+
             end if 
                 
         end do 
