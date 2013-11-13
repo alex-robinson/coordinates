@@ -795,7 +795,7 @@ contains
             allocate(map%border(map%npts,map%nmax))
 
             ! Calculate map weights (time consuming!)
-            call map_calc_weights(map,pts1,pts2,4.0_dp,2.0_dp)
+            call map_calc_weights(map,pts1,pts2,lat_lim,2.0_dp)
 
             ! Write new map to file
             if (save_file) call map_write(map,mapfldr) 
@@ -831,8 +831,7 @@ contains
 
         lat_limit = 2.0_dp 
         if (present(lat_lim)) lat_limit = lat_lim 
-        write(*,*) "lat_lim=",lat_limit
-        write(*,*) "Total points to calculate=",pts2%npts
+        write(*,"(a,i12,a,f6.2)") "Total points to calculate=",pts2%npts,"  lat_lim=",lat_limit
 
         ! For each grid point in the new grid,
         ! Find points within a rough radius,
@@ -912,7 +911,7 @@ contains
         return
     end subroutine map_calc_weights
 
-    subroutine map_field_grid_grid(map,name,var1,var2,mask2,method,radius,fill)
+    subroutine map_field_grid_grid(map,name,var1,var2,mask2,method,radius,fill,missing_value)
 
         implicit none 
 
@@ -921,7 +920,7 @@ contains
         real(dp), dimension(:,:), intent(OUT) :: var2
         integer, dimension(:,:),  intent(OUT) :: mask2
         character(len=*) :: name, method
-        real(dp), optional :: radius 
+        real(dp), optional :: radius, missing_value 
         logical,  optional :: fill 
         real(dp) :: shephard_exponent
 
@@ -938,7 +937,7 @@ contains
         var2_vec = reshape(var2, (/npts2 /))
 
         call map_field_points_points(map,name,reshape(var1,(/npts1/)), &
-                                     var2_vec,mask2_vec,method,radius,fill)
+                                     var2_vec,mask2_vec,method,radius,fill,missing_value)
         
         var2  = reshape(var2_vec, (/nx2,ny2/))
         mask2 = reshape(mask2_vec,(/nx2,ny2/))
@@ -947,7 +946,7 @@ contains
 
     end subroutine map_field_grid_grid
 
-    subroutine map_field_points_points(map,name,var1,var2,mask2,method,radius,fill)
+    subroutine map_field_points_points(map,name,var1,var2,mask2,method,radius,fill,missing_value)
         ! Methods include "radius", "nn" = nearest neighbor
         ! (and in the future "quadrant")
         
@@ -958,14 +957,24 @@ contains
         real(dp), dimension(:), intent(OUT)   :: var2
         integer,  dimension(:), intent(OUT)   :: mask2
         character(len=*) :: name, method
-        real(dp), optional :: radius 
+        real(dp), optional :: radius, missing_value 
         logical,  optional :: fill 
         real(dp) :: shephard_exponent
-        real(dp) :: max_distance
+        real(dp) :: max_distance, missing_val 
         integer,  dimension(:), allocatable   :: i_neighb, quad_neighb
         real(dp), dimension(:), allocatable   :: dist_neighb, weight_neighb, v_neighb
 
         integer :: i, k, q, j, ntot 
+        logical :: found 
+
+        ! Set neighborhood radius to very large value (to include all neighbors)
+        ! or to radius specified by user
+        max_distance = 1E7_dp
+        if (present(radius)) max_distance = radius 
+
+        ! Set grid missing value by default or that that specified by user
+        missing_val  = -9999.0_dp 
+        if (present(missing_value)) missing_val = missing_val 
 
         allocate(i_neighb(map%nmax),dist_neighb(map%nmax), &
                  weight_neighb(map%nmax),v_neighb(map%nmax), &
@@ -981,13 +990,54 @@ contains
                 write(*,*) maxval(map%i(i,:)), size(var1,1)
             end if 
 
-            ! Set neighborhood radius to very large value (to include all neighbors)
-            ! or to radius specified by user
-            max_distance = 1E7_dp
-            if (present(radius)) max_distance = radius  
+            ! Initialize neighbor variable values from input
+            v_neighb = missing_val 
+            do k = 1, map%nmax 
+                if (map%i(i,k) .gt. 0) v_neighb(k) = var1(map%i(i,k))
+            end do 
 
-            ! Check number of neighbors available, also applying distance limit (in meters)
-            ntot = count(map%i(i,:) .gt. 0 .and. map%dist(i,:) .le. max_distance)
+            ! Eliminate neighbors outside of distance limit (in meters)
+            where(map%dist(i,:) .gt. max_distance) v_neighb = missing_val 
+
+            ! If method == nn (nearest neighbor), limit neighbors to 1
+            if (method .eq. "nn") then
+                found = .FALSE. 
+                do k = 1, map%nmax 
+                    if (v_neighb(k) .ne. missing_val) then 
+                        if (found) then 
+                            v_neighb(k) = missing_val 
+                        else
+                            found = .TRUE. 
+                        end if 
+                    end if 
+                end do 
+
+            else if (method .eq. "quadrant") then 
+                ! For quadrant method, limit the number of neighbors to 
+                ! 4 points in different quadrants
+                do q = 1, 4
+                    found = .FALSE. 
+                    do k = 1, map%nmax 
+                        if (v_neighb(k) .ne. missing_val .and. map%quadrant(i,k) .eq. q) then 
+                            if (found) then 
+                                v_neighb(k) = missing_val 
+                            else
+                                found = .TRUE. 
+                            end if 
+                        end if 
+                    end do 
+                end do 
+
+            end if 
+
+            ! Initialize temp neighbors with errors
+            i_neighb      = ERR_IND 
+            dist_neighb   = ERR_DIST 
+            weight_neighb = 0.0_dp 
+            quad_neighb   = 0
+
+            ! Check number of neighbors available for calculations
+            ntot = count(v_neighb .ne. missing_val)
 
             ! Check if a large fraction of neighbors are border points
             ! (if so, do not interpolate here)
@@ -995,62 +1045,33 @@ contains
                 if ( sum(map%border(i,1:ntot))/dble(ntot) .gt. 0.25_dp ) ntot = 0
             end if 
 
-            ! Initialize temporary neighbor vectors to error values
-            i_neighb      = ERR_IND 
-            dist_neighb   = ERR_DIST
-            weight_neighb = 0.0_dp 
-            quad_neighb   = 0
-
-            ! If method is 
-            if (method .eq. "nn") then
-                ! For nearest neighbor method, limit ntot to 1
-                ntot = min(1,ntot)
-
-            else if (method .eq. "quadrant" .and. ntot .gt. 0) then 
-                ! For quadrant method, limit the number of neighbors to 
-                ! 4 points in different quadrants
-
-                j = 0 
-                do q = 1, 4 
-                    do k = 1, ntot 
-                        if (map%quadrant(i,k) .eq. q ) then
-                            ! If point in this quadrant is found,
-                            ! store it in neighbor vectors and move on
-                            ! to next quadrant
-                            j = j + 1
-                            i_neighb(j)      = map%i(i,k)
-                            dist_neighb(j)   = map%dist(i,k)
-                            weight_neighb(j) = map%weight(i,k)
-                            quad_neighb(j)   = map%quadrant(i,k)
-                            exit 
-                        end if 
-                    end do 
+            ! Fill in temp neighbors with valid values when available
+            if (ntot .gt. 0) then 
+                q = 0 
+                do k = 1, map%nmax 
+                    if (v_neighb(k) .ne. missing_val) then
+                        q = q+1
+                        i_neighb(q)      = map%i(i,k)
+                        dist_neighb(q)   = map%dist(i,k)
+                        weight_neighb(q) = map%weight(i,k)
+                        quad_neighb(q)   = map%quadrant(i,k)
+                    end if 
                 end do 
 
-                ! Recount eligible neighbors
-                ntot = count(i_neighb .gt. 0) 
+                ! Reinitialize temp neighbor values so that they appear in order (1:ntot)
+                v_neighb = missing_val 
+                q = 0
+                do k = 1, map%nmax 
+                    if (i_neighb(k) .gt. 0) then 
+                        q = q+1
+                        v_neighb(q) = var1(i_neighb(k))
+                    end if 
+                end do  
 
-            else                            
-                ! Standard radius method is used
-                ! (proceed as normal)
+            end if           
 
-                ! Store eligible neighbors in neighbor vectors
-                if (ntot .gt. 0) then 
-                    i_neighb      = map%i(i,1:ntot)
-                    dist_neighb   = map%dist(i,1:ntot)
-                    weight_neighb = map%weight(i,1:ntot)
-                    quad_neighb   = map%quadrant(i,1:ntot)
-                end if 
-
-            end if 
 
             if ( ntot .gt. 1) then 
-
-                ! Store available neighbor data in temp vector
-                v_neighb = ERR_DIST
-                do k = 1, ntot
-                    v_neighb(k) = var1(i_neighb(k))
-                end do
 
                 ! Calculate the weighted average
                 var2(i)  = weighted_ave(v_neighb(1:ntot),weight_neighb(1:ntot))
@@ -1072,7 +1093,6 @@ contains
                 end if 
 
             end if 
-                
         end do 
 
         write(*,*) "Mapped field: "//trim(name)

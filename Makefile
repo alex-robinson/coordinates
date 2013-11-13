@@ -42,12 +42,7 @@ LFLAGS		 = -L/opt/local/lib -lnetcdff -lnetcdf
 # LDFLAGS = $(FFLAGS) -I/home/robinson/apps/netcdf/netcdf/include
 # LIB = -L/home/robinson/apps/netcdf/netcdf/lib -lnetcdf
 
-ccsm3: $(objdir)/ncio3.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o $(objdir)/coordinates.o
-	$(FC) $(FLAGS) -o test_CCSM3.x $^ test_CCSM3.f90 $(LFLAGS)
-	@echo " "
-	@echo "    test_CCSM3.x is ready."
-	@echo " "
-
+## Individual libraries or modules ##
 $(objdir)/ncio3.o: ../ncio/ncio3.f90
 	$(FC) $(FLAGS) -c -o $@ $<
 
@@ -62,6 +57,22 @@ $(objdir)/projection_oblimap2.o: projection_oblimap2.f90
 
 $(objdir)/coordinates.o: coordinates.f90
 	$(FC) $(FLAGS) -c -o $@ $<
+
+## Complete programs
+
+# Program to test interpolations of CCSM3 data
+ccsm3: $(objdir)/ncio3.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o $(objdir)/coordinates.o
+	$(FC) $(FLAGS) -o test_CCSM3.x $^ test_CCSM3.f90 $(LFLAGS)
+	@echo " "
+	@echo "    test_CCSM3.x is ready."
+	@echo " "
+
+# Program to test distance calculations using the geographiclib library
+geodinverse: $(objdir)/planet.o $(objdir)/geodesic.o
+	$(FC) $(FLAGS) -o geodinverse.x $^ geodinverse.f90
+	@echo " "
+	@echo "    geodinverse.x is ready."
+	@echo " "
 
 clean:
 	rm -f test_ccsm3.x *.o *.mod

@@ -130,7 +130,7 @@ CONTAINS
     ! Get projection center if provided
     ! Also add additional projection rotation parameters if they exist
     ! (currently not used, but need to be stored in netcdf files)
-    if (present(phi)) proj%phi       = phi
+    if (present(phi))    proj%phi    = phi
     if (present(lambda)) proj%lambda = lambda 
     if (present(x_e))    proj%x_e    = x_e 
     if (present(y_n))    proj%y_n    = y_n 
@@ -171,8 +171,10 @@ CONTAINS
     proj%am     = proj%a * (COS(proj%phi_M) / DSQRT(1._dp - (proj%e * SIN(proj%phi_M))**2))
     proj%akm    = (1._dp + COS(proj%alpha_stereographic)) * proj%am
     ! See equations (3-1a) on page 160 in Snyder (1987),  chi_M corresponds with chi_1 in Snyder:
-    proj%chi_M  = 2._dp * ATAN(DSQRT(((1._dp +       SIN(proj%phi_M)) / (1._dp -       SIN(proj%phi_M))) * &
-                         ((1._dp - proj%e * SIN(proj%phi_M)) / (1._dp + proj%e * SIN(proj%phi_M)))**(proj%e))) - 0.5_dp * pi
+    proj%chi_M  = 0.0_dp 
+    if (dabs(proj%phi) .lt. 90.0_dp) &
+      proj%chi_M  = 2._dp * ATAN(DSQRT(((1._dp +       SIN(proj%phi_M)) / (1._dp -       SIN(proj%phi_M))) * &
+                           ((1._dp - proj%e * SIN(proj%phi_M)) / (1._dp + proj%e * SIN(proj%phi_M)))**(proj%e))) - 0.5_dp * pi
 
     ! See equation (3-12) on page 187 in Snyder (1987):
     proj%q_M   = (1._dp - proj%e**2) * ((SIN(proj%phi_M) / &

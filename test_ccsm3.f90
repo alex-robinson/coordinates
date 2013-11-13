@@ -83,19 +83,19 @@ program test_ccsm3
     !
     ! =======================================================================
 
-!     REG%name = "ANT-20KM"
-!     REG%nx   = 281
-!     REG%ny   = 281 
-!     REG%lambda =   0.d0 
-!     REG%phi    = -90.d0
-!     REG%alpha  =  19.d0 
+    REG%name = "ANT-20KM"
+    REG%nx   = 281
+    REG%ny   = 281 
+    REG%lambda =   0.d0 
+    REG%phi    = -90.d0
+    REG%alpha  =  19.d0 
 
-    REG%name = "GRL-20KM"
-    REG%nx   = 76
-    REG%ny   = 151 
-    REG%lambda = 320.d0 
-    REG%phi    = 72.d0
-    REG%alpha  = 7.5d0
+!     REG%name = "GRL-20KM"
+!     REG%nx   = 76
+!     REG%ny   = 151 
+!     REG%lambda = 320.d0 
+!     REG%phi    = 72.d0
+!     REG%alpha  = 7.5d0
 
 !     REG%name = "HIM-20KM"
 !     REG%nx   = 200
