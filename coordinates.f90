@@ -140,7 +140,7 @@ contains
         dx_tmp = 1.d0 
         if (present(dx)) dx_tmp = dx 
         
-        x = x*dx 
+        x = x*dx_tmp  
 
         if (present(x0)) then 
             x = x + x0 
@@ -325,7 +325,7 @@ contains
 
         ! Make sure final lon/lat values are in desired range
         ! (default range is 0=>360)
-        if ( grid%is_projection .or. .not. grid%is_cartesian ) then 
+        if ( .not. grid%is_cartesian ) then 
             if ( grid%is_lon180 ) &  ! Then make range -180=>180
                 where( grid%G%x .gt. 180.0_dp ) grid%G%x = grid%G%x - 360.0_dp 
 
