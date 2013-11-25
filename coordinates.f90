@@ -1108,10 +1108,10 @@ contains
             end if 
 
         end do 
-        
-        write(*,*) "Missing points: ", count(var2 .eq. missing_val)
 
         write(*,*) "Mapped field: "//trim(name)
+        if (count(var2 .eq. missing_val) .gt. 0) &
+            write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
 
         return
     end subroutine map_field_points_points
