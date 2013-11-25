@@ -959,6 +959,7 @@ contains
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill 
+        logical            :: fill_pts
         real(dp) :: shephard_exponent
         real(dp) :: max_distance, missing_val 
         integer,  dimension(:), allocatable   :: i_neighb, quad_neighb
@@ -976,12 +977,19 @@ contains
         missing_val  = -9999.0_dp 
         if (present(missing_value)) missing_val = missing_val 
 
+        ! By default, grid points with missing values will not be filled in
+        fill_pts = .FALSE. 
+        if (present(fill)) fill_pts = fill 
+
         allocate(i_neighb(map%nmax),dist_neighb(map%nmax), &
                  weight_neighb(map%nmax),v_neighb(map%nmax), &
                  quad_neighb(map%nmax))
 
         ! Initialize mask to show which points have been mapped
         mask2 = 0 
+
+        ! If fill is desired, initialize output points to missing values
+        if (fill_pts) var2 = missing_val 
 
         do i = 1, map%npts 
 
@@ -1010,7 +1018,7 @@ contains
                             found = .TRUE. 
                         end if 
                     end if 
-                end do 
+                end do
 
             else if (method .eq. "quadrant") then 
                 ! For quadrant method, limit the number of neighbors to 
@@ -1084,16 +1092,24 @@ contains
                 ! If no neighbors exist, field not mapped here.
                 mask2(i) = 0 
 
-                ! Fill in these points with nearest neighbor if desired
-                if (present(fill)) then 
-                    if (fill) then 
-                        var2(i)  = var1(map%i(i,1))
-                        mask2(i) = 2 
-                    end if 
-                end if 
-
             end if 
+
+            ! Fill missing points with nearest neighbor if desired
+            ! Note, will not necessarily fill ALL points, if 
+            ! no neighbor can be found without a missing value
+            if ( fill_pts .and. var2(i) .eq. missing_val) then  
+                do k = 1, map%nmax 
+                    if (var1(map%i(i,k)) .ne. missing_val) then
+                        var2(i)  = var1(map%i(i,k))
+                        mask2(i) = 2 
+                        exit 
+                    end if 
+                end do 
+            end if 
+
         end do 
+        
+        write(*,*) "Missing points: ", count(var2 .eq. missing_val)
 
         write(*,*) "Mapped field: "//trim(name)
 
