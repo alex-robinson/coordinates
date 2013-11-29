@@ -269,8 +269,6 @@ contains
         else
             grid%G%dy = sum(grid%G%y(2:grid%G%ny)-grid%G%y(1:grid%G%ny-1))/(grid%G%ny-1)
         end if 
-        
-        write(*,*) "GRID: dx,dy: ", dx, dy 
 
         ! Allocate and generate 2D point sets (x,y)
         ! Note x,y represent cartesian values or latlon 
@@ -1531,6 +1529,7 @@ contains
 
         write(*,*) "== Grid summary   ========================="
         write(*,"(a16,i6,i6)")     "nx,ny = ",grid%G%nx, grid%G%ny 
+        write(*,"(a16,2g12.5)")    "dx,dy = ",grid%G%dx, grid%G%dy
         write(*,"(a16,2g12.5)") "range(x-axis) = ",minval(grid%G%x),maxval(grid%G%x)
         write(*,"(a16,2g12.5)") "range(y-axis) = ",minval(grid%G%y),maxval(grid%G%y)
         write(*,*) 
