@@ -257,6 +257,21 @@ contains
         ! How many points does grid contain?
         grid%npts = grid%G%nx * grid%G%ny 
 
+        ! Determine dx, dy if not provided 
+        if (present(dx)) then
+            grid%G%dx = dx 
+        else
+            grid%G%dx = sum(grid%G%x(2:grid%G%nx)-grid%G%x(1:grid%G%nx-1))/(grid%G%nx-1)
+        end if 
+
+        if (present(dy)) then
+            grid%G%dy = dy 
+        else
+            grid%G%dy = sum(grid%G%y(2:grid%G%ny)-grid%G%y(1:grid%G%ny-1))/(grid%G%ny-1)
+        end if 
+        
+        write(*,*) "GRID: dx,dy: ", dx, dy 
+
         ! Allocate and generate 2D point sets (x,y)
         ! Note x,y represent cartesian values or latlon 
         ! depending on mtype
