@@ -1239,59 +1239,59 @@ contains
                 call nc_write_dim(fnm,dim2,x=map%G%y,units=trim(map%units))
             end if 
 
-            !call nc_write(fnm,map%x,"x2D",  dim1=dim1,dim2=dim2)
-            call nc_write(fnm,reshape(map%x,  (/map%G%nx,map%G%ny/)),"x2D",  dim1=dim1,dim2=dim2)
-            call nc_write(fnm,reshape(map%y,  (/map%G%nx,map%G%ny/)),"y2D",  dim1=dim1,dim2=dim2)
-            call nc_write(fnm,reshape(map%lon,(/map%G%nx,map%G%ny/)),"lon2D",dim1=dim1,dim2=dim2)
-            call nc_write(fnm,reshape(map%lat,(/map%G%nx,map%G%ny/)),"lat2D",dim1=dim1,dim2=dim2)
+            !call nc_write(fnm,"x2D",map%x,  dim1=dim1,dim2=dim2)
+            call nc_write(fnm,"x2D",  reshape(map%x,  (/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
+            call nc_write(fnm,"y2D",  reshape(map%y,  (/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
+            call nc_write(fnm,"lon2D",reshape(map%lon,(/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
+            call nc_write(fnm,"lat2D",reshape(map%lat,(/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
 
-            call nc_write(fnm,reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),"i",       dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,reshape(map%dist,    (/map%G%nx,map%G%ny,map%nmax/)),"dist",    dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,reshape(map%weight,  (/map%G%nx,map%G%ny,map%nmax/)),"weight",  dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,reshape(map%quadrant,(/map%G%nx,map%G%ny,map%nmax/)),"quadrant",dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,reshape(map%border,  (/map%G%nx,map%G%ny,map%nmax/)),"border",  dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"i",       reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"dist",    reshape(map%dist,    (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"weight",  reshape(map%weight,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"quadrant",reshape(map%quadrant,(/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"border",  reshape(map%border,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
 
             ! Write grid specific parameters
-            call nc_write(fnm,map%G%nx,"nx",dim1="parameter")
-            call nc_write(fnm,map%G%ny,"ny",dim1="parameter")
+            call nc_write(fnm,"nx",map%G%nx,dim1="parameter")
+            call nc_write(fnm,"ny",map%G%ny,dim1="parameter")
 
         else
             ! Write variables in a vector format
 
-            call nc_write(fnm,map%x,       "x",       dim1="point",dim2="neighbor")
-            call nc_write(fnm,map%y,       "y",       dim1="point",dim2="neighbor")
-            call nc_write(fnm,map%lon,     "lon",     dim1="point",dim2="neighbor")
-            call nc_write(fnm,map%lat,     "lat",     dim1="point",dim2="neighbor")
-            call nc_write(fnm,map%i,       "i",       dim1="point",dim2="neighbor")
-            call nc_write(fnm,map%dist,    "dist",    dim1="point",dim2="neighbor")
-            call nc_write(fnm,map%weight,  "weight",  dim1="point",dim2="neighbor")
-            call nc_write(fnm,map%quadrant,"quadrant",dim1="point",dim2="neighbor")
-            call nc_write(fnm,map%border,  "border",  dim1="point",dim2="neighbor")
+            call nc_write(fnm,"x",       map%x,       dim1="point",dim2="neighbor")
+            call nc_write(fnm,"y",       map%y,       dim1="point",dim2="neighbor")
+            call nc_write(fnm,"lon",     map%lon,     dim1="point",dim2="neighbor")
+            call nc_write(fnm,"lat",     map%lat,     dim1="point",dim2="neighbor")
+            call nc_write(fnm,"i",       map%i,       dim1="point",dim2="neighbor")
+            call nc_write(fnm,"dist",    map%dist,    dim1="point",dim2="neighbor")
+            call nc_write(fnm,"weight",  map%weight,  dim1="point",dim2="neighbor")
+            call nc_write(fnm,"quadrant",map%quadrant,dim1="point",dim2="neighbor")
+            call nc_write(fnm,"border",  map%border,  dim1="point",dim2="neighbor")
 
         end if 
 
         ! Write generic map parameters
-        call nc_write(fnm,map%mtype,        "mtype")
-        call nc_write(fnm,map%units,        "units")
-        call nc_write(fnm,map%is_cartesian, "is_cartesian", dim1="parameter")
-        call nc_write(fnm,map%is_projection,"is_projection",dim1="parameter")
-        call nc_write(fnm,map%is_lon180,    "is_lon180",    dim1="parameter")
-        call nc_write(fnm,map%is_same_map,  "is_same_map",  dim1="parameter")
-        call nc_write(fnm,map%is_grid,      "is_grid",      dim1="parameter")
-        call nc_write(fnm,map%npts,         "npts",         dim1="parameter")  
-        call nc_write(fnm,map%nmax,         "nmax",         dim1="parameter")        
-        call nc_write(fnm,map%xy_conv,      "xy_conv",      dim1="parameter") 
+        call nc_write(fnm,"mtype",        map%mtype)
+        call nc_write(fnm,"units",        map%units)
+        call nc_write(fnm,"is_cartesian", map%is_cartesian, dim1="parameter")
+        call nc_write(fnm,"is_projection",map%is_projection,dim1="parameter")
+        call nc_write(fnm,"is_lon180",    map%is_lon180,    dim1="parameter")
+        call nc_write(fnm,"is_same_map",  map%is_same_map,  dim1="parameter")
+        call nc_write(fnm,"is_grid",      map%is_grid,      dim1="parameter")
+        call nc_write(fnm,"npts",         map%npts,         dim1="parameter")  
+        call nc_write(fnm,"nmax",         map%nmax,         dim1="parameter")        
+        call nc_write(fnm,"xy_conv",      map%xy_conv,      dim1="parameter") 
 
         if (map%is_projection .or. .not. map%is_cartesian) then 
-            call nc_write(fnm,map%planet%name,  "planet_name")
-            call nc_write(fnm,(/ map%planet%a, map%planet%f, map%planet%R /), &
-                          "planet_info",dim1="planetpar")
+            call nc_write(fnm,"planet_name",map%planet%name)
+            call nc_write(fnm,"planet_info",(/ map%planet%a, map%planet%f, map%planet%R /), &
+                          dim1="planetpar")
         end if 
 
         if (map%is_projection) then 
-            call nc_write(fnm,map%proj%name,    "proj_name")
-            call nc_write(fnm,(/ map%proj%lambda, map%proj%phi, map%proj%alpha, &
-                                 map%proj%x_e, map%proj%y_n /), "proj_info",dim1="projpar")    
+            call nc_write(fnm,"proj_name",map%proj%name)
+            call nc_write(fnm,"proj_info",(/ map%proj%lambda, map%proj%phi, map%proj%alpha, &
+                                 map%proj%x_e, map%proj%y_n /), dim1="projpar")    
         end if 
         
         write(*,*) "Map written to file: "//trim(fnm)
@@ -1327,28 +1327,28 @@ contains
         if (allocated(map%border))   deallocate(map%border) 
 
         ! Read generic map parameters
-        call nc_read(fnm,map%mtype,        "mtype")
-        call nc_read(fnm,map%units,        "units")
-        call nc_read(fnm,map%is_cartesian, "is_cartesian")
-        call nc_read(fnm,map%is_projection,"is_projection")
-        call nc_read(fnm,map%is_lon180,    "is_lon180")
-        call nc_read(fnm,map%is_same_map,  "is_same_map")
-        call nc_read(fnm,map%is_grid,      "is_grid")
-        call nc_read(fnm,map%npts,         "npts") 
-        call nc_read(fnm,map%nmax,         "nmax")        
-        call nc_read(fnm,map%xy_conv,      "xy_conv")        
+        call nc_read(fnm,"mtype",        map%mtype        )
+        call nc_read(fnm,"units",        map%units        )
+        call nc_read(fnm,"is_cartesian", map%is_cartesian )
+        call nc_read(fnm,"is_projection",map%is_projection)
+        call nc_read(fnm,"is_lon180",    map%is_lon180    )
+        call nc_read(fnm,"is_same_map",  map%is_same_map  )
+        call nc_read(fnm,"is_grid",      map%is_grid      )
+        call nc_read(fnm,"npts",         map%npts         ) 
+        call nc_read(fnm,"nmax",         map%nmax         )        
+        call nc_read(fnm,"xy_conv",      map%xy_conv      )        
         
         if (map%is_projection .or. .not. map%is_cartesian) then 
-            call nc_read(fnm,map%planet%name, "planet_name")
-            call nc_read(fnm,tmp5(1:3), "planet_info")
+            call nc_read(fnm,"planet_name",map%planet%name)
+            call nc_read(fnm,"planet_info",tmp5(1:3))
             map%planet%a = tmp5(1)
             map%planet%f = tmp5(2)
             map%planet%R = tmp5(3)
         end if 
 
         if (map%is_projection) then 
-            call nc_read(fnm,map%proj%name,   "proj_name")
-            call nc_read(fnm,tmp5(1:5),       "proj_info")
+            call nc_read(fnm,"proj_name",map%proj%name)
+            call nc_read(fnm,"proj_info",tmp5(1:5))
             map%proj%lambda = tmp5(1)
             map%proj%phi    = tmp5(2)
             map%proj%alpha  = tmp5(3) 
@@ -1367,60 +1367,60 @@ contains
         if (map%is_grid) then
             ! Read variables in a gridded format
 
-            call nc_read(fnm,map%G%nx,"nx")
-            call nc_read(fnm,map%G%ny,"ny")
+            call nc_read(fnm,"nx",map%G%nx)
+            call nc_read(fnm,"ny",map%G%ny)
 
             ! Allocate grid fields
             allocate(map%G%x(map%G%nx))
             allocate(map%G%y(map%G%ny))
 
             if (trim(map%mtype) .eq. "latlon") then 
-                call nc_read(fnm,map%G%x,"lon")
-                call nc_read(fnm,map%G%y,"lat")
+                call nc_read(fnm,"lon",map%G%x)
+                call nc_read(fnm,"lat",map%G%y)
             else 
-                call nc_read(fnm,map%G%x,"xc")
-                call nc_read(fnm,map%G%y,"yc")
+                call nc_read(fnm,"xc",map%G%x)
+                call nc_read(fnm,"yc",map%G%y)
             end if 
 
             if (allocated(tmpd)) deallocate(tmpd)
             allocate(tmpd(map%G%nx,map%G%ny,1))
 
-            call nc_read(fnm,tmpd,"x2D")
+            call nc_read(fnm,"x2D",tmpd)
             map%x   = reshape(tmpd,(/map%npts/))
-            call nc_read(fnm,tmpd,"y2D")
+            call nc_read(fnm,"y2D",tmpd)
             map%y   = reshape(tmpd,(/map%npts/))
-            call nc_read(fnm,tmpd,"lon2D")
+            call nc_read(fnm,"lon2D",tmpd)
             map%lon = reshape(tmpd,(/map%npts/))
-            call nc_read(fnm,tmpd,"lat2D")
+            call nc_read(fnm,"lat2D",tmpd)
             map%lat = reshape(tmpd,(/map%npts/))
             
             if (allocated(tmpi)) deallocate(tmpi)
             if (allocated(tmpd)) deallocate(tmpd)
             allocate(tmpi(map%G%nx,map%G%ny,map%nmax),tmpd(map%G%nx,map%G%ny,map%nmax))
 
-            call nc_read(fnm,tmpi,"i")
+            call nc_read(fnm,"i",tmpi)
             map%i = reshape(tmpi,(/map%npts,map%nmax/))
-            call nc_read(fnm,tmpd,"dist")
+            call nc_read(fnm,"dist",tmpd)
             map%dist = reshape(tmpd,(/map%npts,map%nmax/))
-            call nc_read(fnm,tmpd,"weight")
+            call nc_read(fnm,"weight",tmpd)
             map%weight = reshape(tmpd,(/map%npts,map%nmax/))
-            call nc_read(fnm,tmpd,"quadrant")
+            call nc_read(fnm,"quadrant",tmpd)
             map%quadrant = reshape(tmpd,(/map%npts,map%nmax/))
-            call nc_read(fnm,tmpi,"border")
+            call nc_read(fnm,"border",tmpi)
             map%border = reshape(tmpi,(/map%npts,map%nmax/))
             
         else
             ! Read variables in a vector format
 
-            call nc_read(fnm,map%x,       "x")
-            call nc_read(fnm,map%y,       "y")
-            call nc_read(fnm,map%lon,     "lon")
-            call nc_read(fnm,map%lat,     "lat")
-            call nc_read(fnm,map%i,       "i")
-            call nc_read(fnm,map%dist,    "dist")
-            call nc_read(fnm,map%weight,  "weight")
-            call nc_read(fnm,map%quadrant,"quadrant")
-            call nc_read(fnm,map%border,  "border")
+            call nc_read(fnm,       "x",map%x)
+            call nc_read(fnm,       "y",map%y)
+            call nc_read(fnm,     "lon",map%lon)
+            call nc_read(fnm,     "lat",map%lat)
+            call nc_read(fnm,       "i",map%i)
+            call nc_read(fnm,    "dist",map%dist)
+            call nc_read(fnm,  "weight",map%weight)
+            call nc_read(fnm,"quadrant",map%quadrant)
+            call nc_read(fnm,  "border",map%border)
 
         end if 
 
@@ -1506,16 +1506,16 @@ contains
             call nc_write_map(fnm,grid%mtype,grid%proj%lambda,phi=grid%proj%phi,x_e=0.d0,y_n=0.d0)
 
         if (grid%is_projection .or. grid%is_cartesian) then 
-            call nc_write(fnm,grid%x,"x2D",dim1=xnm,dim2=ynm,grid_mapping=grid%name)
-            call nc_write(fnm,grid%y,"y2D",dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+            call nc_write(fnm,"x2D",grid%x,dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+            call nc_write(fnm,"y2D",grid%y,dim1=xnm,dim2=ynm,grid_mapping=grid%name)
         end if 
         if (.not. (grid%is_cartesian .and. .not. grid%is_projection)) then 
-            call nc_write(fnm,grid%lon,"lon2D",dim1=xnm,dim2=ynm,grid_mapping=grid%name)
-            call nc_write(fnm,grid%lat,"lat2D",dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+            call nc_write(fnm,"lon2D",grid%lon,dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+            call nc_write(fnm,"lat2D",grid%lat,dim1=xnm,dim2=ynm,grid_mapping=grid%name)
         end if 
 
-        call nc_write(fnm,grid%area,  "area",  dim1=xnm,dim2=ynm,grid_mapping=grid%name)
-        call nc_write(fnm,grid%border,"border",dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+        call nc_write(fnm,"area",  grid%area,  dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+        call nc_write(fnm,"border",grid%border,dim1=xnm,dim2=ynm,grid_mapping=grid%name)
 
         return
     end subroutine grid_write

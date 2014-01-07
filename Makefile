@@ -43,7 +43,7 @@ LFLAGS		 = -L/opt/local/lib -lnetcdff -lnetcdf
 # LIB = -L/home/robinson/apps/netcdf/netcdf/lib -lnetcdf
 
 ## Individual libraries or modules ##
-$(objdir)/ncio3.o: ../ncio/ncio3.f90
+$(objdir)/ncio.o: ../ncio/ncio.f90
 	$(FC) $(FLAGS) -c -o $@ $<
 
 $(objdir)/planet.o: planet.f90
@@ -61,7 +61,7 @@ $(objdir)/coordinates.o: coordinates.f90
 ## Complete programs
 
 # Program to test interpolations of CCSM3 data
-ccsm3: $(objdir)/ncio3.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o $(objdir)/coordinates.o
+ccsm3: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o $(objdir)/coordinates.o
 	$(FC) $(FLAGS) -o test_CCSM3.x $^ test_CCSM3.f90 $(LFLAGS)
 	@echo " "
 	@echo "    test_CCSM3.x is ready."

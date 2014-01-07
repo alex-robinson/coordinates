@@ -40,8 +40,8 @@ program test_ccsm3
     file_gCCSM3b   = "maps/grid_CCSM3-T42b.nc"
     
     ! CCSM3 T42 latlon grid
-    call nc_read(file_input,tmplon,"lon")
-    call nc_read(file_input,tmplat,"lat")
+    call nc_read(file_input,"lon",tmplon)
+    call nc_read(file_input,"lat",tmplat)
     call grid_init(gCCSM3,name="CCSM3-T42",mtype="latlon",units="degrees",lon180=.FALSE., &
                      x=tmplon,y=tmplat)
 
@@ -61,11 +61,11 @@ program test_ccsm3
     call grid_allocate(gCCSM3, CCSM3b%mask)
 
     ! Load original GCM data
-    call nc_read(file_input,CCSM3a%Ts,"TS")
-    call nc_read(file_input,CCSM3a%MB,"PRECSC")
-    call nc_read(file_input,CCSM3a%Hs,"PRECSL")
+    call nc_read(file_input,"TS",CCSM3a%Ts)
+    call nc_read(file_input,"PRECSC",CCSM3a%MB)
+    call nc_read(file_input,"PRECSL",CCSM3a%Hs)
     CCSM3a%MB = (CCSM3a%MB + CCSM3a%Hs) * (1.000d0/0.910d0) * 31556926.d0  ! mie/a
-    call nc_read(file_input,CCSM3a%Hs,"PHIS")
+    call nc_read(file_input,"PHIS",CCSM3a%Hs)
     CCSM3a%Hs = CCSM3a%Hs / 9.81d0
 
     CCSM3b%Ts = CCSM3a%Ts 
@@ -73,9 +73,9 @@ program test_ccsm3
     CCSM3b%Hs = CCSM3a%Hs 
     
     ! Write original data to grid file 
-    call nc_write(file_gCCSM3a,CCSM3a%Ts,"Ts",dim1="lon",dim2="lat")
-    call nc_write(file_gCCSM3a,CCSM3a%MB,"MB",dim1="lon",dim2="lat")
-    call nc_write(file_gCCSM3a,CCSM3a%Hs,"Hs",dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3a,"Ts",CCSM3a%Ts,dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3a,"MB",CCSM3a%MB,dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3a,"Hs",CCSM3a%Hs,dim1="lon",dim2="lat")
 
     ! =======================================================================
     !
@@ -142,10 +142,10 @@ program test_ccsm3
     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,REG%mask,"quadrant")
 
     ! Write new regional data to grid file 
-    call nc_write(file_gREG,REG%Ts,  "Ts",  dim1="xc",dim2="yc")
-    call nc_write(file_gREG,REG%MB,  "MB",  dim1="xc",dim2="yc")
-    call nc_write(file_gREG,REG%Hs,  "Hs",  dim1="xc",dim2="yc")
-    call nc_write(file_gREG,REG%mask,"mask",dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
 
     ! Map each field back to the CCSM3 domain using the radius method
     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3)
@@ -153,10 +153,10 @@ program test_ccsm3
     call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"shepard",125.d3)
 
     ! Write new CCSM3 data to grid file 
-    call nc_write(file_gCCSM3b,CCSM3b%Ts,  "Ts",  dim1="lon",dim2="lat")
-    call nc_write(file_gCCSM3b,CCSM3b%MB,  "MB",  dim1="lon",dim2="lat")
-    call nc_write(file_gCCSM3b,CCSM3b%Hs,  "Hs",  dim1="lon",dim2="lat")
-    call nc_write(file_gCCSM3b,CCSM3b%mask,"mask",dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"MB",  CCSM3b%MB,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"Hs",  CCSM3b%Hs,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"mask",CCSM3b%mask,dim1="lon",dim2="lat")
 
     ! Calculate statistics concerning remapping
     ! (as in Table 3 of Reerink et al, 2010)
