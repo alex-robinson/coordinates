@@ -12,35 +12,38 @@ usage:
 
 objdir = .obj
 
-## Local ##
-FC			 = gfortran
-FLAGS        = -I$(objdir) -J$(objdir) -I/opt/local/include
-DEBUGFLAGS   = -w -pg -ffpe-trap=invalid,zero,overflow,underflow -fbacktrace -fcheck=all
-RELEASEFLAGS = -O3
-LFLAGS		 = -L/opt/local/lib -lnetcdff -lnetcdf
+ifort ?= 0
+debug ?= 0 
 
-## Cluster ##
-# FC			 = ifort
-# FLAGS        = -module $(objdir) -L$(objdir) -I/home/robinson/apps/netcdf/netcdf/include
-# DEBUGFLAGS   = -w -C -traceback -ftrapuv -fpe0 -check all -vec-report0
-# RELEASEFLAGS = -vec-report0 -O3
-# LFLAGS		 = -L/home/robinson/apps/netcdf/netcdf/lib -lnetcdf
+ifeq ($(ifort),1)
+    FC = ifort 
+else
+    FC = gfortran
+endif 
 
+ifeq ($(ifort),1)
+	## IFORT OPTIONS ##
+	FLAGS        = -module $(objdir) -L$(objdir) -I/home/robinson/apps/netcdf/netcdf/include
+	LFLAGS		 = -L/home/robinson/apps/netcdf/netcdf/lib -lnetcdf
 
-#DIRFLAGS = -I./.obj -J./.obj
-#FFLAGS	= $(DIRFLAGS) -O3 
-#FFLAGS	= $(DIRFLAGS) -w -pg -fbacktrace -fbounds-check #-g
-#FFLAGS	= $(DIRFLAGS) -w -pg -ffpe-trap=invalid,zero,overflow,underflow -fbacktrace -fcheck=all
-#LDFLAGS = $(FFLAGS) -I/opt/local/include
-# LIB = -L/opt/local/lib -lnetcdff -lnetcdf
+	ifeq ($(debug), 1)
+	    DFLAGS   = -C -traceback -ftrapuv -fpe0 -check all -vec-report0
+	    # -w 
+	else
+	    DFLAGS   = -vec-report0 -O3
+	endif
+else
+	## GFORTRAN OPTIONS ##
+	FLAGS        = -I$(objdir) -J$(objdir) -I/opt/local/include
+	LFLAGS		 = -L/opt/local/lib -lnetcdff -lnetcdf
 
-# FC	= ifort
-# DIRFLAGS = -module .obj -L./.obj
-# FFLAGS	= $(DIRFLAGS) -w -vec-report0 -O3 -xSSE4.1 #-pg -mcmodel medium -shared-intel
-# #FFLAGS	= $(DIRFLAGS) -w -C -traceback -vec-report0 -xSSE4.1
-# #FFLAGS	= $(DIRFLAGS) -w -C -traceback -ftrapuv -fpe0 -check all -vec-report0 -xSSE4.1
-# LDFLAGS = $(FFLAGS) -I/home/robinson/apps/netcdf/netcdf/include
-# LIB = -L/home/robinson/apps/netcdf/netcdf/lib -lnetcdf
+	ifeq ($(debug), 1)
+	    DFLAGS   = -w -p -ggdb -ffpe-trap=invalid,zero,overflow,underflow -fbacktrace -fcheck=all
+	else
+	    DFLAGS   = -O3
+	endif
+endif
+
 
 ## Individual libraries or modules ##
 $(objdir)/ncio.o: ../ncio/ncio.f90
