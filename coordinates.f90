@@ -113,6 +113,7 @@ module coordinates
 
     interface map_field 
         module procedure map_field_grid_grid, map_field_points_points
+        module procedure map_field_grid_points, map_field_points_grid
     end interface
 
     private
@@ -958,6 +959,64 @@ contains
         return
 
     end subroutine map_field_grid_grid
+
+    subroutine map_field_grid_points(map,name,var1,var2,mask2,method,radius,fill,missing_value)
+
+        implicit none 
+
+        type(map_class), intent(IN)           :: map 
+        real(dp), dimension(:,:), intent(IN)  :: var1
+        real(dp), dimension(:), intent(OUT)   :: var2
+        integer, dimension(:),  intent(OUT)   :: mask2
+        character(len=*) :: name, method
+        real(dp), optional :: radius, missing_value 
+        logical,  optional :: fill 
+        real(dp) :: shephard_exponent
+
+        integer :: npts1 
+
+        npts1 = size(var1,1)*size(var1,2)
+
+        call map_field_points_points(map,name,reshape(var1,(/npts1/)), &
+                                     var2,mask2,method,radius,fill,missing_value)
+
+        return
+
+    end subroutine map_field_grid_points
+
+    subroutine map_field_points_grid(map,name,var1,var2,mask2,method,radius,fill,missing_value)
+
+        implicit none 
+
+        type(map_class), intent(IN)           :: map 
+        real(dp), dimension(:), intent(IN)    :: var1
+        real(dp), dimension(:,:), intent(OUT) :: var2
+        integer, dimension(:,:),  intent(OUT) :: mask2
+        character(len=*) :: name, method
+        real(dp), optional :: radius, missing_value 
+        logical,  optional :: fill 
+        real(dp) :: shephard_exponent
+
+        real(dp), dimension(:), allocatable   :: var2_vec
+        integer,  dimension(:), allocatable   :: mask2_vec
+        integer :: nx2, ny2, npts2
+
+        nx2   = size(var2,1)
+        ny2   = size(var2,2)
+        npts2  = nx2*ny2 
+
+        allocate(var2_vec(npts2),mask2_vec(npts2))
+        var2_vec = reshape(var2, (/npts2 /))
+
+        call map_field_points_points(map,name,var1, &
+                                     var2_vec,mask2_vec,method,radius,fill,missing_value)
+        
+        var2  = reshape(var2_vec, (/nx2,ny2/))
+        mask2 = reshape(mask2_vec,(/nx2,ny2/))
+
+        return
+
+    end subroutine map_field_points_grid
 
     subroutine map_field_points_points(map,name,var1,var2,mask2,method,radius,fill,missing_value)
         ! Methods include "radius", "nn" = nearest neighbor
