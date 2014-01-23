@@ -65,9 +65,9 @@ $(objdir)/coordinates.o: coordinates.f90
 
 # Program to test interpolations of CCSM3 data
 ccsm3: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o $(objdir)/coordinates.o
-	$(FC) $(FLAGS) -o test_CCSM3.x $^ test_CCSM3.f90 $(LFLAGS)
+	$(FC) $(FLAGS) -o test_ccsm3.x $^ test_ccsm3.f90 $(LFLAGS)
 	@echo " "
-	@echo "    test_CCSM3.x is ready."
+	@echo "    test_ccsm3.x is ready."
 	@echo " "
 
 # Program to test distance calculations using the geographiclib library
