@@ -78,6 +78,6 @@ geodinverse: $(objdir)/planet.o $(objdir)/geodesic.o
 	@echo " "
 
 clean:
-	rm -f test_ccsm3.x *.o *.mod
+	rm -f test_ccsm3.x $(objdir)/*.o $(objdir)/*.mod
 
 # cleanall: cleansico cleanrembo cleansicoX
