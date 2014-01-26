@@ -101,23 +101,36 @@ module coordinates
 
     end type
 
+    interface grid_init
+        module procedure grid_init_from_opts, grid_init_from_par
+    end interface 
+    
     interface grid_allocate 
         module procedure grid_allocate_integer, grid_allocate_float
         module procedure grid_allocate_double,  grid_allocate_logical
     end interface
 
+    interface points_init
+        module procedure points_init_from_opts, points_init_from_par
+    end interface 
+
+    interface points_allocate 
+        module procedure points_allocate_integer, points_allocate_float
+        module procedure points_allocate_double,  points_allocate_logical
+    end interface
+
     interface map_init 
-        module procedure map_init_points_points,  map_init_grid_grid 
-        module procedure map_init_grid_points, map_init_points_grid
+        module procedure map_init_points_points, map_init_grid_grid 
+        module procedure map_init_grid_points,   map_init_points_grid
     end interface
 
     interface map_field 
-        module procedure map_field_grid_grid, map_field_points_points
+        module procedure map_field_grid_grid,   map_field_points_points
         module procedure map_field_grid_points, map_field_points_grid
     end interface
 
     private
-    public :: points_class, points_init !, points_write 
+    public :: points_class, points_init, points_allocate !, points_write 
     public :: grid_class, grid_init, grid_allocate, grid_write, grid_print
     public :: map_class, map_init, map_field, map_print
 
@@ -205,8 +218,36 @@ contains
 
     end subroutine grid_area 
 
-    subroutine grid_init(grid,name,mtype,units,planet,lon180, &
-                         x,y,x0,dx,nx,y0,dy,ny,lambda,phi,alpha,x_e,y_n)
+    subroutine grid_init_from_par(grid,filename,x,y,x0,dx,nx,y0,dy,ny)
+
+        implicit none
+
+        type(grid_class)   :: grid 
+        character(len=*)   :: filename 
+        integer, optional  :: nx, ny
+        real(dp), optional :: x(:), y(:), x0, dx, y0, dy
+
+        character(len=256)   :: name, mtype, units
+        character(len=256)   :: planet  
+        logical              :: lon180
+        real(dp)             :: lambda, phi, alpha, x_e, y_n 
+
+        namelist /map/ name, mtype, units, planet, lon180, &
+                       lambda, phi, alpha, x_e, y_n  
+
+        open(7,file=trim(filename))
+        read(7,nml=map)
+        close(7)
+
+        call grid_init_from_opts(grid,name,mtype,units,planet,lon180, &
+                       x,y,x0,dx,nx,y0,dy,ny,lambda,phi,alpha,x_e,y_n)
+
+        return
+
+    end subroutine grid_init_from_par
+
+    subroutine grid_init_from_opts(grid,name,mtype,units,planet,lon180, &
+                                   x,y,x0,dx,nx,y0,dy,ny,lambda,phi,alpha,x_e,y_n)
 
         implicit none 
 
@@ -290,7 +331,7 @@ contains
         end do 
 
         ! Initialize data as points, then convert back to grid using axis info
-        call points_init(pts,name,mtype,units,planet,lon180,reshape(grid%x,(/grid%npts/)),&
+        call points_init_from_opts(pts,name,mtype,units,planet,lon180,reshape(grid%x,(/grid%npts/)),&
                          reshape(grid%y,(/grid%npts/)),lambda,phi,alpha,x_e,y_n)
         call points_to_grid(pts,grid)
 
@@ -353,9 +394,37 @@ contains
 
         return 
 
-    end subroutine grid_init
+    end subroutine grid_init_from_opts
 
-    subroutine points_init(pts,name,mtype,units,planet,lon180,x,y,lambda,phi,alpha,x_e,y_n)
+    subroutine points_init_from_par(pts,filename,x,y)
+
+        implicit none
+
+        type(points_class) :: pts 
+        character(len=*)   :: filename 
+        real(dp), optional :: x(:), y(:)
+
+        character(len=256)   :: name, mtype, units
+        character(len=256)   :: planet  
+        logical              :: lon180
+        real(dp)             :: lambda, phi, alpha, x_e, y_n 
+
+        namelist /map/ name, mtype, units, planet, lon180, &
+                       lambda, phi, alpha, x_e, y_n  
+
+        open(7,file=trim(filename))
+        read(7,nml=map)
+        close(7)
+
+        call points_init_from_opts(pts,name,mtype,units,planet,lon180, &
+                         x,y,lambda,phi,alpha,x_e,y_n)
+
+        return
+
+    end subroutine points_init_from_par
+
+    subroutine points_init_from_opts(pts,name,mtype,units,planet,lon180,x,y, &
+                                     lambda,phi,alpha,x_e,y_n)
 
         use oblimap_projection_module 
 
@@ -484,7 +553,7 @@ contains
 
         return 
 
-    end subroutine points_init
+    end subroutine points_init_from_opts
 
     subroutine grid_to_points(grid,pts)
         ! Converts a grid class to points class
@@ -1019,8 +1088,7 @@ contains
     end subroutine map_field_points_grid
 
     subroutine map_field_points_points(map,name,var1,var2,mask2,method,radius,fill,missing_value)
-        ! Methods include "radius", "nn" = nearest neighbor
-        ! (and in the future "quadrant")
+        ! Methods include "radius", "nn" (nearest neighbor) and "quadrant"
         
         implicit none 
 
@@ -1543,6 +1611,62 @@ contains
         return 
 
     end subroutine grid_allocate_logical 
+
+    subroutine points_allocate_integer(points,var)
+
+        implicit none 
+
+        type(grid_class) :: points 
+        integer, allocatable :: var(:)
+
+        if (allocated(var)) deallocate(var)
+        allocate(var(points%npts))
+
+        return 
+
+    end subroutine points_allocate_integer
+
+    subroutine points_allocate_double(points,var)
+
+        implicit none 
+
+        type(grid_class) :: points 
+        real(dp), allocatable :: var(:)
+
+        if (allocated(var)) deallocate(var)
+        allocate(var(points%npts))
+
+        return 
+
+    end subroutine points_allocate_double
+
+    subroutine points_allocate_float(points,var)
+
+        implicit none 
+
+        type(grid_class) :: points 
+        real(4), allocatable :: var(:)
+
+        if (allocated(var)) deallocate(var)
+        allocate(var(points%npts))
+
+        return 
+
+    end subroutine points_allocate_float
+
+    subroutine points_allocate_logical(points,var)
+
+        implicit none 
+
+        type(grid_class) :: points 
+        logical, allocatable :: var(:)
+
+        if (allocated(var)) deallocate(var)
+        allocate(var(points%npts))
+
+        return 
+
+    end subroutine points_allocate_logical
 
     subroutine grid_write(grid,fnm,xnm,ynm,create)
 

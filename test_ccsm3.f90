@@ -42,8 +42,9 @@ program test_ccsm3
     ! CCSM3 T42 latlon grid
     call nc_read(file_input,"lon",tmplon)
     call nc_read(file_input,"lat",tmplat)
-    call grid_init(gCCSM3,name="CCSM3-T42",mtype="latlon",units="degrees",lon180=.FALSE., &
-                     x=tmplon,y=tmplat)
+!     call grid_init(gCCSM3,name="CCSM3-T42",mtype="latlon",units="degrees",lon180=.FALSE., &
+!                      x=tmplon,y=tmplat)
+    call grid_init(gCCSM3,filename="maps/grid_CCSM3-T42.txt",x=tmplon,y=tmplat)
 
     ! Write grid information to files
     call grid_write(gCCSM3,file_gCCSM3a,xnm="lon",ynm="lat",create=.TRUE.)
