@@ -22,6 +22,7 @@ module coordinates
     integer,  parameter :: dp  = kind(1.0d0)
     real(dp), parameter :: ERR_DIST = 1E8_dp 
     integer,  parameter :: ERR_IND = -1 
+    real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
 
     type points_class 
 
@@ -555,7 +556,7 @@ contains
 
     end subroutine points_init_from_opts
 
-    subroutine grid_to_points(grid,pts,mask_pack)
+    subroutine grid_to_points(grid,pts,mask_pack,define)
         ! Converts a grid class to points class
         ! (ie, 2D grid => 1D vector of points)
 
@@ -565,6 +566,12 @@ contains
         type(points_class) :: pts 
         logical, optional  :: mask_pack(:,:)
         integer, allocatable :: maski(:,:)
+        logical, optional  :: define 
+        logical            :: define_fields 
+
+        ! Are we defining a new set of points?
+        define_fields = .TRUE.
+        if (present(define)) define_fields = define 
 
         ! Assign points constants
         pts%name          = trim(grid%name) 
@@ -597,35 +604,29 @@ contains
         end if 
 
         ! Deallocate all points fields 
-        if (allocated(pts%x))      deallocate(pts%x)
-        if (allocated(pts%y))      deallocate(pts%y)
-        if (allocated(pts%area))   deallocate(pts%area)
-        if (allocated(pts%border)) deallocate(pts%border)
-        if (allocated(pts%lon))    deallocate(pts%lon)
-        if (allocated(pts%lat))    deallocate(pts%lat)
+        if (define_fields .and. allocated(pts%x))      deallocate(pts%x)
+        if (define_fields .and. allocated(pts%y))      deallocate(pts%y)
+        if (define_fields .and. allocated(pts%area))   deallocate(pts%area)
+        if (define_fields .and. allocated(pts%border)) deallocate(pts%border)
+        if (define_fields .and. allocated(pts%lon))    deallocate(pts%lon)
+        if (define_fields .and. allocated(pts%lat))    deallocate(pts%lat)
 
         ! Store x,y points
-        allocate(pts%x(pts%npts),pts%y(pts%npts))
-!         pts%x   = reshape(grid%x,  (/pts%npts/))
-!         pts%y   = reshape(grid%y,  (/pts%npts/))
+        if (define_fields) allocate(pts%x(pts%npts),pts%y(pts%npts))
         pts%x = pack(grid%x,maski==1)
         pts%y = pack(grid%y,maski==1)
         
         ! Store area 
-        allocate(pts%area(pts%npts))
-!         pts%area = reshape(grid%area, (/pts%npts/))
+        if (define_fields) allocate(pts%area(pts%npts))
         pts%area = pack(grid%area,maski==1)
         
         ! Store border 
-        allocate(pts%border(pts%npts))
-!         pts%border = reshape(grid%border, (/pts%npts/))
+        if (define_fields) allocate(pts%border(pts%npts))
         pts%border = pack(grid%border,maski==1)
 
         ! If lon,lat points exist on grid, store them too
         if (allocated(grid%lon) .and. allocated(grid%lat)) then 
-            allocate(pts%lon(pts%npts),pts%lat(pts%npts))
-!             pts%lon = reshape(grid%lon,(/pts%npts/))
-!             pts%lat = reshape(grid%lat,(/pts%npts/))
+            if (define_fields) allocate(pts%lon(pts%npts),pts%lat(pts%npts))
             pts%lon = pack(grid%lon,maski==1)
             pts%lat = pack(grid%lat,maski==1)
         end if 
@@ -634,7 +635,7 @@ contains
 
     end subroutine grid_to_points
 
-    subroutine points_to_grid(pts,grid,mask_pack)
+    subroutine points_to_grid(pts,grid,mask_pack,define)
         ! Converts pts class to a grid class
         ! (ie 1D vector => 2D grid points),
         ! assuming that grid axis info (grid%G) has 
@@ -646,8 +647,12 @@ contains
         type(points_class) :: pts 
         logical, optional  :: mask_pack(:,:)
         integer, allocatable :: maski(:,:)
-        real(dp), allocatable :: tmpd(:,:) 
-        integer, allocatable  :: tmpi(:,:) 
+        logical, optional  :: define 
+        logical            :: define_fields 
+
+        ! Are we defining a new set of points?
+        define_fields = .TRUE.
+        if (present(define)) define_fields = define 
 
         ! Assign grid constants
         grid%name          = trim(pts%name) 
@@ -679,43 +684,45 @@ contains
             stop 
         end if 
 
-        ! Also make tmp unpacking fields (not used, but necessary argument to `unpack`)
-        if (allocated(tmpd)) deallocate(tmpd)
-        if (allocated(tmpi)) deallocate(tmpi)
-        allocate(tmpd(grid%G%nx,grid%G%ny),tmpi(grid%G%nx,grid%G%ny))
-        tmpd = 0.d0 
-        tmpi = 0 
-
         ! Reallocate all grid fields 
-        if (allocated(grid%x))      deallocate(grid%x)
-        if (allocated(grid%y))      deallocate(grid%y)
-        if (allocated(grid%area))   deallocate(grid%area)
-        if (allocated(grid%border)) deallocate(grid%border)
-        if (allocated(grid%lon))    deallocate(grid%lon)
-        if (allocated(grid%lat))    deallocate(grid%lat)
+        if (define_fields .and. allocated(grid%x))      deallocate(grid%x)
+        if (define_fields .and. allocated(grid%y))      deallocate(grid%y)
+        if (define_fields .and. allocated(grid%area))   deallocate(grid%area)
+        if (define_fields .and. allocated(grid%border)) deallocate(grid%border)
+        if (define_fields .and. allocated(grid%lon))    deallocate(grid%lon)
+        if (define_fields .and. allocated(grid%lat))    deallocate(grid%lat)
         
-        allocate(grid%x(grid%G%nx,grid%G%ny),grid%y(grid%G%nx,grid%G%ny))
-!         grid%x   = reshape(pts%x,  (/grid%G%nx,grid%G%ny/))
-!         grid%y   = reshape(pts%y,  (/grid%G%nx,grid%G%ny/))
-        grid%x = unpack(pts%x,maski==1,tmpd)
-        grid%y = unpack(pts%y,maski==1,tmpd)
+        if (define_fields) then
+            allocate(grid%x(grid%G%nx,grid%G%ny),grid%y(grid%G%nx,grid%G%ny))
+            grid%x = MISSING_VALUE_DEFAULT
+            grid%y = MISSING_VALUE_DEFAULT
+        end if 
+
+        grid%x = unpack(pts%x,maski==1,grid%x)
+        grid%y = unpack(pts%y,maski==1,grid%y)
         
         ! Store area 
-        allocate(grid%area(grid%G%nx,grid%G%ny))
-!         grid%area = reshape(pts%area,  (/grid%G%nx,grid%G%ny/))
-        grid%area = unpack(pts%area,maski==1,tmpd)
+        if (define_fields) then
+            allocate(grid%area(grid%G%nx,grid%G%ny))
+            grid%area = MISSING_VALUE_DEFAULT 
+        end if 
+        grid%area = unpack(pts%area,maski==1,grid%area)
 
         ! Store border 
-        allocate(grid%border(grid%G%nx,grid%G%ny))
-!         grid%border = reshape(pts%border,  (/grid%G%nx,grid%G%ny/))
-        grid%border = unpack(pts%border,maski==1,tmpi)
+        if (define_fields) then 
+            allocate(grid%border(grid%G%nx,grid%G%ny))
+            grid%border = MISSING_VALUE_DEFAULT
+        end if 
+        grid%border = unpack(pts%border,maski==1,grid%border)
 
         if (allocated(pts%lon) .and. allocated(pts%lat)) then 
-            allocate(grid%lon(grid%G%nx,grid%G%ny),grid%lat(grid%G%nx,grid%G%ny))
-!             grid%lon = reshape(pts%lon,(/grid%G%nx,grid%G%ny/))
-!             grid%lat = reshape(pts%lat,(/grid%G%nx,grid%G%ny/))
-            grid%lon = unpack(pts%lon,maski==1,tmpd)
-            grid%lat = unpack(pts%lat,maski==1,tmpd)
+            if (define_fields) then
+                allocate(grid%lon(grid%G%nx,grid%G%ny),grid%lat(grid%G%nx,grid%G%ny))
+                grid%lon = MISSING_VALUE_DEFAULT 
+                grid%lat = MISSING_VALUE_DEFAULT 
+            end if 
+            grid%lon = unpack(pts%lon,maski==1,grid%lon)
+            grid%lat = unpack(pts%lat,maski==1,grid%lat)
         end if 
 
         return
@@ -1175,7 +1182,7 @@ contains
         if (present(radius)) max_distance = radius 
 
         ! Set grid missing value by default or that that specified by user
-        missing_val  = -9999.0_dp 
+        missing_val  = MISSING_VALUE_DEFAULT
         if (present(missing_value)) missing_val = missing_val 
 
         ! By default, grid points with missing values will not be filled in
