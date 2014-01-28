@@ -555,7 +555,7 @@ contains
 
     end subroutine points_init_from_opts
 
-    subroutine grid_to_points(grid,pts)
+    subroutine grid_to_points(grid,pts,mask_pack)
         ! Converts a grid class to points class
         ! (ie, 2D grid => 1D vector of points)
 
@@ -563,6 +563,8 @@ contains
 
         type(grid_class)   :: grid 
         type(points_class) :: pts 
+        logical, optional  :: mask_pack(:,:)
+        integer, allocatable :: maski(:,:)
 
         ! Assign points constants
         pts%name          = trim(grid%name) 
@@ -576,39 +578,63 @@ contains
         pts%proj          = grid%proj
         pts%xy_conv       = grid%xy_conv 
 
+        ! Make a mask for packing
+        if (allocated(maski)) deallocate(maski)
+        allocate(maski(grid%G%nx,grid%G%ny))
+        maski = 1 
+        if (present(mask_pack)) then
+            where(.not. mask_pack) maski = 0
+        end if 
+
+        ! Make sure mask is consistent with desired pts output
+        if (sum(maski) .ne. pts%npts) then
+            write(*,*) "grid_to_points:: Error, "// &
+                       "total masked values not equal to npts, sum(mask) npts:", &
+                       sum(maski), pts%npts 
+            write(*,*) "Grid name:   "//trim(grid%name)
+            write(*,*) "Points name: "//trim(pts%name)
+            stop 
+        end if 
+
         ! Deallocate all points fields 
-        if (allocated(pts%x))   deallocate(pts%x)
-        if (allocated(pts%y))   deallocate(pts%y)
-        if (allocated(pts%lon)) deallocate(pts%lon)
-        if (allocated(pts%lat)) deallocate(pts%lat)
+        if (allocated(pts%x))      deallocate(pts%x)
+        if (allocated(pts%y))      deallocate(pts%y)
+        if (allocated(pts%area))   deallocate(pts%area)
+        if (allocated(pts%border)) deallocate(pts%border)
+        if (allocated(pts%lon))    deallocate(pts%lon)
+        if (allocated(pts%lat))    deallocate(pts%lat)
 
         ! Store x,y points
         allocate(pts%x(pts%npts),pts%y(pts%npts))
-        pts%x   = reshape(grid%x,  (/pts%npts/))
-        pts%y   = reshape(grid%y,  (/pts%npts/))
-
+!         pts%x   = reshape(grid%x,  (/pts%npts/))
+!         pts%y   = reshape(grid%y,  (/pts%npts/))
+        pts%x = pack(grid%x,maski==1)
+        pts%y = pack(grid%y,maski==1)
+        
         ! Store area 
-        if (allocated(pts%area)) deallocate(pts%area)
         allocate(pts%area(pts%npts))
-        pts%area = reshape(grid%area, (/pts%npts/))
-
+!         pts%area = reshape(grid%area, (/pts%npts/))
+        pts%area = pack(grid%area,maski==1)
+        
         ! Store border 
-        if (allocated(pts%border)) deallocate(pts%border)
         allocate(pts%border(pts%npts))
-        pts%border = reshape(grid%border, (/pts%npts/))
+!         pts%border = reshape(grid%border, (/pts%npts/))
+        pts%border = pack(grid%border,maski==1)
 
         ! If lon,lat points exist on grid, store them too
         if (allocated(grid%lon) .and. allocated(grid%lat)) then 
             allocate(pts%lon(pts%npts),pts%lat(pts%npts))
-            pts%lon = reshape(grid%lon,(/pts%npts/))
-            pts%lat = reshape(grid%lat,(/pts%npts/))
+!             pts%lon = reshape(grid%lon,(/pts%npts/))
+!             pts%lat = reshape(grid%lat,(/pts%npts/))
+            pts%lon = pack(grid%lon,maski==1)
+            pts%lat = pack(grid%lat,maski==1)
         end if 
 
         return
 
     end subroutine grid_to_points
 
-    subroutine points_to_grid(pts,grid)
+    subroutine points_to_grid(pts,grid,mask_pack)
         ! Converts pts class to a grid class
         ! (ie 1D vector => 2D grid points),
         ! assuming that grid axis info (grid%G) has 
@@ -618,6 +644,10 @@ contains
 
         type(grid_class)   :: grid 
         type(points_class) :: pts 
+        logical, optional  :: mask_pack(:,:)
+        integer, allocatable :: maski(:,:)
+        real(dp), allocatable :: tmpd(:,:) 
+        integer, allocatable  :: tmpi(:,:) 
 
         ! Assign grid constants
         grid%name          = trim(pts%name) 
@@ -631,30 +661,61 @@ contains
         grid%proj          = pts%proj
         grid%xy_conv       = pts%xy_conv 
 
+        ! Make a mask for unpacking
+        if (allocated(maski)) deallocate(maski)
+        allocate(maski(grid%G%nx,grid%G%ny))
+        maski = 1 
+        if (present(mask_pack)) then
+            where(.not. mask_pack) maski = 0
+        end if 
+
+        ! Make sure mask is consistent with desired pts output
+        if (sum(maski) .ne. pts%npts) then
+            write(*,*) "points_to_grid:: Error, "// &
+                       "total masked values not equal to npts, sum(mask) npts:", &
+                       sum(maski), pts%npts 
+            write(*,*) "Grid name:   "//trim(grid%name)
+            write(*,*) "Points name: "//trim(pts%name)
+            stop 
+        end if 
+
+        ! Also make tmp unpacking fields (not used, but necessary argument to `unpack`)
+        if (allocated(tmpd)) deallocate(tmpd)
+        if (allocated(tmpi)) deallocate(tmpi)
+        allocate(tmpd(grid%G%nx,grid%G%ny),tmpi(grid%G%nx,grid%G%ny))
+        tmpd = 0.d0 
+        tmpi = 0 
+
         ! Reallocate all grid fields 
-        if (allocated(grid%x))   deallocate(grid%x)
-        if (allocated(grid%y))   deallocate(grid%y)
-        if (allocated(grid%lon)) deallocate(grid%lon)
-        if (allocated(grid%lat)) deallocate(grid%lat)
+        if (allocated(grid%x))      deallocate(grid%x)
+        if (allocated(grid%y))      deallocate(grid%y)
+        if (allocated(grid%area))   deallocate(grid%area)
+        if (allocated(grid%border)) deallocate(grid%border)
+        if (allocated(grid%lon))    deallocate(grid%lon)
+        if (allocated(grid%lat))    deallocate(grid%lat)
         
         allocate(grid%x(grid%G%nx,grid%G%ny),grid%y(grid%G%nx,grid%G%ny))
-        grid%x   = reshape(pts%x,  (/grid%G%nx,grid%G%ny/))
-        grid%y   = reshape(pts%y,  (/grid%G%nx,grid%G%ny/))
-
+!         grid%x   = reshape(pts%x,  (/grid%G%nx,grid%G%ny/))
+!         grid%y   = reshape(pts%y,  (/grid%G%nx,grid%G%ny/))
+        grid%x = unpack(pts%x,maski==1,tmpd)
+        grid%y = unpack(pts%y,maski==1,tmpd)
+        
         ! Store area 
-        if (allocated(grid%area)) deallocate(grid%area)
         allocate(grid%area(grid%G%nx,grid%G%ny))
-        grid%area = reshape(pts%area,  (/grid%G%nx,grid%G%ny/))
+!         grid%area = reshape(pts%area,  (/grid%G%nx,grid%G%ny/))
+        grid%area = unpack(pts%area,maski==1,tmpd)
 
         ! Store border 
-        if (allocated(grid%border)) deallocate(grid%border)
         allocate(grid%border(grid%G%nx,grid%G%ny))
-        grid%border = reshape(pts%border,  (/grid%G%nx,grid%G%ny/))
+!         grid%border = reshape(pts%border,  (/grid%G%nx,grid%G%ny/))
+        grid%border = unpack(pts%border,maski==1,tmpi)
 
         if (allocated(pts%lon) .and. allocated(pts%lat)) then 
             allocate(grid%lon(grid%G%nx,grid%G%ny),grid%lat(grid%G%nx,grid%G%ny))
-            grid%lon = reshape(pts%lon,(/grid%G%nx,grid%G%ny/))
-            grid%lat = reshape(pts%lat,(/grid%G%nx,grid%G%ny/))
+!             grid%lon = reshape(pts%lon,(/grid%G%nx,grid%G%ny/))
+!             grid%lat = reshape(pts%lat,(/grid%G%nx,grid%G%ny/))
+            grid%lon = unpack(pts%lon,maski==1,tmpd)
+            grid%lat = unpack(pts%lat,maski==1,tmpd)
         end if 
 
         return
@@ -912,7 +973,7 @@ contains
         map%quadrant = 0 
         map%border   = 0 
 
-        lat_limit = 2.0_dp 
+        lat_limit = 5.0_dp 
         if (present(lat_lim)) lat_limit = lat_lim 
         write(*,"(a,i12,a,f6.2)") "Total points to calculate=",pts2%npts,"  lat_lim=",lat_limit
 
@@ -1616,7 +1677,7 @@ contains
 
         implicit none 
 
-        type(grid_class) :: points 
+        type(points_class) :: points 
         integer, allocatable :: var(:)
 
         if (allocated(var)) deallocate(var)
@@ -1630,7 +1691,7 @@ contains
 
         implicit none 
 
-        type(grid_class) :: points 
+        type(points_class) :: points 
         real(dp), allocatable :: var(:)
 
         if (allocated(var)) deallocate(var)
@@ -1644,7 +1705,7 @@ contains
 
         implicit none 
 
-        type(grid_class) :: points 
+        type(points_class) :: points 
         real(4), allocatable :: var(:)
 
         if (allocated(var)) deallocate(var)
@@ -1658,7 +1719,7 @@ contains
 
         implicit none 
 
-        type(grid_class) :: points 
+        type(points_class) :: points 
         logical, allocatable :: var(:)
 
         if (allocated(var)) deallocate(var)
