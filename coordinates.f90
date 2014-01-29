@@ -1405,6 +1405,8 @@ contains
         character(len=256) :: fnm 
         character(len=128) :: dim1, dim2 
 
+        integer, allocatable :: tmp(:,:,:) 
+
         fnm = map_filename(map,fldr)
 
         ! Create the netcdf file and the dimension variables
@@ -1444,7 +1446,11 @@ contains
             write(*,*) trim(dim1), trim(dim2)
             write(*,*) "min/max i: ",minval(map%i), maxval(map%i)
 
-            call nc_write(fnm,"i",       reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+            allocate(tmp(map%G%nx,map%G%ny,map%nmax))
+            tmp = reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/))
+            call nc_write(fnm,"i",       tmp,     dim1=dim1,dim2=dim2,dim3="neighbor")
+            
+            !call nc_write(fnm,"i",       reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
             call nc_write(fnm,"dist",    reshape(map%dist,    (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
             call nc_write(fnm,"weight",  reshape(map%weight,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
             call nc_write(fnm,"quadrant",reshape(map%quadrant,(/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
