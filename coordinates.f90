@@ -1449,8 +1449,10 @@ contains
             tmpi = reshape(map%i,(/map%G%nx,map%G%ny,map%nmax/))
             call nc_write(fnm,"i",tmpi,dim1=dim1,dim2=dim2,dim3="neighbor")
             write(*,*) "Here 2"
-            tmpd = reshape(map%dist,(/map%G%nx,map%G%ny,map%nmax/))
+            write(*,*) "min/max dist: ",minval(map%dist),maxval(map%dist), size(map%dist)
             write(*,*) "Here 2b"
+            tmpd = reshape(map%dist,(/map%G%nx,map%G%ny,map%nmax/))
+            write(*,*) "Here 2c"
             call nc_write(fnm,"dist",tmpd,dim1=dim1,dim2=dim2,dim3="neighbor")
             write(*,*) "Here 3"
             tmpd = reshape(map%weight,(/map%G%nx,map%G%ny,map%nmax/))
