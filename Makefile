@@ -47,32 +47,32 @@ endif
 
 ## Individual libraries or modules ##
 $(objdir)/ncio.o: ../ncio/ncio.f90
-	$(FC) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
 $(objdir)/planet.o: planet.f90
-	$(FC) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
 $(objdir)/geodesic.o: geodesic.f90
-	$(FC) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
 $(objdir)/projection_oblimap2.o: projection_oblimap2.f90
-	$(FC) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
 $(objdir)/coordinates.o: coordinates.f90
-	$(FC) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
 ## Complete programs
 
 # Program to test interpolations of CCSM3 data
 ccsm3: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o $(objdir)/coordinates.o
-	$(FC) $(FLAGS) -o test_ccsm3.x $^ test_ccsm3.f90 $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3.x $^ test_ccsm3.f90 $(LFLAGS)
 	@echo " "
 	@echo "    test_ccsm3.x is ready."
 	@echo " "
 
 # Program to test distance calculations using the geographiclib library
 geodinverse: $(objdir)/planet.o $(objdir)/geodesic.o
-	$(FC) $(FLAGS) -o geodinverse.x $^ geodinverse.f90
+	$(FC) $(DFLAGS) $(FLAGS) -o geodinverse.x $^ geodinverse.f90
 	@echo " "
 	@echo "    geodinverse.x is ready."
 	@echo " "
