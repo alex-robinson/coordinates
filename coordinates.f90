@@ -1440,8 +1440,6 @@ contains
             call nc_write(fnm,"lon2D",reshape(map%lon,(/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
             call nc_write(fnm,"lat2D",reshape(map%lat,(/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
 
-            write(*,*) "Got here!" 
-            
             call nc_write(fnm,"i",       reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
             call nc_write(fnm,"dist",    reshape(map%dist,    (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
             call nc_write(fnm,"weight",  reshape(map%weight,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
