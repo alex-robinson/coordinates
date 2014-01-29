@@ -1,0 +1,13 @@
+
+&map
+    name   = "CCSM3-T42",
+    mtype  = "latlon",
+    units  = "degrees",
+    planet = "WGS84",
+    lon180 = .FALSE.,
+    lambda = 0.0,
+    phi    = 0.0,
+    alpha  = 0.0,
+    x_e    = 0.0,
+    y_n    = 0.0
+/

@@ -1,0 +1,13 @@
+
+&map
+    name   = "GRL",
+    mtype  = "stereographic",
+    units  = "kilometers",
+    planet = "WGS84",
+    lon180 = .TRUE.,
+    lambda = 320.0,
+    phi    = 72.0,
+    alpha  = 7.5,
+    x_e    = 0.0,
+    y_n    = 0.0
+/
