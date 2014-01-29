@@ -1406,6 +1406,7 @@ contains
         character(len=128) :: dim1, dim2 
 
         integer,  allocatable :: tmpi(:,:,:) 
+        real(dp), allocatable :: tmpd(:,:,:) 
 
         fnm = map_filename(map,fldr)
 
@@ -1443,20 +1444,32 @@ contains
             call nc_write(fnm,"lat2D",reshape(map%lat,(/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
 
             allocate(tmpi(map%G%nx,map%G%ny,map%nmax))
+            allocate(tmpd(map%G%nx,map%G%ny,map%nmax))
             write(*,*) "Here 1"
             tmpi = reshape(map%i,(/map%G%nx,map%G%ny,map%nmax/))
             call nc_write(fnm,"i",tmpi,dim1=dim1,dim2=dim2,dim3="neighbor")
-!             call nc_write(fnm,"i",       reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,"dist",    reshape(map%dist,    (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,"weight",  reshape(map%weight,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-
+            write(*,*) "Here 2"
+            tmpd = reshape(map%dist,(/map%G%nx,map%G%ny,map%nmax/))
+            call nc_write(fnm,"dist",tmpd,dim1=dim1,dim2=dim2,dim3="neighbor")
+            write(*,*) "Here 3"
+            tmpd = reshape(map%weight,(/map%G%nx,map%G%ny,map%nmax/))
+            call nc_write(fnm,"weight",tmpd,dim1=dim1,dim2=dim2,dim3="neighbor")
+            write(*,*) "Here 4"
             tmpi = reshape(map%quadrant,(/map%G%nx,map%G%ny,map%nmax/))
             call nc_write(fnm,"quadrant",tmpi,dim1=dim1,dim2=dim2,dim3="neighbor")
+            write(*,*) "Here 5"
             tmpi = reshape(map%border,(/map%G%nx,map%G%ny,map%nmax/))
             call nc_write(fnm,"border",tmpi,dim1=dim1,dim2=dim2,dim3="neighbor")
+            write(*,*) "Here 6"
+
+            ! reshape inside of the nc_write call for the following arrays only
+            ! works when compiled with gfortran, not with ifort (causes segmentation fault)
+!             call nc_write(fnm,"i",       reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+!             call nc_write(fnm,"dist",    reshape(map%dist,    (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+!             call nc_write(fnm,"weight",  reshape(map%weight,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
 !             call nc_write(fnm,"quadrant",reshape(map%quadrant,(/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
 !             call nc_write(fnm,"border",  reshape(map%border,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-            write(*,*) "Here 2"
+            
             ! Write grid specific parameters
             call nc_write(fnm,"nx",map%G%nx,dim1="parameter")
             call nc_write(fnm,"ny",map%G%ny,dim1="parameter")
