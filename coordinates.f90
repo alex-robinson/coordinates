@@ -1440,7 +1440,7 @@ contains
             call nc_write(fnm,"lon2D",reshape(map%lon,(/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
             call nc_write(fnm,"lat2D",reshape(map%lat,(/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
 
-            write(*,*) map%G%nx, map%G%ny, map%G%nmax, size(map%i)
+            write(*,*) map%G%nx, map%G%ny, map%nmax, size(map%i)
             write(*,*) trim(dim1), trim(dim2)
             write(*,*) "min/max i: ",minval(map%i), maxval(map%i)
 
