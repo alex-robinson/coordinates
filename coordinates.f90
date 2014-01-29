@@ -1450,6 +1450,7 @@ contains
             call nc_write(fnm,"i",tmpi,dim1=dim1,dim2=dim2,dim3="neighbor")
             write(*,*) "Here 2"
             tmpd = reshape(map%dist,(/map%G%nx,map%G%ny,map%nmax/))
+            write(*,*) "Here 2b"
             call nc_write(fnm,"dist",tmpd,dim1=dim1,dim2=dim2,dim3="neighbor")
             write(*,*) "Here 3"
             tmpd = reshape(map%weight,(/map%G%nx,map%G%ny,map%nmax/))
