@@ -1445,11 +1445,11 @@ contains
             write(*,*) map%G%nx, map%G%ny, map%nmax, size(map%i)
             write(*,*) trim(dim1), trim(dim2)
             write(*,*) "min/max i: ",minval(map%i), maxval(map%i)
-
+            write(*,*) "Here 1"
             allocate(tmp(map%G%nx,map%G%ny,map%nmax))
             tmp = reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/))
             call nc_write(fnm,"i",       tmp,     dim1=dim1,dim2=dim2,dim3="neighbor")
-            
+            write(*,*) "Here 2"
             !call nc_write(fnm,"i",       reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
             call nc_write(fnm,"dist",    reshape(map%dist,    (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
             call nc_write(fnm,"weight",  reshape(map%weight,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
