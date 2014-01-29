@@ -103,9 +103,7 @@ contains
         real(dp) :: lat1tmp, lat2tmp
         real(dp) :: azi1, azi2, a12, m12, MM12, MM21, SS12
         integer omask
-
-        !write(*,*) a, f, lat1, lon1, lat2, lon2 
-
+        
         call invers(a, f, lat1, lon1, lat2, lon2, &
                     s12, azi1, azi2, omask, a12, m12, MM12, MM21, SS12)
 
