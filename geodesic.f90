@@ -1184,12 +1184,15 @@ contains
       somg12 = sin(omg12)
       comg12 = cos(omg12)
 
-      write(*,*) 1-comg12, omg12, lam12, f1, dnm 
+      ! HACK, ajr 2014-01-29:
+      ! Introduce small error in comg12 to avoid dividing by zero
+      if (dabs(comg12) .eq. 1.d0) comg12 = comg12 * 0.99999d0
+      !write(*,*) 1-comg12, omg12, lam12, f1, dnm 
 
       salp1 = cbet2 * somg12
       calp1 = csmgt(sbet12 + cbet2 * sbet1 * somg12**2 / (1 + comg12),  &
-          sbt12a - cbet2 * sbet1 * somg12**2 / (1 - comg12),  &
-          comg12 .ge. 0)
+                    sbt12a - cbet2 * sbet1 * somg12**2 / (1 - comg12),  &
+                    comg12 .ge. 0)
 
       ssig12 = hypotx(salp1, calp1)
       csig12 = sbet1 * sbet2 + cbet1 * cbet2 * comg12
