@@ -1456,12 +1456,13 @@ contains
 !             call nc_write(fnm,"border",  reshape(map%border,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
             
 !             call nc_write(fnm,"i",       map%i,       dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,"dist",    map%dist,    dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"dist",    map%dist,    dim1="point",dim2="neighbor")
+!             call nc_write(fnm,"dist",    map%dist,    dim1=dim1,dim2=dim2,dim3="neighbor")
             call nc_write(fnm,"weight",  map%weight,  dim1=dim1,dim2=dim2,dim3="neighbor")
 !             call nc_write(fnm,"quadrant",map%quadrant,dim1=dim1,dim2=dim2,dim3="neighbor")
 !             call nc_write(fnm,"border",  map%border,  dim1=dim1,dim2=dim2,dim3="neighbor")
             write(*,*) "Got here."
-            
+
             ! Write grid specific parameters
             call nc_write(fnm,"nx",map%G%nx,dim1="parameter")
             call nc_write(fnm,"ny",map%G%ny,dim1="parameter")
