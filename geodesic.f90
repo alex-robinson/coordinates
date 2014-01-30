@@ -1187,7 +1187,6 @@ contains
       ! HACK, ajr 2014-01-29:
       ! Introduce small error in comg12 to avoid dividing by zero
       if (dabs(comg12) .eq. 1.d0) comg12 = comg12 * 0.99999d0
-      !write(*,*) 1-comg12, omg12, lam12, f1, dnm 
 
       salp1 = cbet2 * somg12
       calp1 = csmgt(sbet12 + cbet2 * sbet1 * somg12**2 / (1 + comg12),  &

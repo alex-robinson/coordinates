@@ -1443,35 +1443,19 @@ contains
             call nc_write(fnm,"lon2D",reshape(map%lon,(/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
             call nc_write(fnm,"lat2D",reshape(map%lat,(/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
 
-            allocate(tmpi(map%G%nx,map%G%ny,map%nmax))
-            allocate(tmpd(map%G%nx,map%G%ny,map%nmax))
-            write(*,*) "Here 1"
-            tmpi = reshape(map%i,(/map%G%nx,map%G%ny,map%nmax/))
-            call nc_write(fnm,"i",tmpi,dim1=dim1,dim2=dim2,dim3="neighbor")
-            write(*,*) "Here 2"
-            write(*,*) "min/max dist: ",minval(map%dist),maxval(map%dist), size(map%dist)
-            write(*,*) "Here 2b"
-            tmpd = reshape(map%dist,(/map%G%nx,map%G%ny,map%nmax/))
-            write(*,*) "Here 2c"
-            call nc_write(fnm,"dist",tmpd,dim1=dim1,dim2=dim2,dim3="neighbor")
-            write(*,*) "Here 3"
-            tmpd = reshape(map%weight,(/map%G%nx,map%G%ny,map%nmax/))
-            call nc_write(fnm,"weight",tmpd,dim1=dim1,dim2=dim2,dim3="neighbor")
-            write(*,*) "Here 4"
-            tmpi = reshape(map%quadrant,(/map%G%nx,map%G%ny,map%nmax/))
-            call nc_write(fnm,"quadrant",tmpi,dim1=dim1,dim2=dim2,dim3="neighbor")
-            write(*,*) "Here 5"
-            tmpi = reshape(map%border,(/map%G%nx,map%G%ny,map%nmax/))
-            call nc_write(fnm,"border",tmpi,dim1=dim1,dim2=dim2,dim3="neighbor")
-            write(*,*) "Here 6"
+            ! Warning about size 
+            ! size of nx*ny*nmax < 1579220 breaks on the cluster !!!!
+            if (map%G%nx*map%G%ny*map%nmax > 1000000) then 
+                write(*,*) "Warning: map size is very large (nx*ny*nmax): ",map%G%nx*map%G%ny*map%nmax 
+                write(*,*) "  It may cause a segmentation fault. If so, reduce the number of neighbors."
+            end if 
 
-            ! reshape inside of the nc_write call for the following arrays only
-            ! works when compiled with gfortran, not with ifort (causes segmentation fault)
-!             call nc_write(fnm,"i",       reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-!             call nc_write(fnm,"dist",    reshape(map%dist,    (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-!             call nc_write(fnm,"weight",  reshape(map%weight,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-!             call nc_write(fnm,"quadrant",reshape(map%quadrant,(/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-!             call nc_write(fnm,"border",  reshape(map%border,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+            ! Write the map information
+            call nc_write(fnm,"i",       reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"dist",    reshape(map%dist,    (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"weight",  reshape(map%weight,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"quadrant",reshape(map%quadrant,(/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"border",  reshape(map%border,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
             
             ! Write grid specific parameters
             call nc_write(fnm,"nx",map%G%nx,dim1="parameter")
