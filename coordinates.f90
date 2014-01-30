@@ -20,6 +20,7 @@ module coordinates
 
     !! real(dp) definition and some internal constants
     integer,  parameter :: dp  = kind(1.0d0)
+    integer,  parameter :: sp  = kind(1.0)
     real(dp), parameter :: ERR_DIST = 1E8_dp 
     integer,  parameter :: ERR_IND = -1 
     real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
