@@ -99,7 +99,7 @@ module coordinates
         ! Neighbor arrays (will be allocated to size npts,nmax)
         integer :: nmax 
         integer,  dimension(:,:), allocatable :: i, quadrant, border
-        real(dp), dimension(:,:), allocatable :: dist, weight
+        real(sp), dimension(:,:), allocatable :: dist, weight
 
     end type
 
