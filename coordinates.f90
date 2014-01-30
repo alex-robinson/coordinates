@@ -1435,33 +1435,24 @@ contains
                 call nc_write_dim(fnm,dim2,x=map%G%y,units=trim(map%units))
             end if 
 
-            !call nc_write(fnm,"x2D",map%x,  dim1=dim1,dim2=dim2)
-            call nc_write(fnm,"x2D",  reshape(map%x,  (/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
-            call nc_write(fnm,"y2D",  reshape(map%y,  (/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
-            call nc_write(fnm,"lon2D",reshape(map%lon,(/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
-            call nc_write(fnm,"lat2D",reshape(map%lat,(/map%G%nx,map%G%ny/)),dim1=dim1,dim2=dim2)
+            call nc_write(fnm,"x2D",  map%x,  dim1=dim1,dim2=dim2)
+            call nc_write(fnm,"y2D",  map%y,  dim1=dim1,dim2=dim2)
+            call nc_write(fnm,"lon2D",map%lon,dim1=dim1,dim2=dim2)
+            call nc_write(fnm,"lat2D",map%lat,dim1=dim1,dim2=dim2)
 
             ! Warning about size 
             ! size of nx*ny*nmax < 1579220 breaks on the cluster !!!!
-            if (map%G%nx*map%G%ny*map%nmax > 1000000) then 
+            if (map%G%nx*map%G%ny*map%nmax > 1500000) then 
                 write(*,*) "Warning: map size is very large (nx*ny*nmax): ",map%G%nx*map%G%ny*map%nmax 
                 write(*,*) "  It may cause a segmentation fault. If so, reduce the number of neighbors."
             end if 
 
-            ! Write the map information
-!             call nc_write(fnm,"i",       reshape(map%i,       (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-!             call nc_write(fnm,"dist",    reshape(map%dist,    (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-!             call nc_write(fnm,"weight",  reshape(map%weight,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-!             call nc_write(fnm,"quadrant",reshape(map%quadrant,(/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-!             call nc_write(fnm,"border",  reshape(map%border,  (/map%G%nx,map%G%ny,map%nmax/)),dim1=dim1,dim2=dim2,dim3="neighbor")
-            
-!             call nc_write(fnm,"i",       map%i,       dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,"dist",    map%dist,    dim1="point",dim2="neighbor")
-!             call nc_write(fnm,"dist",    map%dist,    dim1=dim1,dim2=dim2,dim3="neighbor")
+            ! Write the map information (in grid format)
+            call nc_write(fnm,"i",       map%i,       dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"dist",    map%dist,    dim1=dim1,dim2=dim2,dim3="neighbor")
             call nc_write(fnm,"weight",  map%weight,  dim1=dim1,dim2=dim2,dim3="neighbor")
-!             call nc_write(fnm,"quadrant",map%quadrant,dim1=dim1,dim2=dim2,dim3="neighbor")
-!             call nc_write(fnm,"border",  map%border,  dim1=dim1,dim2=dim2,dim3="neighbor")
-            write(*,*) "Got here."
+            call nc_write(fnm,"quadrant",map%quadrant,dim1=dim1,dim2=dim2,dim3="neighbor")
+            call nc_write(fnm,"border",  map%border,  dim1=dim1,dim2=dim2,dim3="neighbor")
 
             ! Write grid specific parameters
             call nc_write(fnm,"nx",map%G%nx,dim1="parameter")
@@ -1469,7 +1460,6 @@ contains
 
         else
             ! Write variables in a vector format
-
             call nc_write(fnm,"x",       map%x,       dim1="point",dim2="neighbor")
             call nc_write(fnm,"y",       map%y,       dim1="point",dim2="neighbor")
             call nc_write(fnm,"lon",     map%lon,     dim1="point",dim2="neighbor")
@@ -1496,14 +1486,14 @@ contains
 
         if (map%is_projection .or. .not. map%is_cartesian) then 
             call nc_write(fnm,"planet_name",map%planet%name)
-            call nc_write(fnm,"planet_info",(/ map%planet%a, map%planet%f, map%planet%R /), &
+            call nc_write(fnm,"planet_info",[map%planet%a, map%planet%f, map%planet%R], &
                           dim1="planetpar")
         end if 
 
         if (map%is_projection) then 
             call nc_write(fnm,"proj_name",map%proj%name)
-            call nc_write(fnm,"proj_info",(/ map%proj%lambda, map%proj%phi, map%proj%alpha, &
-                                 map%proj%x_e, map%proj%y_n /), dim1="projpar")    
+            call nc_write(fnm,"proj_info",[map%proj%lambda, map%proj%phi, map%proj%alpha, &
+                                 map%proj%x_e, map%proj%y_n], dim1="projpar")    
         end if 
         
         write(*,*) "Map written to file: "//trim(fnm)
