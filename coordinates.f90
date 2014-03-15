@@ -134,6 +134,7 @@ module coordinates
     private
     public :: points_class, points_init, points_allocate !, points_write 
     public :: grid_class, grid_init, grid_allocate, grid_write, grid_print
+    public :: grid_to_points, points_to_grid
     public :: map_class, map_init, map_field, map_print
 
 contains
