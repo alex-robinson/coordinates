@@ -11,7 +11,7 @@ module subset
 
         type(points_class) :: pts
         type(grid_class)   :: grid 
-        type(map_class)    :: map 
+        type(map_class)    :: map_tosub, map_fromsub 
         integer            :: npts 
     end type 
 
@@ -22,7 +22,7 @@ module subset
 
 contains 
 
-    subroutine subset_init(sub,grid,factor,npts)
+    subroutine subset_init(sub,grid,factor,npts,max_neighbors,lat_lim)
         ! Determine the coordinates of the domain
 
         implicit none 
@@ -31,6 +31,10 @@ contains
         type(grid_class)   :: grid   ! The original grid 
         integer :: npts              ! Number of points to allocate to the subset
         integer :: factor            ! Resolution factor (should be >= 1)
+        integer, optional :: max_neighbors ! Maximum number of neighbors to use for mapping
+        integer :: max_neighbs 
+        double precision, optional :: lat_lim
+        double precision :: lat_limit 
 
         character(len=12) :: suffix 
         double precision, allocatable, dimension(:) :: x, y
@@ -44,6 +48,12 @@ contains
             write(*,*) "subset_define:: Error: factor must be greater than one."
             stop 
         end if 
+
+        max_neighbs = 10 
+        if (present(max_neighbors)) max_neighbs = max_neighbors
+
+        lat_limit   = 4.d0 
+        if (present(lat_lim)) lat_limit = lat_lim 
 
 !         ! First intialize a grid definition if it is needed
 !         write(*,*) "Grid file: "//trim(coord_info(1))
@@ -96,6 +106,12 @@ contains
                          x=x,y=y, &
                          lambda=grid%proj%lambda,phi=grid%proj%phi, &
                          alpha=grid%proj%alpha,x_e=grid%proj%x_e,y_n=grid%proj%y_n)
+
+        call map_init(sub%map_tosub,grid,sub%grid, &
+                      max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
+
+        call map_init(sub%map_fromsub,sub%grid,grid, &
+                      max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
 
         return
 
