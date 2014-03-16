@@ -751,13 +751,14 @@ contains
 
         ! Initialize map grid axis info (since mapping to grid2)
         map%is_grid = .TRUE. 
-        map%G%nx    = grid2%G%nx 
-        map%G%ny    = grid2%G%ny 
-        if (allocated(map%G%x)) deallocate(map%G%x)
-        if (allocated(map%G%y)) deallocate(map%G%y)
-        allocate(map%G%x(map%G%nx),map%G%y(map%G%ny))
-        map%G%x = grid2%G%x 
-        map%G%y = grid2%G%y 
+!         map%G%nx    = grid2%G%nx 
+!         map%G%ny    = grid2%G%ny 
+!         if (allocated(map%G%x)) deallocate(map%G%x)
+!         if (allocated(map%G%y)) deallocate(map%G%y)
+!         allocate(map%G%x(map%G%nx),map%G%y(map%G%ny))
+!         map%G%x = grid2%G%x 
+!         map%G%y = grid2%G%y 
+        map%G = grid2%G 
 
         call grid_to_points(grid1,pts1)
         call grid_to_points(grid2,pts2)
@@ -805,13 +806,14 @@ contains
 
         ! Initialize map grid axis info (since mapping to grid2)
         map%is_grid = .TRUE. 
-        map%G%nx    = grid2%G%nx 
-        map%G%ny    = grid2%G%ny 
-        if (allocated(map%G%x)) deallocate(map%G%x)
-        if (allocated(map%G%y)) deallocate(map%G%y)
-        allocate(map%G%x(map%G%nx),map%G%y(map%G%ny))
-        map%G%x = grid2%G%x 
-        map%G%y = grid2%G%y 
+!         map%G%nx    = grid2%G%nx 
+!         map%G%ny    = grid2%G%ny 
+!         if (allocated(map%G%x)) deallocate(map%G%x)
+!         if (allocated(map%G%y)) deallocate(map%G%y)
+!         allocate(map%G%x(map%G%nx),map%G%y(map%G%ny))
+!         map%G%x = grid2%G%x 
+!         map%G%y = grid2%G%y 
+        map%G = grid2%G 
 
         ! Convert grid2 to points for map initialization
         call grid_to_points(grid2,pts2)
@@ -1068,7 +1070,7 @@ contains
         return
     end subroutine map_calc_weights
 
-    subroutine map_field_grid_grid(map,name,var1,var2,mask2,method,radius,fill,missing_value)
+    subroutine map_field_grid_grid(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
 
         implicit none 
 
@@ -1078,7 +1080,7 @@ contains
         integer, dimension(:,:),  intent(OUT) :: mask2
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
-        logical,  optional :: fill 
+        logical,  optional :: fill, border
         real(dp) :: shephard_exponent
 
         real(dp), dimension(:), allocatable   :: var2_vec
@@ -1091,19 +1093,19 @@ contains
         npts1 = size(var1,1)*size(var1,2)
 
         allocate(var2_vec(npts2),mask2_vec(npts2))
-        var2_vec = reshape(var2, (/npts2 /))
+        var2_vec = reshape(var2, [npts2])
 
-        call map_field_points_points(map,name,reshape(var1,(/npts1/)), &
-                                     var2_vec,mask2_vec,method,radius,fill,missing_value)
+        call map_field_points_points(map,name,reshape(var1,[npts1]), &
+                                     var2_vec,mask2_vec,method,radius,fill,border,missing_value)
         
-        var2  = reshape(var2_vec, (/nx2,ny2/))
-        mask2 = reshape(mask2_vec,(/nx2,ny2/))
+        var2  = reshape(var2_vec, [nx2,ny2])
+        mask2 = reshape(mask2_vec,[nx2,ny2])
 
         return
 
     end subroutine map_field_grid_grid
 
-    subroutine map_field_grid_points(map,name,var1,var2,mask2,method,radius,fill,missing_value)
+    subroutine map_field_grid_points(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
 
         implicit none 
 
@@ -1113,7 +1115,7 @@ contains
         integer, dimension(:),  intent(OUT)   :: mask2
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
-        logical,  optional :: fill 
+        logical,  optional :: fill, border  
         real(dp) :: shephard_exponent
 
         integer :: npts1 
@@ -1121,13 +1123,13 @@ contains
         npts1 = size(var1,1)*size(var1,2)
 
         call map_field_points_points(map,name,reshape(var1,(/npts1/)), &
-                                     var2,mask2,method,radius,fill,missing_value)
+                                     var2,mask2,method,radius,fill,border,missing_value)
 
         return
 
     end subroutine map_field_grid_points
 
-    subroutine map_field_points_grid(map,name,var1,var2,mask2,method,radius,fill,missing_value)
+    subroutine map_field_points_grid(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
 
         implicit none 
 
@@ -1137,7 +1139,7 @@ contains
         integer, dimension(:,:),  intent(OUT) :: mask2
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
-        logical,  optional :: fill 
+        logical,  optional :: fill, border
         real(dp) :: shephard_exponent
 
         real(dp), dimension(:), allocatable   :: var2_vec
@@ -1152,7 +1154,7 @@ contains
         var2_vec = reshape(var2, (/npts2 /))
 
         call map_field_points_points(map,name,var1, &
-                                     var2_vec,mask2_vec,method,radius,fill,missing_value)
+                                     var2_vec,mask2_vec,method,radius,fill,border,missing_value)
         
         var2  = reshape(var2_vec, (/nx2,ny2/))
         mask2 = reshape(mask2_vec,(/nx2,ny2/))
@@ -1161,7 +1163,7 @@ contains
 
     end subroutine map_field_points_grid
 
-    subroutine map_field_points_points(map,name,var1,var2,mask2,method,radius,fill,missing_value)
+    subroutine map_field_points_points(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
         ! Methods include "radius", "nn" (nearest neighbor) and "quadrant"
         
         implicit none 
@@ -1172,8 +1174,8 @@ contains
         integer,  dimension(:), intent(OUT)   :: mask2
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
-        logical,  optional :: fill 
-        logical            :: fill_pts
+        logical,  optional :: fill, border 
+        logical            :: fill_pts, fill_border
         real(dp) :: shephard_exponent
         real(dp) :: max_distance, missing_val 
         integer,  dimension(:), allocatable   :: i_neighb, quad_neighb
@@ -1194,6 +1196,10 @@ contains
         ! By default, grid points with missing values will not be filled in
         fill_pts = .FALSE. 
         if (present(fill)) fill_pts = fill 
+
+        ! By default, border points will not be filled in 
+        fill_border = .FALSE. 
+        if (present(border)) fill_border = border 
 
         allocate(i_neighb(map%nmax),dist_neighb(map%nmax), &
                  weight_neighb(map%nmax),v_neighb(map%nmax), &
@@ -1263,7 +1269,7 @@ contains
 
             ! Check if a large fraction of neighbors are border points
             ! (if so, do not interpolate here)
-            if ( ntot .gt. 0) then 
+            if ( (.not. fill_border) .and. ntot .gt. 0) then 
                 if ( sum(map%border(i,1:ntot))/dble(ntot) .gt. 0.25_dp ) ntot = 0
             end if 
 
@@ -1636,114 +1642,130 @@ contains
         return 
     end subroutine map_read
 
-    subroutine grid_allocate_integer(grid,var)
+    subroutine grid_allocate_integer(grid,var,value)
 
         implicit none 
 
         type(grid_class) :: grid 
         integer, allocatable :: var(:,:)
+        integer, optional :: value 
 
         if (allocated(var)) deallocate(var)
         allocate(var(grid%G%nx,grid%G%ny))
+        if (present(value)) var = value 
 
         return 
 
     end subroutine grid_allocate_integer
 
-    subroutine grid_allocate_double(grid,var)
+    subroutine grid_allocate_double(grid,var,value)
 
         implicit none 
 
         type(grid_class) :: grid 
         real(dp), allocatable :: var(:,:)
+        real(dp), optional :: value 
 
         if (allocated(var)) deallocate(var)
         allocate(var(grid%G%nx,grid%G%ny))
-
+        if (present(value)) var = value 
+        
         return 
 
     end subroutine grid_allocate_double
 
-    subroutine grid_allocate_float(grid,var)
+    subroutine grid_allocate_float(grid,var,value)
 
         implicit none 
 
         type(grid_class) :: grid 
         real(4), allocatable :: var(:,:)
-
+        real(4), optional :: value 
+        
         if (allocated(var)) deallocate(var)
         allocate(var(grid%G%nx,grid%G%ny))
-
+        if (present(value)) var = value 
+        
         return 
 
     end subroutine grid_allocate_float
 
-    subroutine grid_allocate_logical(grid,var)
+    subroutine grid_allocate_logical(grid,var,value)
 
         implicit none 
 
         type(grid_class) :: grid 
         logical, allocatable :: var(:,:)
-
+        logical, optional :: value 
+        
         if (allocated(var)) deallocate(var)
         allocate(var(grid%G%nx,grid%G%ny))
-
+        if (present(value)) var = value 
+        
         return 
 
     end subroutine grid_allocate_logical 
 
-    subroutine points_allocate_integer(points,var)
+    subroutine points_allocate_integer(points,var,value)
 
         implicit none 
 
         type(points_class) :: points 
         integer, allocatable :: var(:)
-
+        integer, optional :: value 
+        
         if (allocated(var)) deallocate(var)
         allocate(var(points%npts))
-
+        if (present(value)) var = value 
+        
         return 
 
     end subroutine points_allocate_integer
 
-    subroutine points_allocate_double(points,var)
+    subroutine points_allocate_double(points,var,value)
 
         implicit none 
 
         type(points_class) :: points 
         real(dp), allocatable :: var(:)
-
+        real(dp), optional :: value 
+        
         if (allocated(var)) deallocate(var)
         allocate(var(points%npts))
-
+        if (present(value)) var = value 
+        
         return 
 
     end subroutine points_allocate_double
 
-    subroutine points_allocate_float(points,var)
+    subroutine points_allocate_float(points,var,value)
 
         implicit none 
 
         type(points_class) :: points 
         real(4), allocatable :: var(:)
-
+        real(4), optional :: value 
+        
         if (allocated(var)) deallocate(var)
         allocate(var(points%npts))
-
+        if (present(value)) var = value 
+        
         return 
 
     end subroutine points_allocate_float
 
-    subroutine points_allocate_logical(points,var)
+    subroutine points_allocate_logical(points,var,value)
 
         implicit none 
 
         type(points_class) :: points 
         logical, allocatable :: var(:)
-
+        logical, optional :: value 
+        
         if (allocated(var)) deallocate(var)
         allocate(var(points%npts))
-
+        if (present(value)) var = value 
+        
         return 
 
     end subroutine points_allocate_logical

@@ -154,7 +154,7 @@ contains
     end subroutine subset_redefine 
 
     subroutine subset_to_grid(sub,var1D,var2D,mask_pack,map, &
-                                    method,radius,missing_value)
+                                    method,radius,fill,border,missing_value)
         ! This subroutine maps a subset of points (var1D) onto
         ! a 2D array (var2D) of resolution grid. 
         ! The subset should already be initialized.
@@ -171,9 +171,10 @@ contains
         double precision, allocatable :: var2Dtmp(:,:) 
         integer, allocatable          :: mask2D(:,:)
 
-        character(len=*), optional :: method
+        character(len=*)           :: method
         double precision, optional :: radius, missing_value 
         double precision :: missing_val
+        logical, optional :: fill, border
 
         type(map_class) :: map_local 
 
@@ -185,6 +186,8 @@ contains
         missing_val = -9999.d0
         if (present(missing_value)) missing_val = missing_value 
 
+        write(*,*) trim(map_local%name1), " => ",trim(map_local%name2)
+
         ! Step 1: Unpack the 1D variable onto its corresponding 
         ! predefined 2D grid.
         call grid_allocate(sub%grid,var2Dtmp)        ! Allocate 2D array
@@ -194,15 +197,16 @@ contains
         ! Step 2: Map the temporary 2D array to the desired 2D resolution
         if (allocated(mask2D)) deallocate(mask2D)
         allocate(mask2D(map_local%G%nx,map_local%G%ny))
-        call map_field(map_local,"Mapped variable",var2Dtmp,var2D,mask2D, &
-                       method=method,radius=radius,missing_value=missing_val)
+
+        call map_field(map_local,"Mapped variable",var2Dtmp,var2D,mask2D,method=method, &
+                       radius=radius,fill=fill,border=border,missing_value=missing_val)
 
         return
 
     end subroutine subset_to_grid
 
     subroutine subset_to_points(sub,var2D,var1D,mask_pack,map, &
-                                      method,radius,missing_value)
+                                      method,radius,fill,border,missing_value)
         ! This subroutine maps a 2D array (var2D) onto
         ! a subset of points (var1D) of resolution sub%grid. 
         ! The subset should already be initialized.
@@ -219,9 +223,10 @@ contains
         double precision, allocatable :: var2Dtmp(:,:) 
         integer, allocatable          :: mask2D(:,:)
 
-        character(len=*), optional :: method
+        character(len=*)           :: method
         double precision, optional :: radius, missing_value 
         double precision :: missing_val
+        logical, optional :: fill, border 
 
         type(map_class) :: map_local 
 
@@ -240,8 +245,8 @@ contains
         ! Step 2: Map the 2D array to the temporary 2D array of the subset
         if (allocated(mask2D)) deallocate(mask2D)
         allocate(mask2D(map_local%G%nx,map_local%G%ny))
-        call map_field(map_local,"Mapped variable",var2D,var2Dtmp,mask2D, &
-                       method=method,radius=radius,missing_value=missing_val)
+        call map_field(map_local,"Mapped variable",var2D,var2Dtmp,mask2D,method=method, &
+                       radius=radius,fill=fill,border=border,missing_value=missing_val)
 
         ! Step 3: Pack the 2D variable onto its corresponding predefined 1D points.
         var1D = pack(var2Dtmp,mask_pack)
