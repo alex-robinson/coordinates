@@ -40,7 +40,7 @@ else
 	ifeq ($(debug), 1)
 	    DFLAGS   = -w -p -ggdb -ffpe-trap=invalid,zero,overflow,underflow -fbacktrace -fcheck=all
 	else
-	    DFLAGS   = -O3 -std=f2008
+	    DFLAGS   = -O3
 	endif
 endif
 

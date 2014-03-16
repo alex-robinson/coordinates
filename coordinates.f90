@@ -132,7 +132,7 @@ module coordinates
     end interface
 
     private
-    public :: points_class, points_init, points_allocate !, points_write 
+    public :: points_class, points_init, points_allocate, points_write, points_print 
     public :: grid_class, grid_init, grid_allocate, grid_write, grid_print
     public :: grid_to_points, points_to_grid
     public :: map_class, map_init, map_field, map_print
@@ -1762,7 +1762,8 @@ contains
 
         ! Add projection information if needed
         if (grid%is_projection) &
-            call nc_write_map(fnm,grid%mtype,grid%proj%lambda,phi=grid%proj%phi,x_e=0.d0,y_n=0.d0)
+            call nc_write_map(fnm,grid%mtype,grid%proj%lambda,phi=grid%proj%phi, &
+                              x_e=grid%proj%x_e,y_n=grid%proj%y_n)
 
         if (grid%is_projection .or. grid%is_cartesian) then 
             call nc_write(fnm,"x2D",grid%x,dim1=xnm,dim2=ynm,grid_mapping=grid%name)
@@ -1778,6 +1779,41 @@ contains
 
         return
     end subroutine grid_write
+
+    subroutine points_write(pts,fnm,xnm,ynm,create)
+
+        implicit none 
+        type(points_class) :: pts 
+        character(len=*) :: fnm,xnm,ynm
+        logical :: create  
+
+        ! Create the netcdf file if desired
+        if (create) then 
+            call nc_create(fnm)
+        
+            ! Add axis variable to netcdf file
+            call nc_write_dim(fnm,"point",x=1,nx=pts%npts,units="n")
+        end if 
+
+        ! Add projection information if needed
+        if (pts%is_projection) &
+            call nc_write_map(fnm,pts%mtype,pts%proj%lambda,phi=pts%proj%phi,&
+                              x_e=pts%proj%x_e,y_n=pts%proj%y_n)
+
+        if (pts%is_projection .or. pts%is_cartesian) then 
+            call nc_write(fnm,xnm,pts%x,dim1="point",grid_mapping=pts%name)
+            call nc_write(fnm,ynm,pts%y,dim1="point",grid_mapping=pts%name)
+        end if 
+        if (.not. (pts%is_cartesian .and. .not. pts%is_projection)) then 
+            call nc_write(fnm,"lon",pts%lon,dim1="point",grid_mapping=pts%name)
+            call nc_write(fnm,"lat",pts%lat,dim1="point",grid_mapping=pts%name)
+        end if 
+
+!         call nc_write(fnm,"area",  pts%area,  dim1="point",grid_mapping=pts%name)
+!         call nc_write(fnm,"border",pts%border,dim1="point",grid_mapping=pts%name)
+
+        return
+    end subroutine points_write
 
     subroutine grid_print(grid)
 
@@ -1850,11 +1886,11 @@ contains
         end if 
 
         write(*,"(a,g10.4,a)") " ** Size in memory ~", &
-                   ( (map%npts*map%nmax)*2.d0*8.d0 + (map%npts*map%nmax)*3.d0*4.d0 + &
+                   ( (map%npts*map%nmax)*2.d0*4.d0 + (map%npts*map%nmax)*3.d0*4.d0 + &
                      (map%npts)*2.d0*8.d0 )  *7.6294d-6,"Mb"
-        ! 2 double arrays (8 bytes per value): dist, weight
+        ! 2 real arrays (4 bytes per value): dist, weight
         ! 3 integer array (4 bytes per value): i, quadrant, border
-        ! 4 double arrays (8 bytes per value): x, y, lon, lat
+        ! 4 real arrays (8 bytes per value): x, y, lon, lat
 
         write(*,*)
         write(*,*) 
