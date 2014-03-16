@@ -193,8 +193,8 @@ contains
         
         ! Step 2: Map the temporary 2D array to the desired 2D resolution
         if (allocated(mask2D)) deallocate(mask2D)
-        allocate(mask2D(map%G%nx,map%G%ny))
-        call map_field(map,"Mapped variable",var2Dtmp,var2D,mask2D, &
+        allocate(mask2D(map_local%G%nx,map_local%G%ny))
+        call map_field(map_local,"Mapped variable",var2Dtmp,var2D,mask2D, &
                        method=method,radius=radius,missing_value=missing_val)
 
         return
