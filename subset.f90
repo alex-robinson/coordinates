@@ -13,7 +13,8 @@ module subset
         type(grid_class)   :: grid 
         type(map_class)    :: map_tosub, map_fromsub 
         integer            :: npts 
-        logical, dimension(:,:), allocatable :: mask_pack 
+        logical            :: subset
+        logical, dimension(:,:), allocatable :: mask_pack  
     end type 
 
     private
@@ -46,7 +47,7 @@ contains
         else if (factor .ge. 1) then
             write(suffix,"(a3,i1)") "-hi", factor 
         else
-            write(*,*) "subset_define:: Error: factor must be greater than one."
+            write(*,*) "subset_define:: Error: factor must be greater than or equal to one."
             stop 
         end if 
 
@@ -67,43 +68,55 @@ contains
                        lambda=grid%proj%lambda,phi=grid%proj%phi,alpha=grid%proj%alpha, &
                        x_e=grid%proj%x_e,y_n=grid%proj%y_n)
 
-        ! Make sure the subset npts is consistent with the new grid
-        sub%npts = npts 
-        if (sub%npts .gt. sub%grid%npts .or. sub%npts .lt. 0) sub%npts = sub%grid%npts
-
-        ! Allocate temporary x,y vectors to store points of interest
-        ! for new coordinates definition
-        if (allocated(x)) deallocate(x)
-        if (allocated(y)) deallocate(y)
-        allocate(x(npts),y(npts))
-
-        ! For now, assign dummy x/y values with correct length.
-        ! The actual values will be determined later from 
-        ! packing/unpacking at each time step
-        x = 0.d0
-        x(1:2) = [grid%G%x(1),grid%G%x(grid%G%nx)]
-        y = 0.d0 
-        y(1:2) = [grid%G%y(1),grid%G%y(grid%G%ny)]
-
-        ! Initialize the points class, which is a subset of points of the grid class
-        call points_init(sub%pts,trim(grid%name)//trim(suffix),mtype=grid%mtype, &
-                         units=grid%units,planet=grid%planet%name,lon180=grid%is_lon180, &
-                         x=x,y=y, &
-                         lambda=grid%proj%lambda,phi=grid%proj%phi, &
-                         alpha=grid%proj%alpha,x_e=grid%proj%x_e,y_n=grid%proj%y_n)
-
-        ! Initialize to and fro mappings for subset grid and input grid
-        ! (intial map generation can take some time)
-        call map_init(sub%map_tosub,grid,sub%grid, &
-                      max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
-
-        call map_init(sub%map_fromsub,sub%grid,grid, &
-                      max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
-
         ! Allocate the packing mask for later use 
         if (allocated(sub%mask_pack)) deallocate(sub%mask_pack)
         allocate(sub%mask_pack(sub%grid%G%nx,sub%grid%G%ny))
+        sub%mask_pack = .TRUE. 
 
+        ! Make sure the subset npts is consistent with the new grid
+        sub%npts = npts 
+        if (sub%npts .gt. sub%grid%npts .or. sub%npts .le. 0) sub%npts = sub%grid%npts
+
+        if (sub%npts .eq. sub%grid%npts) then 
+
+            sub%subset = .FALSE.
+            call grid_to_points(sub%grid,sub%pts)
+
+        else
+
+            sub%subset = .TRUE. 
+
+            ! Allocate temporary x,y vectors to store points of interest
+            ! for new coordinates definition
+            if (allocated(x)) deallocate(x)
+            if (allocated(y)) deallocate(y)
+            allocate(x(sub%npts),y(sub%npts))
+
+            ! For now, assign dummy x/y values with correct length.
+            ! The actual values will be determined later from 
+            ! packing/unpacking at each time step
+            x = 0.d0
+            x(1:2) = [grid%G%x(1),grid%G%x(grid%G%nx)]
+            y = 0.d0 
+            y(1:2) = [grid%G%y(1),grid%G%y(grid%G%ny)]
+
+            ! Initialize the points class, which is a subset of points of the grid class
+            call points_init(sub%pts,trim(grid%name)//trim(suffix),mtype=grid%mtype, &
+                             units=grid%units,planet=grid%planet%name,lon180=grid%is_lon180, &
+                             x=x,y=y, &
+                             lambda=grid%proj%lambda,phi=grid%proj%phi, &
+                             alpha=grid%proj%alpha,x_e=grid%proj%x_e,y_n=grid%proj%y_n)
+
+            ! Initialize to and fro mappings for subset grid and input grid
+            ! (intial map generation can take some time)
+            call map_init(sub%map_tosub,grid,sub%grid, &
+                          max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
+
+            call map_init(sub%map_fromsub,sub%grid,grid, &
+                          max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
+
+        end if 
+        
         write(*,"(a,i10,1x,a1,1x,i10)") "subset:: subset_init :: Initialized subset, npts = ", &
                                        sub%npts, "/",sub%grid%npts
         return
@@ -123,22 +136,25 @@ contains
 
         ! Check that mask_pack is consistent with subset of npts
         if (count(mask_pack) .ne. sub%npts) then
-            write(*,*) "subset_redefine:: Error: packing mask must specify the same "// &
+            write(*,"(a)") "subset:: subset_redefine:: Error: packing mask must specify the same "// &
                        "number of points as defined in the subset."
             write(*,*) "subset npts =",sub%npts
             write(*,*) "mask_pack total = ",count(mask_pack)
             stop 
         end if 
 
+        write(*,*) "subset_redefine::"
+        write(*,*) sub%grid%npts, sub%pts%npts 
+
         ! Get a new subset of points from the grid
-        call grid_to_points(sub%grid,sub%pts,mask_pack)
+        call grid_to_points(sub%grid,sub%pts,mask_pack=mask_pack,define=.FALSE.)
 
         return
 
     end subroutine subset_redefine 
 
-    subroutine subset_to_grid(sub,grid,var1D,var2D,mask_pack, &
-                                      method,radius,missing_value)
+    subroutine subset_to_grid(sub,var1D,var2D,mask_pack,map, &
+                                    method,radius,missing_value)
         ! This subroutine maps a subset of points (var1D) onto
         ! a 2D array (var2D) of resolution grid. 
         ! The subset should already be initialized.
@@ -147,7 +163,7 @@ contains
         implicit none 
  
         type(subset_class), intent(IN)  :: sub 
-        type(grid_class), intent(IN)    :: grid
+        type(map_class), intent(IN), optional :: map 
         double precision, intent(OUT)   :: var2D(:,:)
         double precision, intent(IN)    :: var1D(:)
         logical, intent(IN)             :: mask_pack(:,:)
@@ -158,6 +174,12 @@ contains
         character(len=*), optional :: method
         double precision, optional :: radius, missing_value 
         double precision :: missing_val
+
+        type(map_class) :: map_local 
+
+        ! Determine map to use here 
+        map_local = sub%map_fromsub 
+        if (present(map)) map_local = map 
 
         ! Assign a missing_value for use with mapping routine
         missing_val = -9999.d0
@@ -171,15 +193,15 @@ contains
         
         ! Step 2: Map the temporary 2D array to the desired 2D resolution
         if (allocated(mask2D)) deallocate(mask2D)
-        allocate(mask2D(sub%map_fromsub%G%nx,sub%map_fromsub%G%ny))
-        call map_field(sub%map_fromsub,"Mapped variable",var2Dtmp,var2D,mask2D, &
+        allocate(mask2D(map%G%nx,map%G%ny))
+        call map_field(map,"Mapped variable",var2Dtmp,var2D,mask2D, &
                        method=method,radius=radius,missing_value=missing_val)
 
         return
 
     end subroutine subset_to_grid
 
-    subroutine subset_to_points(sub,grid,var2D,var1D,mask_pack, &
+    subroutine subset_to_points(sub,var2D,var1D,mask_pack,map, &
                                       method,radius,missing_value)
         ! This subroutine maps a 2D array (var2D) onto
         ! a subset of points (var1D) of resolution sub%grid. 
@@ -189,7 +211,7 @@ contains
         implicit none 
  
         type(subset_class), intent(IN)  :: sub 
-        type(grid_class), intent(IN)    :: grid
+        type(map_class), intent(IN), optional :: map 
         double precision, intent(IN)    :: var2D(:,:)
         double precision, intent(OUT)   :: var1D(:)
         logical, intent(IN)             :: mask_pack(:,:)
@@ -201,6 +223,12 @@ contains
         double precision, optional :: radius, missing_value 
         double precision :: missing_val
 
+        type(map_class) :: map_local 
+
+        ! Determine map to use here 
+        map_local = sub%map_tosub 
+        if (present(map)) map_local = map 
+
         ! Assign a missing_value for use with mapping routine
         missing_val = -9999.d0
         if (present(missing_value)) missing_val = missing_value 
@@ -211,14 +239,13 @@ contains
 
         ! Step 2: Map the 2D array to the temporary 2D array of the subset
         if (allocated(mask2D)) deallocate(mask2D)
-        allocate(mask2D(sub%map_tosub%G%nx,sub%map_tosub%G%ny))
-        call map_field(sub%map_tosub,"Mapped variable",var2D,var2Dtmp,mask2D, &
+        allocate(mask2D(map_local%G%nx,map_local%G%ny))
+        call map_field(map_local,"Mapped variable",var2D,var2Dtmp,mask2D, &
                        method=method,radius=radius,missing_value=missing_val)
 
         ! Step 3: Pack the 2D variable onto its corresponding predefined 1D points.
         var1D = pack(var2Dtmp,mask_pack)
         
-
         return
 
     end subroutine subset_to_points

@@ -576,18 +576,20 @@ contains
         if (present(define)) define_fields = define 
 
         ! Assign points constants
-        pts%name          = trim(grid%name) 
-        pts%mtype         = trim(grid%mtype)
-        pts%units         = trim(grid%units)
-        pts%npts          = grid%npts
-        pts%is_cartesian  = grid%is_cartesian 
-        pts%is_projection = grid%is_projection 
-        pts%is_lon180     = grid%is_lon180
-        pts%planet        = grid%planet
-        pts%proj          = grid%proj
-        pts%xy_conv       = grid%xy_conv 
+        if (define_fields) then 
+            pts%name          = trim(grid%name) 
+            pts%mtype         = trim(grid%mtype)
+            pts%units         = trim(grid%units)
+            pts%npts          = grid%npts
+            pts%is_cartesian  = grid%is_cartesian 
+            pts%is_projection = grid%is_projection 
+            pts%is_lon180     = grid%is_lon180
+            pts%planet        = grid%planet
+            pts%proj          = grid%proj
+            pts%xy_conv       = grid%xy_conv 
+        end if 
 
-        ! Make a mask for packing
+        ! Make a mask for packing (since mask_pack is optional!)
         if (allocated(maski)) deallocate(maski)
         allocate(maski(grid%G%nx,grid%G%ny))
         maski = 1 
@@ -598,30 +600,32 @@ contains
         ! Make sure mask is consistent with desired pts output
         if (sum(maski) .ne. pts%npts) then
             write(*,*) "grid_to_points:: Error, "// &
-                       "total masked values not equal to npts, sum(mask) npts:", &
-                       sum(maski), pts%npts 
+                       "total masked values not equal to npts."
+            write(*,*) "count(mask_pack) npts:",sum(maski), pts%npts 
             write(*,*) "Grid name:   "//trim(grid%name)
             write(*,*) "Points name: "//trim(pts%name)
             stop 
         end if 
 
-        ! Deallocate all points fields 
-        if (define_fields .and. allocated(pts%x))      deallocate(pts%x)
-        if (define_fields .and. allocated(pts%y))      deallocate(pts%y)
-        if (define_fields .and. allocated(pts%area))   deallocate(pts%area)
-        if (define_fields .and. allocated(pts%border)) deallocate(pts%border)
-        if (define_fields .and. allocated(pts%lon))    deallocate(pts%lon)
-        if (define_fields .and. allocated(pts%lat))    deallocate(pts%lat)
+        ! Deallocate all points fields
+        if (define_fields) then 
+            if (allocated(pts%x))      deallocate(pts%x)
+            if (allocated(pts%y))      deallocate(pts%y)
+            if (allocated(pts%area))   deallocate(pts%area)
+            if (allocated(pts%border)) deallocate(pts%border)
+            if (allocated(pts%lon))    deallocate(pts%lon)
+            if (allocated(pts%lat))    deallocate(pts%lat)
+        end if 
 
         ! Store x,y points
         if (define_fields) allocate(pts%x(pts%npts),pts%y(pts%npts))
         pts%x = pack(grid%x,maski==1)
         pts%y = pack(grid%y,maski==1)
-        
+
         ! Store area 
         if (define_fields) allocate(pts%area(pts%npts))
         pts%area = pack(grid%area,maski==1)
-        
+
         ! Store border 
         if (define_fields) allocate(pts%border(pts%npts))
         pts%border = pack(grid%border,maski==1)
