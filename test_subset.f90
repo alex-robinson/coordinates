@@ -101,8 +101,8 @@ program test_subset
     !
     ! =======================================================================
 
-    call subset_init(sub,grid,factor=2,npts=grid%npts)
 !     call subset_init(sub,grid,factor=2,npts=grid%npts)
+    call subset_init(sub,grid,factor=2,npts=0)
 
     ! Specify the local points object with subset information (redundant, but convenient)
     ptshi = sub%pts 
@@ -205,42 +205,50 @@ contains
 
         nx = size(mask_pack,1)
         ny = size(mask_pack,2)
-        allocate(dzs1(nx,ny),mask1(nx,ny))
+        
+        if (size(mask_pack) .eq. size(dzs)) then 
+            mask_pack = .TRUE. 
 
-        call map_field(map,"Subset mask",dzs,dzs1,mask1,method="radius",fill=.TRUE.)
+        else 
+        
+            allocate(dzs1(nx,ny),mask1(nx,ny))
 
-        ! Fill in mask_pack evenly-spaced at desired minimum resolution
-        by = floor( dx_min / dx )
-        mask_pack = .FALSE. 
-        do i = 1,nx,by
-        do j = 1,ny,by 
-            mask_pack(i,j) = .TRUE. 
-        end do 
-        end do
+            call map_field(map,"Subset mask",dzs,dzs1,mask1,method="radius",fill=.TRUE.)
 
-        ! Now fill in the remainder of the mask with the highest elevation gradients
-        npts0 = count(mask_pack)
-        coarse = .TRUE.
-        dzs_lim  = maxval(dzs1)
-        dzs_step = dzs_lim*0.05 
+            ! Fill in mask_pack evenly-spaced at desired minimum resolution
+            by = floor( dx_min / dx )
+            mask_pack = .FALSE. 
+            do i = 1,nx,by
+            do j = 1,ny,by 
+                mask_pack(i,j) = .TRUE. 
+            end do 
+            end do
 
-        do while(npts0 < npts)
-            where(mask_pack) dzs1 = 0.d0       ! Eliminate points that are already included
-            
-            if (coarse) then 
-                dzs_lim = dzs_lim - dzs_step 
-                if (count(dzs1 .ge. dzs_lim)+count(mask_pack) .lt. npts) then 
-                    where (dzs1 .ge. dzs_lim) mask_pack = .TRUE. 
-                else
-                    coarse = .FALSE. 
+            ! Now fill in the remainder of the mask with the highest elevation gradients
+            npts0 = count(mask_pack)
+            coarse = .TRUE.
+            dzs_lim  = maxval(dzs1)
+            dzs_step = dzs_lim*0.05 
+
+            do while(npts0 < npts)
+                where(mask_pack) dzs1 = 0.d0       ! Eliminate points that are already included
+                
+                if (coarse) then 
+                    dzs_lim = dzs_lim - dzs_step 
+                    if (count(dzs1 .ge. dzs_lim)+count(mask_pack) .lt. npts) then 
+                        where (dzs1 .ge. dzs_lim) mask_pack = .TRUE. 
+                    else
+                        coarse = .FALSE. 
+                    end if 
+                else 
+                    loc = maxloc(dzs1)                 ! Determine location of highest slope
+                    mask_pack(loc(1),loc(2)) = .TRUE. ! Add this point to mask 
                 end if 
-            else 
-                loc = maxloc(dzs1)                 ! Determine location of highest slope
-                mask_pack(loc(1),loc(2)) = .TRUE. ! Add this point to mask 
-            end if 
-            npts0 = count(mask_pack)          ! Recount masked points
-            !write(*,*) "npts0 =", npts0 
-        end do 
+                npts0 = count(mask_pack)          ! Recount masked points
+                !write(*,*) "npts0 =", npts0 
+            end do 
+
+        end if 
 
         write(*,*) "mask_pack total = ",count(mask_pack)," / " , (nx*ny)
 

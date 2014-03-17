@@ -137,20 +137,23 @@ contains
         type(subset_class) :: sub
         logical, dimension(:,:) :: mask_pack 
 
-        ! Check that mask_pack is consistent with subset of npts
-        if (count(mask_pack) .ne. sub%npts) then
-            write(*,"(a)") "subset:: subset_redefine:: Error: packing mask must specify the same "// &
-                       "number of points as defined in the subset."
-            write(*,*) "subset npts =",sub%npts
-            write(*,*) "mask_pack total = ",count(mask_pack)
-            stop 
+        if (sub%subset) then 
+
+            ! Check that mask_pack is consistent with subset of npts
+            if (count(mask_pack) .ne. sub%npts) then
+                write(*,"(a)") "subset:: subset_redefine:: Error: packing mask must specify the same "// &
+                           "number of points as defined in the subset."
+                write(*,*) "subset npts =",sub%npts
+                write(*,*) "mask_pack total = ",count(mask_pack)
+                stop 
+            end if 
+
+            write(*,*) "subset_redefine::", sub%grid%npts, sub%pts%npts 
+
+            ! Get a new subset of points from the grid
+            call grid_to_points(sub%grid,sub%pts,mask_pack=mask_pack,define=.FALSE.)
+        
         end if 
-
-        write(*,*) "subset_redefine::"
-        write(*,*) sub%grid%npts, sub%pts%npts 
-
-        ! Get a new subset of points from the grid
-        call grid_to_points(sub%grid,sub%pts,mask_pack=mask_pack,define=.FALSE.)
 
         return
 
@@ -181,28 +184,36 @@ contains
 
         type(map_class) :: map_local 
 
-        ! Determine map to use here 
-        map_local = sub%map_fromsub 
-        if (present(map)) map_local = map 
+        if (sub%subset .or. present(map)) then 
 
-        ! Assign a missing_value for use with mapping routine
-        missing_val = -9999.d0
-        if (present(missing_value)) missing_val = missing_value 
+            ! Determine map to use here 
+            map_local = sub%map_fromsub 
+            if (present(map)) map_local = map 
 
-        write(*,*) trim(map_local%name1), " => ",trim(map_local%name2)
+            ! Assign a missing_value for use with mapping routine
+            missing_val = -9999.d0
+            if (present(missing_value)) missing_val = missing_value 
 
-        ! Step 1: Unpack the 1D variable onto its corresponding 
-        ! predefined 2D grid.
-        call grid_allocate(sub%grid,var2Dtmp)        ! Allocate 2D array
-        var2Dtmp = missing_val                       ! Prefill with missing_value
-        var2Dtmp = unpack(var1D,mask_pack,var2Dtmp)  ! Unpack the 1D vector 
-        
-        ! Step 2: Map the temporary 2D array to the desired 2D resolution
-        if (allocated(mask2D)) deallocate(mask2D)
-        allocate(mask2D(map_local%G%nx,map_local%G%ny))
+            write(*,*) trim(map_local%name1), " => ",trim(map_local%name2)
 
-        call map_field(map_local,"Mapped variable",var2Dtmp,var2D,mask2D,method=method, &
-                       radius=radius,fill=fill,border=border,missing_value=missing_val)
+            ! Step 1: Unpack the 1D variable onto its corresponding 
+            ! predefined 2D grid.
+            call grid_allocate(sub%grid,var2Dtmp)        ! Allocate 2D array
+            var2Dtmp = missing_val                       ! Prefill with missing_value
+            var2Dtmp = unpack(var1D,mask_pack,var2Dtmp)  ! Unpack the 1D vector 
+            
+            ! Step 2: Map the temporary 2D array to the desired 2D resolution
+            if (allocated(mask2D)) deallocate(mask2D)
+            allocate(mask2D(map_local%G%nx,map_local%G%ny))
+
+            call map_field(map_local,"Mapped variable",var2Dtmp,var2D,mask2D,method=method, &
+                           radius=radius,fill=fill,border=border,missing_value=missing_val)
+
+        else
+
+            var2D = reshape(var1D,[size(var2D,1),size(var2D,2)])
+
+        end if 
 
         return
 
@@ -233,26 +244,34 @@ contains
 
         type(map_class) :: map_local 
 
-        ! Determine map to use here 
-        map_local = sub%map_tosub 
-        if (present(map)) map_local = map 
+        if (sub%subset .or. present(map)) then 
 
-        ! Assign a missing_value for use with mapping routine
-        missing_val = -9999.d0
-        if (present(missing_value)) missing_val = missing_value 
+            ! Determine map to use here 
+            map_local = sub%map_tosub 
+            if (present(map)) map_local = map 
 
-        ! Step 1: Allocate a predefined 2D array.
-        call grid_allocate(sub%grid,var2Dtmp)        ! Allocate 2D array
-        var2Dtmp = missing_val                       ! Prefill with missing_value
+            ! Assign a missing_value for use with mapping routine
+            missing_val = -9999.d0
+            if (present(missing_value)) missing_val = missing_value 
 
-        ! Step 2: Map the 2D array to the temporary 2D array of the subset
-        if (allocated(mask2D)) deallocate(mask2D)
-        allocate(mask2D(map_local%G%nx,map_local%G%ny))
-        call map_field(map_local,"Mapped variable",var2D,var2Dtmp,mask2D,method=method, &
-                       radius=radius,fill=fill,border=border,missing_value=missing_val)
+            ! Step 1: Allocate a predefined 2D array.
+            call grid_allocate(sub%grid,var2Dtmp)        ! Allocate 2D array
+            var2Dtmp = missing_val                       ! Prefill with missing_value
 
-        ! Step 3: Pack the 2D variable onto its corresponding predefined 1D points.
-        var1D = pack(var2Dtmp,mask_pack)
+            ! Step 2: Map the 2D array to the temporary 2D array of the subset
+            if (allocated(mask2D)) deallocate(mask2D)
+            allocate(mask2D(map_local%G%nx,map_local%G%ny))
+            call map_field(map_local,"Mapped variable",var2D,var2Dtmp,mask2D,method=method, &
+                           radius=radius,fill=fill,border=border,missing_value=missing_val)
+
+            ! Step 3: Pack the 2D variable onto its corresponding predefined 1D points.
+            var1D = pack(var2Dtmp,mask_pack)
+        
+        else
+
+            var1D = reshape(var2D,[size(var1D)])
+
+        end if 
         
         return
 
