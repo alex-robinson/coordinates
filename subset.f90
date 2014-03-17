@@ -17,6 +17,14 @@ module subset
         logical, dimension(:,:), allocatable :: mask_pack  
     end type 
 
+    interface subset_to_grid  
+        module procedure subset_to_grid_double, subset_to_grid_integer
+    end interface
+
+    interface subset_to_points  
+        module procedure subset_to_points_double, subset_to_points_integer
+    end interface
+
     private
     public :: subset_class 
     public :: subset_init, subset_redefine
@@ -159,8 +167,8 @@ contains
 
     end subroutine subset_redefine 
 
-    subroutine subset_to_grid(sub,var1D,var2D,mask_pack,map, &
-                                    method,radius,fill,border,missing_value)
+    subroutine subset_to_grid_double(sub,var1D,var2D,mask_pack,map, &
+                                     method,radius,fill,border,missing_value)
         ! This subroutine maps a subset of points (var1D) onto
         ! a 2D array (var2D) of resolution grid. 
         ! The subset should already be initialized.
@@ -217,10 +225,10 @@ contains
 
         return
 
-    end subroutine subset_to_grid
+    end subroutine subset_to_grid_double
 
-    subroutine subset_to_points(sub,var2D,var1D,mask_pack,map, &
-                                      method,radius,fill,border,missing_value)
+    subroutine subset_to_points_double(sub,var2D,var1D,mask_pack,map, &
+                                       method,radius,fill,border,missing_value)
         ! This subroutine maps a 2D array (var2D) onto
         ! a subset of points (var1D) of resolution sub%grid. 
         ! The subset should already be initialized.
@@ -275,7 +283,72 @@ contains
         
         return
 
-    end subroutine subset_to_points
+    end subroutine subset_to_points_double
+
+
+    subroutine subset_to_grid_integer(sub,var1D,var2D,mask_pack,map, &
+                                      radius,fill,border,missing_value)
+        ! This subroutine maps a subset of points (var1D) onto
+        ! a 2D array (var2D) of resolution grid. 
+        ! The subset should already be initialized.
+        ! Note: currently var1D and var2D are double precision! 
+
+        implicit none 
+ 
+        type(subset_class), intent(IN)  :: sub 
+        type(map_class), intent(IN), optional :: map 
+        integer, intent(OUT)   :: var2D(:,:)
+        integer, intent(IN)    :: var1D(:)
+        logical, intent(IN)    :: mask_pack(:,:)
+
+        double precision, allocatable :: var2Dtmp(:,:)
+
+        double precision, optional :: radius, missing_value 
+        double precision :: missing_val
+        logical, optional :: fill, border
+
+        allocate(var2Dtmp(size(var2D,1),size(var2D,2)))
+
+        call subset_to_grid_double(sub,dble(var1D),var2Dtmp,mask_pack,map, &
+                                   "nn",radius,fill,border,missing_value)
+
+        var2D = int(var2Dtmp)
+
+        return 
+
+    end subroutine subset_to_grid_integer 
+
+    subroutine subset_to_points_integer(sub,var2D,var1D,mask_pack,map, &
+                                        radius,fill,border,missing_value)
+        ! This subroutine maps a 2D array (var2D) onto
+        ! a subset of points (var1D) of resolution sub%grid. 
+        ! The subset should already be initialized.
+        ! Note: currently var1D and var2D are double precision! 
+
+        implicit none 
+ 
+        type(subset_class), intent(IN)  :: sub 
+        type(map_class), intent(IN), optional :: map 
+        integer, intent(IN)    :: var2D(:,:)
+        integer, intent(OUT)   :: var1D(:)
+        logical, intent(IN)    :: mask_pack(:,:)
+
+        double precision, allocatable :: var1Dtmp(:) 
+
+        double precision, optional :: radius, missing_value 
+        double precision :: missing_val
+        logical, optional :: fill, border 
+
+        allocate(var1Dtmp(size(var1D)))
+
+        call subset_to_points_double(sub,dble(var2D),var1Dtmp,mask_pack,map, &
+                                     "nn",radius,fill,border,missing_value)
+
+        var1D = int(var1Dtmp)
+
+        return 
+
+    end subroutine subset_to_points_integer
 
 
 end module subset

@@ -127,20 +127,22 @@ program test_subset
 
     call subset_to_points(sub,set%zs,sethi%zs,sub%mask_pack,method="radius")
     call subset_to_points(sub,set%dzs,sethi%dzs,sub%mask_pack,method="radius")
-!     call subset_to_points(sub,set%mask,sethi%mask,sub%mask_pack,method="nn")
+    call subset_to_points(sub,set%mask,sethi%mask,sub%mask_pack)
 
     call points_write(ptshi,file_outhi,xnm="xc",ynm="yc",create=.TRUE.)
     call nc_write(file_outhi,"zs",sethi%zs,dim1="point")
     call nc_write(file_outhi,"dzs",sethi%dzs,dim1="point")
     call nc_write(file_outhi,"zs2",(sethi%zs*1e-3)**3,dim1="point")
-!     call nc_write(file_outhi,"mask",sethi%mask,dim1="point")
+    call nc_write(file_outhi,"mask",sethi%mask,dim1="point")
     
     ! Map the calculated data back to the original grid 
     call subset_to_grid(sub,sethi%zs,set1%zs,sub%mask_pack,method="radius")
     call subset_to_grid(sub,sethi%dzs,set1%dzs,sub%mask_pack,method="radius")
+    call subset_to_grid(sub,sethi%mask,set1%mask,sub%mask_pack)
 
     call nc_write(file_out1,"zs",set1%zs,dim1="xc",dim2="yc")
     call nc_write(file_out1,"dzs",set1%dzs,dim1="xc",dim2="yc")
+    call nc_write(file_out1,"mask",set1%mask,dim1="xc",dim2="yc")
 
     ! =======================================================================
     !
@@ -162,28 +164,33 @@ program test_subset
     ! Map the calculated data to the low resolution grid 
     call grid_allocate(gridlo,setlo%zs,-9999.d0)
     call grid_allocate(gridlo,setlo%dzs,-9999.d0)
+    call grid_allocate(gridlo,setlo%mask,-9999)
     call subset_to_grid(sub,sethi%zs,setlo%zs,sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)
     call subset_to_grid(sub,sethi%dzs,setlo%dzs,sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)
+    call subset_to_grid(sub,sethi%mask,setlo%mask,sub%mask_pack,map=mgridhi_gridlo,border=.TRUE.)
 
     ! Write low resolution data
     write(*,*) "min/max zs: ",minval(setlo%zs),maxval(setlo%zs)
     call nc_write(file_outlo,"zs",setlo%zs,dim1="xc",dim2="yc",missing_value=-9999.d0)
     call nc_write(file_outlo,"dzs",setlo%dzs,dim1="xc",dim2="yc",missing_value=-9999.d0)
+    call nc_write(file_outlo,"mask",setlo%mask,dim1="xc",dim2="yc",missing_value=-9999)
 
     ! Remap to hi resolution
     call subset_to_points(sub,setlo%zs,sethi%zs,sub%mask_pack,map=mgridlo_gridhi,method="radius",border=.TRUE.)
     call subset_to_points(sub,setlo%zs,sethi%zs,sub%mask_pack,map=mgridlo_gridhi,method="radius",border=.TRUE.)
+    call subset_to_points(sub,setlo%mask,sethi%mask,sub%mask_pack,map=mgridlo_gridhi,border=.TRUE.)
     
     ! Remap to original grid
     set2 = set 
     call subset_to_grid(sub,sethi%zs,set2%zs,sub%mask_pack,method="radius")
     call subset_to_grid(sub,sethi%dzs,set2%dzs,sub%mask_pack,method="radius")
+    call subset_to_grid(sub,sethi%mask,set2%mask,sub%mask_pack)
 
     ! Output our basic diagnostic file too 
     call grid_write(grid,file_out2,xnm="xc",ynm="yc",create=.TRUE.)
     call nc_write(file_out2,"zs",set2%zs,dim1="xc",dim2="yc")
     call nc_write(file_out2,"dzs",set2%dzs,dim1="xc",dim2="yc")
-
+    call nc_write(file_out2,"mask",set2%mask,dim1="xc",dim2="yc")
 
 contains
 
@@ -205,7 +212,7 @@ contains
 
         nx = size(mask_pack,1)
         ny = size(mask_pack,2)
-        
+
         if (size(mask_pack) .eq. size(dzs)) then 
             mask_pack = .TRUE. 
 

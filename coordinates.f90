@@ -127,8 +127,10 @@ module coordinates
     end interface
 
     interface map_field 
-        module procedure map_field_grid_grid,   map_field_points_points
-        module procedure map_field_grid_points, map_field_points_grid
+        module procedure map_field_grid_grid_double,   map_field_points_points_double
+        module procedure map_field_grid_points_double, map_field_points_grid_double
+        module procedure map_field_grid_grid_integer,  map_field_points_points_integer
+        module procedure map_field_grid_points_integer, map_field_points_grid_integer
     end interface
 
     private
@@ -1070,7 +1072,131 @@ contains
         return
     end subroutine map_calc_weights
 
-    subroutine map_field_grid_grid(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_grid_grid_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+
+        implicit none 
+
+        type(map_class), intent(IN)           :: map 
+        integer, dimension(:,:), intent(IN)   :: var1
+        integer, dimension(:,:), intent(OUT)  :: var2
+        integer, dimension(:,:),  intent(OUT) :: mask2
+        character(len=*) :: name, method
+        real(dp), optional :: radius, missing_value 
+        logical,  optional :: fill, border
+        real(dp) :: shephard_exponent
+
+        real(dp), dimension(:), allocatable   :: var2_vec
+        integer,  dimension(:), allocatable   :: mask2_vec
+        integer :: nx2, ny2, npts2, npts1 
+
+        nx2   = size(var2,1)
+        ny2   = size(var2,2)
+        npts2  = nx2*ny2 
+        npts1 = size(var1,1)*size(var1,2)
+
+        allocate(var2_vec(npts2),mask2_vec(npts2))
+        var2_vec = reshape(var2, [npts2])
+
+        call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2_vec, &
+                                     method,radius,fill,border,missing_value)
+        
+        var2  = reshape(int(var2_vec), [nx2,ny2])
+        mask2 = reshape(mask2_vec,[nx2,ny2])
+
+        return
+
+    end subroutine map_field_grid_grid_integer
+
+    subroutine map_field_grid_points_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+
+        implicit none 
+
+        type(map_class), intent(IN)           :: map 
+        integer, dimension(:,:), intent(IN)   :: var1
+        integer, dimension(:), intent(OUT)    :: var2
+        integer, dimension(:),  intent(OUT)   :: mask2
+        character(len=*) :: name, method
+        real(dp), optional :: radius, missing_value 
+        logical,  optional :: fill, border  
+        real(dp) :: shephard_exponent
+
+        real(dp), dimension(:), allocatable   :: var2_vec
+
+        integer :: npts1 
+
+        npts1 = size(var1,1)*size(var1,2)
+        allocate(var2_vec(size(var2)))
+
+        call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2, &
+                                     method,radius,fill,border,missing_value)
+
+        var2 = int(var2_vec)
+
+        return
+
+    end subroutine map_field_grid_points_integer
+
+    subroutine map_field_points_grid_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+
+        implicit none 
+
+        type(map_class), intent(IN)           :: map 
+        integer, dimension(:), intent(IN)     :: var1
+        integer, dimension(:,:), intent(OUT)  :: var2
+        integer, dimension(:,:),  intent(OUT) :: mask2
+        character(len=*) :: name, method
+        real(dp), optional :: radius, missing_value 
+        logical,  optional :: fill, border
+        real(dp) :: shephard_exponent
+
+        real(dp), dimension(:), allocatable   :: var2_vec
+        integer,  dimension(:), allocatable   :: mask2_vec
+        integer :: nx2, ny2, npts2
+
+        nx2   = size(var2,1)
+        ny2   = size(var2,2)
+        npts2  = nx2*ny2 
+
+        allocate(var2_vec(npts2),mask2_vec(npts2))
+        var2_vec = reshape(var2, (/npts2 /))
+
+        call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2_vec, &
+                                     method,radius,fill,border,missing_value)
+        
+        var2  = reshape(int(var2_vec),[nx2,ny2])
+        mask2 = reshape(mask2_vec,[nx2,ny2])
+
+        return
+
+    end subroutine map_field_points_grid_integer
+
+    subroutine map_field_points_points_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+
+        implicit none 
+
+        type(map_class), intent(IN)          :: map 
+        integer, dimension(:), intent(IN)    :: var1
+        integer, dimension(:), intent(OUT)   :: var2
+        integer, dimension(:),  intent(OUT)  :: mask2
+        character(len=*) :: name, method
+        real(dp), optional :: radius, missing_value 
+        logical,  optional :: fill, border  
+        real(dp) :: shephard_exponent
+
+        real(dp), dimension(:), allocatable   :: var2_vec
+
+        allocate(var2_vec(size(var2)))
+
+        call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2, &
+                                     method,radius,fill,border,missing_value)
+
+        var2 = int(var2_vec)
+
+        return
+
+    end subroutine map_field_points_points_integer
+
+    subroutine map_field_grid_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
 
         implicit none 
 
@@ -1095,17 +1221,17 @@ contains
         allocate(var2_vec(npts2),mask2_vec(npts2))
         var2_vec = reshape(var2, [npts2])
 
-        call map_field_points_points(map,name,reshape(var1,[npts1]), &
-                                     var2_vec,mask2_vec,method,radius,fill,border,missing_value)
+        call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2_vec,mask2_vec, &
+                                     method,radius,fill,border,missing_value)
         
         var2  = reshape(var2_vec, [nx2,ny2])
         mask2 = reshape(mask2_vec,[nx2,ny2])
 
         return
 
-    end subroutine map_field_grid_grid
+    end subroutine map_field_grid_grid_double
 
-    subroutine map_field_grid_points(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_grid_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
 
         implicit none 
 
@@ -1122,14 +1248,14 @@ contains
 
         npts1 = size(var1,1)*size(var1,2)
 
-        call map_field_points_points(map,name,reshape(var1,(/npts1/)), &
-                                     var2,mask2,method,radius,fill,border,missing_value)
+        call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2,mask2, &
+                                     method,radius,fill,border,missing_value)
 
         return
 
-    end subroutine map_field_grid_points
+    end subroutine map_field_grid_points_double
 
-    subroutine map_field_points_grid(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_points_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
 
         implicit none 
 
@@ -1151,19 +1277,19 @@ contains
         npts2  = nx2*ny2 
 
         allocate(var2_vec(npts2),mask2_vec(npts2))
-        var2_vec = reshape(var2, (/npts2 /))
+        var2_vec = reshape(var2, [npts2])
 
-        call map_field_points_points(map,name,var1, &
-                                     var2_vec,mask2_vec,method,radius,fill,border,missing_value)
+        call map_field_points_points_double(map,name,var1,var2_vec,mask2_vec, &
+                                     method,radius,fill,border,missing_value)
         
-        var2  = reshape(var2_vec, (/nx2,ny2/))
-        mask2 = reshape(mask2_vec,(/nx2,ny2/))
+        var2  = reshape(var2_vec, [nx2,ny2])
+        mask2 = reshape(mask2_vec,[nx2,ny2])
 
         return
 
-    end subroutine map_field_points_grid
+    end subroutine map_field_points_grid_double
 
-    subroutine map_field_points_points(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_points_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
         ! Methods include "radius", "nn" (nearest neighbor) and "quadrant"
         
         implicit none 
@@ -1334,7 +1460,7 @@ contains
             write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
 
         return
-    end subroutine map_field_points_points
+    end subroutine map_field_points_points_double
 
     function n_quadrants(quadrant)
 
