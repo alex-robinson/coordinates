@@ -102,6 +102,7 @@ program test_subset
     ! =======================================================================
 
     call subset_init(sub,grid,factor=2,npts=grid%npts)
+!     call subset_init(sub,grid,factor=2,npts=grid%npts)
 
     ! Specify the local points object with subset information (redundant, but convenient)
     ptshi = sub%pts 

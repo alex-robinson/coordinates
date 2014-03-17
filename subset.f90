@@ -24,7 +24,7 @@ module subset
 
 contains 
 
-    subroutine subset_init(sub,grid,factor,npts,max_neighbors,lat_lim)
+    subroutine subset_init(sub,grid,npts,factor,max_neighbors,lat_lim)
         ! Determine the coordinates of the domain
 
         implicit none 
@@ -34,18 +34,25 @@ contains
         integer :: npts              ! Number of points to allocate to the subset
         integer :: factor            ! Resolution factor (should be >= 1)
         integer, optional :: max_neighbors ! Maximum number of neighbors to use for mapping
-        integer :: max_neighbs 
+        integer :: fac, max_neighbs 
         double precision, optional :: lat_lim
         double precision :: lat_limit 
 
         character(len=12) :: suffix 
         double precision, allocatable, dimension(:) :: x, y
 
+        sub%subset = .TRUE.
+        fac        = factor  
+        if (npts .le. 0) then 
+            sub%subset = .FALSE. 
+            fac        = 1 
+        end if 
+
         ! Define a suffix to append to the grid name
-        if (factor .ge. 10) then
-            write(suffix,"(a3,i2)") "-hi", factor 
-        else if (factor .ge. 1) then
-            write(suffix,"(a3,i1)") "-hi", factor 
+        if (fac .ge. 10) then
+            write(suffix,"(a3,i2)") "-hi", fac
+        else if (fac .ge. 1) then
+            write(suffix,"(a3,i1)") "-hi", fac 
         else
             write(*,*) "subset_define:: Error: factor must be greater than or equal to one."
             stop 
@@ -57,34 +64,19 @@ contains
         lat_limit   = 4.d0 
         if (present(lat_lim)) lat_limit = lat_lim 
 
-        ! Initialize the new grid with input grid characteristics
-        ! but with the new resolution
-        call grid_init(sub%grid,name=trim(grid%name)//trim(suffix),mtype=grid%mtype, &
-                       units=grid%units,planet=grid%planet%name,lon180=grid%is_lon180, &
-                       x0=grid%G%x(1),dx=grid%G%dx/dble(factor),nx=(grid%G%nx-1)*factor+1, &
-                       y0=grid%G%y(1),dy=grid%G%dy/dble(factor),ny=(grid%G%ny-1)*factor+1, &
-!                        x0=grid%G%x(1),dx=dx,nx=( grid%G%x(grid%G%nx)-grid%G%x(1) ) / dx, &
-!                        y0=grid%G%y(1),dy=dy,ny=( grid%G%y(grid%G%ny)-grid%G%y(1) ) / dy, &
-                       lambda=grid%proj%lambda,phi=grid%proj%phi,alpha=grid%proj%alpha, &
-                       x_e=grid%proj%x_e,y_n=grid%proj%y_n)
-
-        ! Allocate the packing mask for later use 
-        if (allocated(sub%mask_pack)) deallocate(sub%mask_pack)
-        allocate(sub%mask_pack(sub%grid%G%nx,sub%grid%G%ny))
-        sub%mask_pack = .TRUE. 
-
-        ! Make sure the subset npts is consistent with the new grid
-        sub%npts = npts 
-        if (sub%npts .gt. sub%grid%npts .or. sub%npts .le. 0) sub%npts = sub%grid%npts
-
-        if (sub%npts .eq. sub%grid%npts) then 
-
-            sub%subset = .FALSE.
-            call grid_to_points(sub%grid,sub%pts)
-
-        else
-
-            sub%subset = .TRUE. 
+        if (sub%subset) then 
+            ! Initialize the new grid with input grid characteristics
+            ! but with the new resolution
+            call grid_init(sub%grid,name=trim(grid%name)//trim(suffix),mtype=grid%mtype, &
+                           units=grid%units,planet=grid%planet%name,lon180=grid%is_lon180, &
+                           x0=grid%G%x(1),dx=grid%G%dx/dble(fac),nx=(grid%G%nx-1)*fac+1, &
+                           y0=grid%G%y(1),dy=grid%G%dy/dble(fac),ny=(grid%G%ny-1)*fac+1, &
+                           lambda=grid%proj%lambda,phi=grid%proj%phi,alpha=grid%proj%alpha, &
+                           x_e=grid%proj%x_e,y_n=grid%proj%y_n)
+            
+            ! Make sure the subset npts is consistent with the new grid
+            sub%npts = npts 
+            if (sub%npts .gt. sub%grid%npts) sub%npts = sub%grid%npts 
 
             ! Allocate temporary x,y vectors to store points of interest
             ! for new coordinates definition
@@ -115,7 +107,18 @@ contains
             call map_init(sub%map_fromsub,sub%grid,grid, &
                           max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
 
+        else
+            ! Intialize the sub grid & pts with the input grid characteristics
+            sub%grid = grid 
+            sub%npts = sub%grid%npts 
+            call grid_to_points(sub%grid,sub%pts)
+
         end if 
+
+        ! Allocate the packing mask for later use 
+        if (allocated(sub%mask_pack)) deallocate(sub%mask_pack)
+        allocate(sub%mask_pack(sub%grid%G%nx,sub%grid%G%ny))
+        sub%mask_pack = .TRUE. 
         
         write(*,"(a,i10,1x,a1,1x,i10)") "subset:: subset_init :: Initialized subset, npts = ", &
                                        sub%npts, "/",sub%grid%npts
