@@ -194,6 +194,15 @@ contains
 
         if (sub%subset .or. present(map)) then 
 
+            ! Consistency check 
+            if (count(mask_pack) .ne. sub%npts) then 
+                write(*,*) "subset_to_points:: Error: total masked points not equal to npts."
+                write(*,*) "count(mask_pack) =", count(mask_pack)
+                write(*,*) "sub%npts =", sub%npts
+                write(*,*) "Make sure mask_pack has been properly generated."
+                stop 
+            end if 
+
             ! Determine map to use here 
             map_local = sub%map_fromsub 
             if (present(map)) map_local = map 
@@ -253,6 +262,15 @@ contains
         type(map_class) :: map_local 
 
         if (sub%subset .or. present(map)) then 
+
+            ! Consistency check 
+            if (count(mask_pack) .ne. sub%npts) then 
+                write(*,*) "subset_to_points:: Error: total masked points not equal to npts."
+                write(*,*) "count(mask_pack) =", count(mask_pack)
+                write(*,*) "sub%npts =", sub%npts
+                write(*,*) "Make sure mask_pack has been properly generated."
+                stop 
+            end if 
 
             ! Determine map to use here 
             map_local = sub%map_tosub 

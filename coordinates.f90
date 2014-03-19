@@ -1455,7 +1455,7 @@ contains
 
         end do 
 
-        write(*,*) "Mapped field: "//trim(name)
+        !write(*,*) "Mapped field: "//trim(name)
         if (count(var2 .eq. missing_val) .gt. 0) &
             write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
 

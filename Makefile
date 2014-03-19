@@ -49,6 +49,12 @@ endif
 $(objdir)/ncio.o: ../ncio/ncio.f90
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
+$(objdir)/interp1D.o: interp1D.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
+$(objdir)/interp_time.o: interp_time.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
 $(objdir)/planet.o: planet.f90
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
@@ -61,7 +67,7 @@ $(objdir)/projection_oblimap2.o: projection_oblimap2.f90
 $(objdir)/coordinates.o: coordinates.f90
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
-$(objdir)/subset.o: subset.f90 coordinates.f90
+$(objdir)/subset.o: subset.f90 $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
 ## Complete programs
@@ -78,6 +84,12 @@ test_subset: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/
 	$(FC) $(DFLAGS) $(FLAGS) -o test_subset.x $^ test_subset.f90 $(LFLAGS)
 	@echo " "
 	@echo "    test_subset.x is ready."
+	@echo " "
+
+test_interp: $(objdir)/interp1D.o $(objdir)/interp_time.o
+	#$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x $^ test_interp.f90 $(LFLAGS)
+	@echo " "
+	@echo "    interpolation source compiled and ready."
 	@echo " "
 
 # Program to test distance calculations using the geographiclib library
