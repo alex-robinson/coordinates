@@ -110,8 +110,8 @@ program test_subset
     
     ! Generate a mask for the subset of points based on elevation gradient
     ! and redefine the subset based on this mask 
-!     call gen_subset_mask(sub%mask_pack,set%dzs,sub%grid%G%dx,grid%G%dx*2,ptshi%npts,map=sub%map_tosub)
-    call gen_subset_mask(sub%mask_pack,set%dzs,sub%grid%G%dx,100.d0,ptshi%npts,map=sub%map_tosub)
+    call subset_gen_mask(sub%mask_pack,set%dzs,ptshi%npts, &
+                         min_spacing=floor(50.d0/sub%grid%G%dx),method="max",map=sub%map_tosub)
     write(*,*) "ptshi%npts =",ptshi%npts 
     call subset_redefine(sub,sub%mask_pack)
     ptshi = sub%pts 

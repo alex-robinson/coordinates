@@ -29,6 +29,7 @@ module subset
     public :: subset_class 
     public :: subset_init, subset_redefine
     public :: subset_to_grid, subset_to_points
+    public :: subset_gen_mask 
 
 contains 
 
@@ -383,6 +384,124 @@ contains
         return 
 
     end subroutine subset_to_points_integer
+
+
+
+
+    subroutine subset_gen_mask(mask_pack,var,npts,min_spacing,method,map)
+        ! This routine can be used in a generic way to generate a mask
+        ! based on an input field, a minimum spacing and a function (min/max)
+        ! Note: it is highly relevant to subset, although it doesn't 
+        ! depend on the subset_class since the mask doesn't have to
+        ! be the subset%mask_pack variable.
+        implicit none 
+
+        logical, dimension(:,:), intent(INOUT) :: mask_pack 
+        double precision, dimension(:,:), intent(IN) :: var 
+        type(map_class), intent(IN), optional :: map
+        integer :: npts, min_spacing 
+        character(len=*) :: method 
+
+        integer :: nx, ny, npts0, loc(2), i,j
+        double precision, dimension(:,:), allocatable :: var1
+        integer, dimension(:,:), allocatable :: mask1 
+        logical :: coarse 
+        double precision :: var_lim, var_step  
+
+        nx = size(mask_pack,1)
+        ny = size(mask_pack,2)
+
+        ! === Step 1: Get the field dimensions correct
+
+        ! Allocate temporary variable fields
+        allocate(var1(nx,ny),mask1(nx,ny))
+
+        if (size(mask_pack) .eq. size(var)) then
+            ! Field is the same size as the mask
+ 
+            var1 = var 
+
+        else 
+            ! Mapping is needed to adjust field dimensions to fit mask
+
+            if (.not. (present(map))) then 
+                write(*,*) "subset_gen_mask:: ", &
+                "Error: map must be provided as an argument if the field "//&
+                "provided does not match the mask."
+                write(*,*) "var dims: ", size(var,1), size(var,2)
+                write(*,*) "mask_pack dims: ", nx, ny 
+                stop 
+            end if 
+
+            call map_field(map,"subset mask",var,var1,mask1,method="radius",fill=.TRUE.)
+
+        end if 
+
+        ! Step 2: Check the method (min or max)
+        if ( .not. (trim(method) .eq. "min" .or. trim(method) .eq. "max") )  then 
+            write(*,*) "subset_gen_mask:: ", &
+            "Error: method can only be 'min' or 'max', not "//trim(method)
+            stop
+        end if 
+
+        ! Take the negative of field if the method is min
+        if (trim(method) .eq. "min") var1 = -var1 
+
+        ! === Step 2: Decide which indices of the mask 
+        ! === should be true based on user criteria.
+
+        if ( nx*ny .eq. npts ) then 
+            ! Total points is equal to the grid size,
+            ! therefore all indices are counted.
+            mask_pack = .TRUE. 
+
+        else 
+            ! Initially set all points to .FALSE.
+            mask_pack = .FALSE.
+            npts0     = 0
+
+            ! Fill in mask_pack evenly-spaced at desired minimum resolution
+            if (min_spacing .gt. 0) then
+
+                do i = 1,nx,min_spacing
+                do j = 1,ny,min_spacing
+                    if (count(mask_pack) .ge. npts) exit 
+                    mask_pack(i,j) = .TRUE. 
+                end do 
+                end do
+            end if 
+
+            ! Now fill in the remainder of the mask with the locations of field maximums
+            npts0 = count(mask_pack)
+            coarse = .TRUE.
+            var_lim  = maxval(var1)
+            var_step = var_lim*0.05 
+
+            do while(npts0 < npts)
+                where(mask_pack) var1 = minval(var1)   ! Eliminate points that are already included
+                
+                if (coarse) then 
+                    var_lim = var_lim - var_step 
+                    if (count(var1 .ge. var_lim)+count(mask_pack) .lt. npts) then 
+                        where (var1 .ge. var_lim) mask_pack = .TRUE. 
+                    else
+                        coarse = .FALSE. 
+                    end if 
+                else 
+                    loc = maxloc(var1)              ! Determine location of maximum value
+                    mask_pack(loc(1),loc(2)) = .TRUE. ! Add this point to mask 
+                end if 
+                npts0 = count(mask_pack)          ! Recount masked points
+                !write(*,*) "npts0 =", npts0 
+            end do 
+
+        end if 
+
+        write(*,*) "mask_pack total = ",count(mask_pack)," / " , (nx*ny)
+
+        return 
+
+    end subroutine subset_gen_mask
 
 
 end module subset
