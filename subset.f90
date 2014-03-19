@@ -12,7 +12,7 @@ module subset
         type(points_class) :: pts
         type(grid_class)   :: grid 
         type(map_class)    :: map_tosub, map_fromsub 
-        integer            :: npts 
+        integer            :: npts, factor
         logical            :: subset
         logical, dimension(:,:), allocatable :: mask_pack  
     end type 
@@ -42,7 +42,7 @@ contains
         integer :: npts              ! Number of points to allocate to the subset
         integer :: factor            ! Resolution factor (should be >= 1)
         integer, optional :: max_neighbors ! Maximum number of neighbors to use for mapping
-        integer :: fac, max_neighbs 
+        integer :: max_neighbs 
         double precision, optional :: lat_lim
         double precision :: lat_limit 
 
@@ -50,17 +50,17 @@ contains
         double precision, allocatable, dimension(:) :: x, y
 
         sub%subset = .TRUE.
-        fac        = factor  
+        sub%factor = factor  
         if (npts .le. 0) then 
             sub%subset = .FALSE. 
-            fac        = 1 
+            sub%factor = 1 
         end if 
 
         ! Define a suffix to append to the grid name
-        if (fac .ge. 10) then
-            write(suffix,"(a3,i2)") "-hi", fac
-        else if (fac .ge. 1) then
-            write(suffix,"(a3,i1)") "-hi", fac 
+        if (sub%factor .ge. 10) then
+            write(suffix,"(a3,i2)") "-hi", sub%factor
+        else if (sub%factor .ge. 1) then
+            write(suffix,"(a3,i1)") "-hi", sub%factor 
         else
             write(*,*) "subset_define:: Error: factor must be greater than or equal to one."
             stop 
@@ -77,8 +77,8 @@ contains
             ! but with the new resolution
             call grid_init(sub%grid,name=trim(grid%name)//trim(suffix),mtype=grid%mtype, &
                            units=grid%units,planet=grid%planet%name,lon180=grid%is_lon180, &
-                           x0=grid%G%x(1),dx=grid%G%dx/dble(fac),nx=(grid%G%nx-1)*fac+1, &
-                           y0=grid%G%y(1),dy=grid%G%dy/dble(fac),ny=(grid%G%ny-1)*fac+1, &
+                           x0=grid%G%x(1),dx=grid%G%dx/dble(sub%factor),nx=(grid%G%nx-1)*sub%factor+1, &
+                           y0=grid%G%y(1),dy=grid%G%dy/dble(sub%factor),ny=(grid%G%ny-1)*sub%factor+1, &
                            lambda=grid%proj%lambda,phi=grid%proj%phi,alpha=grid%proj%alpha, &
                            x_e=grid%proj%x_e,y_n=grid%proj%y_n)
             
@@ -109,12 +109,13 @@ contains
 
             ! Initialize to and fro mappings for subset grid and input grid
             ! (intial map generation can take some time)
-            call map_init(sub%map_tosub,grid,sub%grid, &
-                          max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
+            if (sub%factor .gt. 1) then 
+                call map_init(sub%map_tosub,grid,sub%grid, &
+                              max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
 
-            call map_init(sub%map_fromsub,sub%grid,grid, &
-                          max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
-
+                call map_init(sub%map_fromsub,sub%grid,grid, &
+                              max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
+            end if
         else
             ! Intialize the sub grid & pts with the input grid characteristics
             sub%grid = grid 
@@ -153,6 +154,7 @@ contains
                            "number of points as defined in the subset."
                 write(*,*) "subset npts =",sub%npts
                 write(*,*) "mask_pack total = ",count(mask_pack)
+                write(*,*) "Maybe the packing mask has not been initialized well?"
                 stop 
             end if 
 
@@ -192,7 +194,7 @@ contains
 
         type(map_class) :: map_local 
 
-        if (sub%subset .or. present(map)) then 
+        if ( (sub%subset .and. sub%factor .gt. 1) .or. present(map)) then 
 
             ! Consistency check 
             if (count(mask_pack) .ne. sub%npts) then 
@@ -226,8 +228,16 @@ contains
             call map_field(map_local,"Mapped variable",var2Dtmp,var2D,mask2D,method=method, &
                            radius=radius,fill=fill,border=border,missing_value=missing_val)
 
+        else if (sub%subset) then 
+
+            ! Step 1: unpack the 1D vector into the 2D array using mask
+            call grid_allocate(sub%grid,var2Dtmp)        ! Allocate 2D array
+            var2Dtmp = missing_val                       ! Prefill with missing_value
+            var2D = unpack(var1D,mask_pack,var2Dtmp)
+
         else
 
+            ! Step 1: reshape the 1D vector into the 2D array
             var2D = reshape(var1D,[size(var2D,1),size(var2D,2)])
 
         end if 
@@ -261,7 +271,7 @@ contains
 
         type(map_class) :: map_local 
 
-        if (sub%subset .or. present(map)) then 
+        if ( (sub%subset .and. sub%factor .gt. 1) .or. present(map)) then 
 
             ! Consistency check 
             if (count(mask_pack) .ne. sub%npts) then 
@@ -293,8 +303,14 @@ contains
             ! Step 3: Pack the 2D variable onto its corresponding predefined 1D points.
             var1D = pack(var2Dtmp,mask_pack)
         
+        else if (sub%subset) then 
+
+            ! Step 1: Pack the 2D variable onto its corresponding predefined 1D points.
+            var1D = pack(var2D,mask_pack)
+        
         else
 
+            ! Step 1: Reshape the 2D variable into the 1D vector.
             var1D = reshape(var2D,[size(var1D)])
 
         end if 

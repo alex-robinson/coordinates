@@ -101,16 +101,17 @@ program test_subset
     !
     ! =======================================================================
 
-!     call subset_init(sub,grid,factor=2,npts=grid%npts)
-    call subset_init(sub,grid,factor=2,npts=0)
+    call subset_init(sub,grid,factor=2,npts=grid%npts)
+!     call subset_init(sub,grid,factor=2,npts=0)
+!     call subset_init(sub,grid,factor=1,npts=1000)
 
     ! Specify the local points object with subset information (redundant, but convenient)
     ptshi = sub%pts 
     
     ! Generate a mask for the subset of points based on elevation gradient
     ! and redefine the subset based on this mask 
-    call gen_subset_mask(sub%mask_pack,sub%map_tosub,set%dzs,sub%grid%G%dx,grid%G%dx*2,ptshi%npts)
-
+!     call gen_subset_mask(sub%mask_pack,set%dzs,sub%grid%G%dx,grid%G%dx*2,ptshi%npts,map=sub%map_tosub)
+    call gen_subset_mask(sub%mask_pack,set%dzs,sub%grid%G%dx,100.d0,ptshi%npts,map=sub%map_tosub)
     write(*,*) "ptshi%npts =",ptshi%npts 
     call subset_redefine(sub,sub%mask_pack)
     ptshi = sub%pts 
@@ -189,13 +190,13 @@ program test_subset
 
 contains
 
-    subroutine gen_subset_mask(mask_pack,map,dzs,dx,dx_min,npts)
+    subroutine gen_subset_mask(mask_pack,dzs,dx,dx_min,npts,map)
 
         implicit none 
 
         logical, dimension(:,:), intent(INOUT) :: mask_pack 
         double precision, dimension(:,:), intent(IN) :: dzs 
-        type(map_class), intent(IN) :: map
+        type(map_class), intent(IN), optional :: map
         double precision :: dx, dx_min
         integer :: npts 
 
@@ -217,14 +218,18 @@ contains
 
             call map_field(map,"Subset mask",dzs,dzs1,mask1,method="radius",fill=.TRUE.)
 
+            ! Initially set all points to .FALSE.
+            mask_pack = .FALSE.
+
             ! Fill in mask_pack evenly-spaced at desired minimum resolution
-            by = floor( dx_min / dx )
-            mask_pack = .FALSE. 
-            do i = 1,nx,by
-            do j = 1,ny,by 
-                mask_pack(i,j) = .TRUE. 
-            end do 
-            end do
+            if (dx_min .gt. 0.d0) then 
+                by = floor( dx_min / dx ) 
+                do i = 1,nx,by
+                do j = 1,ny,by 
+                    mask_pack(i,j) = .TRUE. 
+                end do 
+                end do
+            end if 
 
             ! Now fill in the remainder of the mask with the highest elevation gradients
             npts0 = count(mask_pack)
