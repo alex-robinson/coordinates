@@ -214,7 +214,7 @@ contains
             missing_val = -9999.d0
             if (present(missing_value)) missing_val = missing_value 
 
-            write(*,*) trim(map_local%name1), " => ",trim(map_local%name2)
+!             write(*,*) trim(map_local%name1), " => ",trim(map_local%name2)
 
             ! Step 1: Unpack the 1D variable onto its corresponding 
             ! predefined 2D grid.

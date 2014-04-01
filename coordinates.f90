@@ -105,6 +105,7 @@ module coordinates
 
     interface grid_init
         module procedure grid_init_from_opts, grid_init_from_par
+        module procedure grid_init_from_grid
     end interface 
     
     interface grid_allocate 
@@ -222,6 +223,27 @@ contains
         return
 
     end subroutine grid_area 
+
+    subroutine grid_init_from_grid(grid,grid0,name,x,y,x0,dx,nx,y0,dy,ny)
+        ! Initialize a new grid based on an old grid but
+        ! with new x/y coordinates 
+
+        implicit none
+
+        type(grid_class)   :: grid, grid0
+        character(len=*)   :: name  
+        integer, optional  :: nx, ny
+        real(dp), optional :: x(:), y(:), x0, dx, y0, dy
+        
+        call grid_init_from_opts(grid,name,mtype=grid0%mtype,units=grid0%units, &
+                                 planet=grid0%planet%name,lon180=grid0%is_lon180, &
+                                 x=x,y=y,x0=x0,dx=dx,nx=nx,y0=y0,dy=dy,ny=ny, &
+                                 lambda=grid0%proj%lambda,phi=grid0%proj%phi, &
+                                 alpha=grid0%proj%alpha,x_e=grid0%proj%x_e,y_n=grid0%proj%y_n)
+
+        return
+
+    end subroutine grid_init_from_grid
 
     subroutine grid_init_from_par(grid,filename,x,y,x0,dx,nx,y0,dy,ny)
 
@@ -1442,7 +1464,7 @@ contains
 
             ! Fill missing points with nearest neighbor if desired
             ! Note, will not necessarily fill ALL points, if 
-            ! no neighbor can be found without a missing value
+            ! no neighbor within nmax can be found without a missing value
             if ( fill_pts .and. var2(i) .eq. missing_val) then  
                 do k = 1, map%nmax 
                     if (var1(map%i(i,k)) .ne. missing_val) then
