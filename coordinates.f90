@@ -1569,7 +1569,7 @@ contains
 
         ! Create the netcdf file and the dimension variables
         call nc_create(fnm)
-        call nc_write_global(fnm,"title","Mapping "//trim(map%name1)//" => "//trim(map%name2))
+        call nc_write_attr(fnm,"title","Mapping "//trim(map%name1)//" => "//trim(map%name2))
 
         ! Write generic dimensions
         call nc_write_dim(fnm,"point",    x=1,nx=map%npts,units="n")
