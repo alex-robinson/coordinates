@@ -1746,13 +1746,13 @@ contains
             if (allocated(tmpd)) deallocate(tmpd)
             allocate(tmpd(map%G%nx,map%G%ny,1))
 
-            call nc_read(fnm,"x2D",tmpd)
+            call nc_read(fnm,"x2D",tmpd(:,:,1))
             map%x   = reshape(tmpd,(/map%npts/))
-            call nc_read(fnm,"y2D",tmpd)
+            call nc_read(fnm,"y2D",tmpd(:,:,1))
             map%y   = reshape(tmpd,(/map%npts/))
-            call nc_read(fnm,"lon2D",tmpd)
+            call nc_read(fnm,"lon2D",tmpd(:,:,1))
             map%lon = reshape(tmpd,(/map%npts/))
-            call nc_read(fnm,"lat2D",tmpd)
+            call nc_read(fnm,"lat2D",tmpd(:,:,1))
             map%lat = reshape(tmpd,(/map%npts/))
             
             if (allocated(tmpi)) deallocate(tmpi)
