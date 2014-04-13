@@ -187,7 +187,6 @@ contains
 
         double precision, allocatable :: var2Dtmp(:,:) 
         integer, allocatable          :: mask2D(:,:)
-
         character(len=*)           :: method
         double precision, optional :: radius, missing_value 
         double precision :: missing_val
@@ -299,7 +298,8 @@ contains
             if (allocated(mask2D)) deallocate(mask2D)
             allocate(mask2D(map_local%G%nx,map_local%G%ny))
             call map_field(map_local,"Mapped variable",var2D,var2Dtmp,mask2D,method=method, &
-                           radius=radius,fill=fill,border=border,missing_value=missing_val)
+                           radius=radius,fill=fill,border=border,missing_value=missing_val, &
+                           mask_pack=mask_pack)
 
             ! Step 3: Pack the 2D variable onto its corresponding predefined 1D points.
             var1D = pack(var2Dtmp,mask_pack)

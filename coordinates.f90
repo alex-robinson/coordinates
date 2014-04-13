@@ -1094,7 +1094,7 @@ contains
         return
     end subroutine map_calc_weights
 
-    subroutine map_field_grid_grid_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_grid_grid_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
 
         implicit none 
 
@@ -1102,6 +1102,7 @@ contains
         integer, dimension(:,:), intent(IN)   :: var1
         integer, dimension(:,:), intent(OUT)  :: var2
         integer, dimension(:,:),  intent(OUT) :: mask2
+        logical,  dimension(:,:), intent(IN), optional :: mask_pack 
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
@@ -1109,6 +1110,7 @@ contains
 
         real(dp), dimension(:), allocatable   :: var2_vec
         integer,  dimension(:), allocatable   :: mask2_vec
+        logical,  dimension(:), allocatable   :: mask_pack_vec 
         integer :: nx2, ny2, npts2, npts1 
 
         nx2   = size(var2,1)
@@ -1116,11 +1118,14 @@ contains
         npts2  = nx2*ny2 
         npts1 = size(var1,1)*size(var1,2)
 
-        allocate(var2_vec(npts2),mask2_vec(npts2))
+        allocate(var2_vec(npts2),mask2_vec(npts2),mask_pack_vec(npts2))
         var2_vec = reshape(var2, [npts2])
+        mask_pack_vec = .TRUE. 
+        if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2_vec, &
-                                     method,radius,fill,border,missing_value)
+                                     method,radius,fill,border,missing_value, &
+                                     mask_pack_vec)
         
         var2  = reshape(int(var2_vec), [nx2,ny2])
         mask2 = reshape(mask2_vec,[nx2,ny2])
@@ -1129,7 +1134,7 @@ contains
 
     end subroutine map_field_grid_grid_integer
 
-    subroutine map_field_grid_points_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_grid_points_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
 
         implicit none 
 
@@ -1137,6 +1142,7 @@ contains
         integer, dimension(:,:), intent(IN)   :: var1
         integer, dimension(:), intent(OUT)    :: var2
         integer, dimension(:),  intent(OUT)   :: mask2
+        logical,  dimension(:), intent(IN), optional :: mask_pack 
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border  
@@ -1150,7 +1156,8 @@ contains
         allocate(var2_vec(size(var2)))
 
         call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2, &
-                                     method,radius,fill,border,missing_value)
+                                     method,radius,fill,border,missing_value, &
+                                     mask_pack)
 
         var2 = int(var2_vec)
 
@@ -1158,7 +1165,7 @@ contains
 
     end subroutine map_field_grid_points_integer
 
-    subroutine map_field_points_grid_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_points_grid_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
 
         implicit none 
 
@@ -1166,6 +1173,8 @@ contains
         integer, dimension(:), intent(IN)     :: var1
         integer, dimension(:,:), intent(OUT)  :: var2
         integer, dimension(:,:),  intent(OUT) :: mask2
+        logical,  dimension(:,:), intent(IN), optional :: mask_pack 
+        
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
@@ -1173,17 +1182,21 @@ contains
 
         real(dp), dimension(:), allocatable   :: var2_vec
         integer,  dimension(:), allocatable   :: mask2_vec
+        logical,  dimension(:), allocatable   :: mask_pack_vec 
         integer :: nx2, ny2, npts2
 
         nx2   = size(var2,1)
         ny2   = size(var2,2)
         npts2  = nx2*ny2 
 
-        allocate(var2_vec(npts2),mask2_vec(npts2))
+        allocate(var2_vec(npts2),mask2_vec(npts2),mask_pack_vec(npts2))
         var2_vec = reshape(var2, (/npts2 /))
+        mask_pack_vec = .TRUE. 
+        if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2_vec, &
-                                     method,radius,fill,border,missing_value)
+                                     method,radius,fill,border,missing_value, &
+                                     mask_pack_vec)
         
         var2  = reshape(int(var2_vec),[nx2,ny2])
         mask2 = reshape(mask2_vec,[nx2,ny2])
@@ -1192,7 +1205,7 @@ contains
 
     end subroutine map_field_points_grid_integer
 
-    subroutine map_field_points_points_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_points_points_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
 
         implicit none 
 
@@ -1200,6 +1213,8 @@ contains
         integer, dimension(:), intent(IN)    :: var1
         integer, dimension(:), intent(OUT)   :: var2
         integer, dimension(:),  intent(OUT)  :: mask2
+        logical,  dimension(:), intent(IN), optional :: mask_pack 
+        
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border  
@@ -1210,7 +1225,8 @@ contains
         allocate(var2_vec(size(var2)))
 
         call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2, &
-                                     method,radius,fill,border,missing_value)
+                                     method,radius,fill,border,missing_value, &
+                                     mask_pack)
 
         var2 = int(var2_vec)
 
@@ -1218,7 +1234,7 @@ contains
 
     end subroutine map_field_points_points_integer
 
-    subroutine map_field_grid_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_grid_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
 
         implicit none 
 
@@ -1226,6 +1242,8 @@ contains
         real(dp), dimension(:,:), intent(IN)  :: var1
         real(dp), dimension(:,:), intent(OUT) :: var2
         integer, dimension(:,:),  intent(OUT) :: mask2
+        logical,  dimension(:,:), intent(IN), optional :: mask_pack 
+        
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
@@ -1233,6 +1251,7 @@ contains
 
         real(dp), dimension(:), allocatable   :: var2_vec
         integer,  dimension(:), allocatable   :: mask2_vec
+        logical,  dimension(:), allocatable   :: mask_pack_vec 
         integer :: nx2, ny2, npts2, npts1 
 
         nx2   = size(var2,1)
@@ -1240,11 +1259,14 @@ contains
         npts2  = nx2*ny2 
         npts1 = size(var1,1)*size(var1,2)
 
-        allocate(var2_vec(npts2),mask2_vec(npts2))
+        allocate(var2_vec(npts2),mask2_vec(npts2),mask_pack_vec(npts2))
         var2_vec = reshape(var2, [npts2])
+        mask_pack_vec = .TRUE. 
+        if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2_vec,mask2_vec, &
-                                     method,radius,fill,border,missing_value)
+                                     method,radius,fill,border,missing_value, &
+                                     mask_pack_vec)
         
         var2  = reshape(var2_vec, [nx2,ny2])
         mask2 = reshape(mask2_vec,[nx2,ny2])
@@ -1253,7 +1275,7 @@ contains
 
     end subroutine map_field_grid_grid_double
 
-    subroutine map_field_grid_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_grid_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
 
         implicit none 
 
@@ -1261,6 +1283,8 @@ contains
         real(dp), dimension(:,:), intent(IN)  :: var1
         real(dp), dimension(:), intent(OUT)   :: var2
         integer, dimension(:),  intent(OUT)   :: mask2
+        logical,  dimension(:), intent(IN), optional :: mask_pack 
+        
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border  
@@ -1271,20 +1295,23 @@ contains
         npts1 = size(var1,1)*size(var1,2)
 
         call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2,mask2, &
-                                     method,radius,fill,border,missing_value)
+                                     method,radius,fill,border,missing_value, &
+                                     mask_pack)
 
         return
 
     end subroutine map_field_grid_points_double
 
-    subroutine map_field_points_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_points_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
 
         implicit none 
 
         type(map_class), intent(IN)           :: map 
         real(dp), dimension(:), intent(IN)    :: var1
         real(dp), dimension(:,:), intent(OUT) :: var2
-        integer, dimension(:,:),  intent(OUT) :: mask2
+        integer,  dimension(:,:),  intent(OUT) :: mask2
+        logical,  dimension(:,:), intent(IN), optional :: mask_pack 
+        
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
@@ -1292,17 +1319,21 @@ contains
 
         real(dp), dimension(:), allocatable   :: var2_vec
         integer,  dimension(:), allocatable   :: mask2_vec
+        logical,  dimension(:), allocatable :: mask_pack_vec 
         integer :: nx2, ny2, npts2
 
         nx2   = size(var2,1)
         ny2   = size(var2,2)
         npts2  = nx2*ny2 
 
-        allocate(var2_vec(npts2),mask2_vec(npts2))
+        allocate(var2_vec(npts2),mask2_vec(npts2),mask_pack_vec(npts2))
         var2_vec = reshape(var2, [npts2])
+        mask_pack_vec = .TRUE. 
+        if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,var1,var2_vec,mask2_vec, &
-                                     method,radius,fill,border,missing_value)
+                                     method,radius,fill,border,missing_value, &
+                                     mask_pack_vec)
         
         var2  = reshape(var2_vec, [nx2,ny2])
         mask2 = reshape(mask2_vec,[nx2,ny2])
@@ -1311,7 +1342,7 @@ contains
 
     end subroutine map_field_points_grid_double
 
-    subroutine map_field_points_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value)
+    subroutine map_field_points_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
         ! Methods include "radius", "nn" (nearest neighbor) and "quadrant"
         
         implicit none 
@@ -1320,6 +1351,8 @@ contains
         real(dp), dimension(:), intent(IN)    :: var1
         real(dp), dimension(:), intent(OUT)   :: var2
         integer,  dimension(:), intent(OUT)   :: mask2
+        logical,  dimension(:), intent(IN), optional :: mask_pack 
+        logical,  dimension(:), allocatable   :: maskp 
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border 
@@ -1329,7 +1362,7 @@ contains
         integer,  dimension(:), allocatable   :: i_neighb, quad_neighb
         real(dp), dimension(:), allocatable   :: dist_neighb, weight_neighb, v_neighb
 
-        integer :: i, k, q, j, ntot 
+        integer :: i, k, q, j, ntot, check  
         logical :: found 
 
         ! Set neighborhood radius to very large value (to include all neighbors)
@@ -1352,6 +1385,11 @@ contains
         allocate(i_neighb(map%nmax),dist_neighb(map%nmax), &
                  weight_neighb(map%nmax),v_neighb(map%nmax), &
                  quad_neighb(map%nmax))
+        allocate(maskp(size(var2)))
+
+        ! By default, all var2 points are interpolated
+        maskp = .TRUE. 
+        if (present(mask_pack)) maskp = mask_pack 
 
         ! Initialize mask to show which points have been mapped
         mask2 = 0 
@@ -1359,12 +1397,13 @@ contains
         ! If fill is desired, initialize output points to missing values
         if (fill_pts) var2 = missing_val 
 
-        do i = 1, map%npts 
+        ! Check to make sure map is the right size
+        if (maxval(map%i(1,:)) .gt. size(var1,1)) then
+            write(*,*) "Problem! Indices get too big."
+            write(*,*) maxval(map%i(1,:)), size(var1,1)
+        end if 
 
-            if (maxval(map%i(i,:)) .gt. size(var1,1)) then
-                write(*,*) "Problem! Indices get too big."
-                write(*,*) maxval(map%i(i,:)), size(var1,1)
-            end if 
+        do i = 1, map%npts 
 
             ! Initialize neighbor variable values from input
             v_neighb = missing_val 
@@ -1375,92 +1414,100 @@ contains
             ! Eliminate neighbors outside of distance limit (in meters)
             where(map%dist(i,:) .gt. max_distance) v_neighb = missing_val 
 
-            ! If method == nn (nearest neighbor), limit neighbors to 1
-            if (method .eq. "nn") then
-                found = .FALSE. 
-                do k = 1, map%nmax 
-                    if (v_neighb(k) .ne. missing_val) then 
-                        if (found) then 
-                            v_neighb(k) = missing_val 
-                        else
-                            found = .TRUE. 
-                        end if 
-                    end if 
-                end do
+            ! Skip remaining calculations if no neighbors are found
+            check = count(.not. v_neighb .eq. missing_val) 
 
-            else if (method .eq. "quadrant") then 
-                ! For quadrant method, limit the number of neighbors to 
-                ! 4 points in different quadrants
-                do q = 1, 4
+            if (check .gt. 0 .and. maskp(i)) then 
+
+                ! If method == nn (nearest neighbor), limit neighbors to 1
+                if (method .eq. "nn") then
                     found = .FALSE. 
                     do k = 1, map%nmax 
-                        if (v_neighb(k) .ne. missing_val .and. map%quadrant(i,k) .eq. q) then 
+                        if (v_neighb(k) .ne. missing_val) then 
                             if (found) then 
                                 v_neighb(k) = missing_val 
                             else
                                 found = .TRUE. 
                             end if 
                         end if 
+                    end do
+
+                else if (method .eq. "quadrant") then 
+                    ! For quadrant method, limit the number of neighbors to 
+                    ! 4 points in different quadrants
+                    do q = 1, 4
+                        found = .FALSE. 
+                        do k = 1, map%nmax 
+                            if (v_neighb(k) .ne. missing_val .and. map%quadrant(i,k) .eq. q) then 
+                                if (found) then 
+                                    v_neighb(k) = missing_val 
+                                else
+                                    found = .TRUE. 
+                                end if 
+                            end if 
+                        end do 
                     end do 
-                end do 
 
-            end if 
+                end if 
 
-            ! Initialize temp neighbors with errors
-            i_neighb      = ERR_IND 
-            dist_neighb   = ERR_DIST 
-            weight_neighb = 0.0_dp 
-            quad_neighb   = 0
+                ! Initialize temp neighbors with errors
+                i_neighb      = ERR_IND 
+                dist_neighb   = ERR_DIST 
+                weight_neighb = 0.0_dp 
+                quad_neighb   = 0
 
-            ! Check number of neighbors available for calculations
-            ntot = count(v_neighb .ne. missing_val)
+                ! Check number of neighbors available for calculations
+                ntot = count(v_neighb .ne. missing_val)
 
-            ! Check if a large fraction of neighbors are border points
-            ! (if so, do not interpolate here)
-            if ( (.not. fill_border) .and. ntot .gt. 0) then 
-                if ( sum(map%border(i,1:ntot))/dble(ntot) .gt. 0.25_dp ) ntot = 0
-            end if 
+                ! Check if a large fraction of neighbors are border points
+                ! (if so, do not interpolate here)
+                if ( (.not. fill_border) .and. ntot .gt. 0) then 
+                    if ( sum(map%border(i,1:ntot))/dble(ntot) .gt. 0.25_dp ) ntot = 0
+                end if 
 
-            ! Fill in temp neighbors with valid values when available
-            if (ntot .gt. 0) then 
-                q = 0 
-                do k = 1, map%nmax 
-                    if (v_neighb(k) .ne. missing_val) then
-                        q = q+1
-                        i_neighb(q)      = map%i(i,k)
-                        dist_neighb(q)   = map%dist(i,k)
-                        weight_neighb(q) = map%weight(i,k)
-                        quad_neighb(q)   = map%quadrant(i,k)
-                    end if 
-                end do 
+                ! Fill in temp neighbors with valid values when available
+                if (ntot .gt. 0) then 
+                    q = 0 
+                    do k = 1, map%nmax 
+                        if (v_neighb(k) .ne. missing_val) then
+                            q = q+1
+                            i_neighb(q)      = map%i(i,k)
+                            dist_neighb(q)   = map%dist(i,k)
+                            weight_neighb(q) = map%weight(i,k)
+                            quad_neighb(q)   = map%quadrant(i,k)
+                        end if 
+                    end do 
 
-                ! Reinitialize temp neighbor values so that they appear in order (1:ntot)
-                v_neighb = missing_val 
-                q = 0
-                do k = 1, map%nmax 
-                    if (i_neighb(k) .gt. 0) then 
-                        q = q+1
-                        v_neighb(q) = var1(i_neighb(k))
-                    end if 
-                end do  
+                    ! Reinitialize temp neighbor values so that they appear in order (1:ntot)
+                    v_neighb = missing_val 
+                    q = 0
+                    do k = 1, map%nmax 
+                        if (i_neighb(k) .gt. 0) then 
+                            q = q+1
+                            v_neighb(q) = var1(i_neighb(k))
+                        end if 
+                    end do  
 
-            end if           
+                end if           
 
 
-            if ( ntot .gt. 1) then 
+                if ( ntot .gt. 1) then 
 
-                ! Calculate the weighted average
-                var2(i)  = weighted_ave(v_neighb(1:ntot),weight_neighb(1:ntot))
-                mask2(i) = 1
+                    ! Calculate the weighted average
+                    var2(i)  = weighted_ave(v_neighb(1:ntot),weight_neighb(1:ntot))
+                    mask2(i) = 1
 
-            else if (ntot .eq. 1) then
-                var2(i)  = v_neighb(1)
-                mask2(i) = 1 
-            else
-                ! If no neighbors exist, field not mapped here.
-                mask2(i) = 0 
+                else if (ntot .eq. 1) then
+                    var2(i)  = v_neighb(1)
+                    mask2(i) = 1 
 
-            end if 
+                else
+                    ! If no neighbors exist, field not mapped here.
+                    mask2(i) = 0 
+
+                end if 
+
+            end if ! End of neighbor checking if-statement 
 
             ! Fill missing points with nearest neighbor if desired
             ! Note, will not necessarily fill ALL points, if 
@@ -1478,8 +1525,8 @@ contains
         end do 
 
         !write(*,*) "Mapped field: "//trim(name)
-        if (count(var2 .eq. missing_val) .gt. 0) &
-            write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
+!         if (count(var2 .eq. missing_val) .gt. 0) &
+!             write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
 
         return
     end subroutine map_field_points_points_double

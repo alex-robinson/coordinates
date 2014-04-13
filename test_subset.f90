@@ -157,6 +157,8 @@ program test_subset
     call map_init(mgridhi_gridlo,sub%grid,gridlo,max_neighbors=60,lat_lim=4.d0)
     call map_init(mgridlo_gridhi,gridlo,sub%grid,max_neighbors=10,lat_lim=4.d0)
     
+    do i = 1, 100 ! Loop for performance testing 
+
     ! Map the calculated data to the low resolution grid 
     call grid_allocate(gridlo,setlo%zs,-9999.d0)
     call grid_allocate(gridlo,setlo%dzs,-9999.d0)
@@ -181,6 +183,8 @@ program test_subset
     call subset_to_grid(sub,sethi%zs,set2%zs,sub%mask_pack,method="radius")
     call subset_to_grid(sub,sethi%dzs,set2%dzs,sub%mask_pack,method="radius")
     call subset_to_grid(sub,sethi%mask,set2%mask,sub%mask_pack)
+
+    end do ! End performance testing loop 
 
     ! Output our basic diagnostic file too 
     call grid_write(grid,file_out2,xnm="xc",ynm="yc",create=.TRUE.)
