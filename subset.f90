@@ -222,7 +222,6 @@ contains
             var2Dtmp = unpack(var1D,mask_pack,var2Dtmp)  ! Unpack the 1D vector 
             
             ! Step 2: Map the temporary 2D array to the desired 2D resolution
-            if (allocated(mask2D)) deallocate(mask2D)
             allocate(mask2D(map_local%G%nx,map_local%G%ny))
 
             call map_field(map_local,"Mapped variable",var2Dtmp,var2D,mask2D,method=method, &
@@ -295,7 +294,6 @@ contains
             var2Dtmp = missing_val                       ! Prefill with missing_value
 
             ! Step 2: Map the 2D array to the temporary 2D array of the subset
-            if (allocated(mask2D)) deallocate(mask2D)
             allocate(mask2D(map_local%G%nx,map_local%G%ny))
             call map_field(map_local,"Mapped variable",var2D,var2Dtmp,mask2D,method=method, &
                            radius=radius,fill=fill,border=border,missing_value=missing_val, &
