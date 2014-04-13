@@ -156,6 +156,8 @@ contains
         type(subset_class) :: sub
         logical, dimension(:,:) :: mask_pack 
 
+!         type(map_class) :: map_local 
+        
         if (sub%subset) then 
 
             ! Check that mask_pack is consistent with subset of npts

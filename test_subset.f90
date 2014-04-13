@@ -160,20 +160,20 @@ program test_subset
     call map_init(mgridlo_gridhi,gridlo,sub%grid,max_neighbors=10,lat_lim=4.d0)
     
     ! Map the calculated data to the low resolution grid 
-    call grid_allocate(gridlo,setlo%zs,missing_value)
-    call grid_allocate(gridlo,setlo%dzs,missing_value)
+    call grid_allocate(gridlo,setlo%zs,  missing_value)
+    call grid_allocate(gridlo,setlo%dzs, missing_value)
     call grid_allocate(gridlo,setlo%mask,nint(missing_value))
 
     do i = 1, 100 ! Loop for performance testing 
 
-    call subset_to_grid(sub,sethi%zs,setlo%zs,sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)
-    call subset_to_grid(sub,sethi%dzs,setlo%dzs,sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)
+    call subset_to_grid(sub,sethi%zs,  setlo%zs,  sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)
+    call subset_to_grid(sub,sethi%dzs, setlo%dzs, sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)
     call subset_to_grid(sub,sethi%mask,setlo%mask,sub%mask_pack,map=mgridhi_gridlo,border=.TRUE.)
 
     ! Write low resolution data
     write(*,*) "min/max zs: ",minval(setlo%zs),maxval(setlo%zs)
-    call nc_write(file_outlo,"zs",setlo%zs,dim1="xc",dim2="yc",missing_value=missing_value)
-    call nc_write(file_outlo,"dzs",setlo%dzs,dim1="xc",dim2="yc",missing_value=missing_value)
+    call nc_write(file_outlo,"zs",  setlo%zs,  dim1="xc",dim2="yc",missing_value=missing_value)
+    call nc_write(file_outlo,"dzs", setlo%dzs, dim1="xc",dim2="yc",missing_value=missing_value)
     call nc_write(file_outlo,"mask",setlo%mask,dim1="xc",dim2="yc",missing_value=nint(missing_value))
 
     ! Remap to hi resolution
@@ -183,8 +183,8 @@ program test_subset
 
     ! Remap to original grid
     set2 = set 
-    call subset_to_grid(sub,sethi%zs,set2%zs,sub%mask_pack,method="radius")
-    call subset_to_grid(sub,sethi%dzs,set2%dzs,sub%mask_pack,method="radius")
+    call subset_to_grid(sub,sethi%zs,  set2%zs,  sub%mask_pack,method="radius")
+    call subset_to_grid(sub,sethi%dzs, set2%dzs, sub%mask_pack,method="radius")
     call subset_to_grid(sub,sethi%mask,set2%mask,sub%mask_pack)
 
     end do ! End performance testing loop 
