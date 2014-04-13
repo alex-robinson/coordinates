@@ -41,6 +41,8 @@ program test_subset
     character(len=256) :: file_out1, file_out2
     integer :: i, j 
 
+    double precision, parameter :: missing_value = -9999.d0 
+
     outfldr = "output/subsetting/"
     file_input = trim(outfldr)//"GRL-20KM_TOPO.nc"
     file_outhi = trim(outfldr)//"GRL-20KM_TOPO_hi.nc"
@@ -117,9 +119,9 @@ program test_subset
     ptshi = sub%pts 
 
     ! Map the original gridded data to the 1D subset
-    call points_allocate(ptshi, sethi%zs)
-    call points_allocate(ptshi, sethi%dzs)
-    call points_allocate(ptshi, sethi%mask)
+    call points_allocate(ptshi, sethi%zs,missing_value)
+    call points_allocate(ptshi, sethi%dzs,missing_value)
+    call points_allocate(ptshi, sethi%mask,nint(missing_value))
 
     call subset_to_points(sub,set%zs,sethi%zs,sub%mask_pack,method="radius")
     call subset_to_points(sub,set%dzs,sethi%dzs,sub%mask_pack,method="radius")
@@ -158,9 +160,9 @@ program test_subset
     call map_init(mgridlo_gridhi,gridlo,sub%grid,max_neighbors=10,lat_lim=4.d0)
     
     ! Map the calculated data to the low resolution grid 
-    call grid_allocate(gridlo,setlo%zs,-9999.d0)
-    call grid_allocate(gridlo,setlo%dzs,-9999.d0)
-    call grid_allocate(gridlo,setlo%mask,-9999)
+    call grid_allocate(gridlo,setlo%zs,missing_value)
+    call grid_allocate(gridlo,setlo%dzs,missing_value)
+    call grid_allocate(gridlo,setlo%mask,nint(missing_value))
 
     do i = 1, 100 ! Loop for performance testing 
 
@@ -170,9 +172,9 @@ program test_subset
 
     ! Write low resolution data
     write(*,*) "min/max zs: ",minval(setlo%zs),maxval(setlo%zs)
-    call nc_write(file_outlo,"zs",setlo%zs,dim1="xc",dim2="yc",missing_value=-9999.d0)
-    call nc_write(file_outlo,"dzs",setlo%dzs,dim1="xc",dim2="yc",missing_value=-9999.d0)
-    call nc_write(file_outlo,"mask",setlo%mask,dim1="xc",dim2="yc",missing_value=-9999)
+    call nc_write(file_outlo,"zs",setlo%zs,dim1="xc",dim2="yc",missing_value=missing_value)
+    call nc_write(file_outlo,"dzs",setlo%dzs,dim1="xc",dim2="yc",missing_value=missing_value)
+    call nc_write(file_outlo,"mask",setlo%mask,dim1="xc",dim2="yc",missing_value=nint(missing_value))
 
     ! Remap to hi resolution
     call subset_to_points(sub,setlo%zs,sethi%zs,sub%mask_pack,map=mgridlo_gridhi,method="radius",border=.TRUE.)

@@ -14,6 +14,8 @@ module subset
         type(map_class)    :: map_tosub, map_fromsub 
         integer            :: npts, factor
         logical            :: subset
+        double precision, allocatable :: var2D(:,:) 
+        integer, dimension(:,:), allocatable :: mask2D 
         logical, dimension(:,:), allocatable :: mask_pack  
     end type 
 
@@ -86,6 +88,13 @@ contains
             ! Make sure the subset npts is consistent with the new grid
             sub%npts = npts 
             if (sub%npts .gt. sub%grid%npts) sub%npts = sub%grid%npts 
+
+            ! Initialize an array to handle data and interpolation mask on the grid 
+            ! (to avoid reallocating continuously) 
+            if (allocated(sub%var2D)) deallocate(sub%var2D)
+            allocate(sub%var2D(sub%grid%G%nx,sub%grid%G%ny)) 
+            if (allocated(sub%mask2D)) deallocate(sub%mask2D)
+            allocate(sub%mask2D(sub%grid%G%nx,sub%grid%G%ny)) 
 
             ! Allocate temporary x,y vectors to store points of interest
             ! for new coordinates definition
@@ -179,7 +188,7 @@ contains
 
         implicit none 
  
-        type(subset_class), intent(IN)  :: sub 
+        type(subset_class), intent(INOUT)  :: sub 
         type(map_class), intent(IN), optional :: map 
         double precision, intent(OUT)   :: var2D(:,:)
         double precision, intent(IN)    :: var1D(:)
@@ -217,22 +226,19 @@ contains
 
             ! Step 1: Unpack the 1D variable onto its corresponding 
             ! predefined 2D grid.
-            call grid_allocate(sub%grid,var2Dtmp)        ! Allocate 2D array
-            var2Dtmp = missing_val                       ! Prefill with missing_value
-            var2Dtmp = unpack(var1D,mask_pack,var2Dtmp)  ! Unpack the 1D vector 
-            
+            sub%var2D = missing_val 
+            sub%var2D = unpack(var1D,mask_pack,sub%var2D)  ! Unpack the 1D vector 
+
             ! Step 2: Map the temporary 2D array to the desired 2D resolution
             allocate(mask2D(map_local%G%nx,map_local%G%ny))
 
-            call map_field(map_local,"Mapped variable",var2Dtmp,var2D,mask2D,method=method, &
+            call map_field(map_local,"Mapped variable",sub%var2D,var2D,mask2D,method=method, &
                            radius=radius,fill=fill,border=border,missing_value=missing_val)
 
         else if (sub%subset) then 
 
             ! Step 1: unpack the 1D vector into the 2D array using mask
-            call grid_allocate(sub%grid,var2Dtmp)        ! Allocate 2D array
-            var2Dtmp = missing_val                       ! Prefill with missing_value
-            var2D = unpack(var1D,mask_pack,var2Dtmp)
+            var2D = unpack(var1D,mask_pack,var2D)
 
         else
 
@@ -254,14 +260,11 @@ contains
 
         implicit none 
  
-        type(subset_class), intent(IN)  :: sub 
+        type(subset_class), intent(INOUT)     :: sub 
         type(map_class), intent(IN), optional :: map 
         double precision, intent(IN)    :: var2D(:,:)
         double precision, intent(OUT)   :: var1D(:)
         logical, intent(IN)             :: mask_pack(:,:)
-
-        double precision, allocatable :: var2Dtmp(:,:) 
-        integer, allocatable          :: mask2D(:,:)
 
         character(len=*)           :: method
         double precision, optional :: radius, missing_value 
@@ -289,18 +292,16 @@ contains
             missing_val = -9999.d0
             if (present(missing_value)) missing_val = missing_value 
 
-            ! Step 1: Allocate a predefined 2D array.
-            call grid_allocate(sub%grid,var2Dtmp)        ! Allocate 2D array
-            var2Dtmp = missing_val                       ! Prefill with missing_value
+            ! Step 1: Prefill the predefined 2D array of the subset
+            sub%var2D = missing_val
 
             ! Step 2: Map the 2D array to the temporary 2D array of the subset
-            allocate(mask2D(map_local%G%nx,map_local%G%ny))
-            call map_field(map_local,"Mapped variable",var2D,var2Dtmp,mask2D,method=method, &
+            call map_field(map_local,"Mapped variable",var2D,sub%var2D,sub%mask2D,method=method, &
                            radius=radius,fill=fill,border=border,missing_value=missing_val, &
                            mask_pack=mask_pack)
 
             ! Step 3: Pack the 2D variable onto its corresponding predefined 1D points.
-            var1D = pack(var2Dtmp,mask_pack)
+            var1D = pack(sub%var2D,mask_pack)
         
         else if (sub%subset) then 
 
@@ -328,7 +329,7 @@ contains
 
         implicit none 
  
-        type(subset_class), intent(IN)  :: sub 
+        type(subset_class), intent(INOUT)  :: sub 
         type(map_class), intent(IN), optional :: map 
         integer, intent(OUT)   :: var2D(:,:)
         integer, intent(IN)    :: var1D(:)
@@ -359,7 +360,7 @@ contains
 
         implicit none 
  
-        type(subset_class), intent(IN)  :: sub 
+        type(subset_class), intent(INOUT)  :: sub 
         type(map_class), intent(IN), optional :: map 
         integer, intent(IN)    :: var2D(:,:)
         integer, intent(OUT)   :: var1D(:)

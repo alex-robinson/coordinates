@@ -1171,8 +1171,8 @@ contains
 
         type(map_class), intent(IN)           :: map 
         integer, dimension(:), intent(IN)     :: var1
-        integer, dimension(:,:), intent(OUT)  :: var2
-        integer, dimension(:,:),  intent(OUT) :: mask2
+        integer, dimension(:,:), intent(INOUT)  :: var2
+        integer, dimension(:,:),  intent(INOUT) :: mask2
         logical,  dimension(:,:), intent(IN), optional :: mask_pack 
         
         character(len=*) :: name, method
@@ -1211,8 +1211,8 @@ contains
 
         type(map_class), intent(IN)          :: map 
         integer, dimension(:), intent(IN)    :: var1
-        integer, dimension(:), intent(OUT)   :: var2
-        integer, dimension(:),  intent(OUT)  :: mask2
+        integer, dimension(:), intent(INOUT) :: var2
+        integer, dimension(:), intent(INOUT) :: mask2
         logical,  dimension(:), intent(IN), optional :: mask_pack 
         
         character(len=*) :: name, method
@@ -1240,8 +1240,8 @@ contains
 
         type(map_class), intent(IN)           :: map 
         real(dp), dimension(:,:), intent(IN)  :: var1
-        real(dp), dimension(:,:), intent(OUT) :: var2
-        integer, dimension(:,:),  intent(OUT) :: mask2
+        real(dp), dimension(:,:), intent(INOUT) :: var2
+        integer, dimension(:,:),  intent(INOUT) :: mask2
         logical,  dimension(:,:), intent(IN), optional :: mask_pack 
         
         character(len=*) :: name, method
@@ -1281,8 +1281,8 @@ contains
 
         type(map_class), intent(IN)           :: map 
         real(dp), dimension(:,:), intent(IN)  :: var1
-        real(dp), dimension(:), intent(OUT)   :: var2
-        integer, dimension(:),  intent(OUT)   :: mask2
+        real(dp), dimension(:), intent(INOUT) :: var2
+        integer, dimension(:),  intent(INOUT) :: mask2
         logical,  dimension(:), intent(IN), optional :: mask_pack 
         
         character(len=*) :: name, method
@@ -1308,8 +1308,8 @@ contains
 
         type(map_class), intent(IN)           :: map 
         real(dp), dimension(:), intent(IN)    :: var1
-        real(dp), dimension(:,:), intent(OUT) :: var2
-        integer,  dimension(:,:),  intent(OUT) :: mask2
+        real(dp), dimension(:,:), intent(INOUT) :: var2
+        integer,  dimension(:,:), intent(INOUT) :: mask2
         logical,  dimension(:,:), intent(IN), optional :: mask_pack 
         
         character(len=*) :: name, method
@@ -1349,8 +1349,8 @@ contains
 
         type(map_class), intent(IN)           :: map 
         real(dp), dimension(:), intent(IN)    :: var1
-        real(dp), dimension(:), intent(OUT)   :: var2
-        integer,  dimension(:), intent(OUT)   :: mask2
+        real(dp), dimension(:), intent(INOUT) :: var2
+        integer,  dimension(:), intent(INOUT) :: mask2
         logical,  dimension(:), intent(IN), optional :: mask_pack 
         logical,  dimension(:), allocatable   :: maskp 
         character(len=*) :: name, method
@@ -1463,11 +1463,15 @@ contains
             call quadrant_search(maplocal%dist,maplocal%quadrant,max_distance)
         end if 
 
+        write(*,*) "maskp: ",count(maskp), size(maplocal%var,1), size(maplocal%var,2)
+
         ! Populate new local var1 with neighbors and weights
-        allocate(tmp1(size(var1,1)))
+!         allocate(tmp1(size(var1,1)))
+        maplocal%var = missing_val 
         do i = 1, map%nmax
             tmp1 = var1(maplocal%i(:,i))
             maplocal%var(:,i) = pack(tmp1,maskp)
+!             maplocal%var(:,i) = pack(var1(maplocal%i(:,i)),maskp)
             write(*,*) i, "tmp1: ",minval(tmp1),maxval(tmp1)
             write(*,*) i, "var: ",minval(maplocal%var(:,i)),maxval(maplocal%var(:,i))
             
@@ -1475,8 +1479,8 @@ contains
 
 !         maplocal%weight = map%weight 
         where (maplocal%dist .ge. max_distance .or. maplocal%var .eq. missing_val) 
-            maplocal%weight = 0.0 
-            maplocal%var    = 0.d0 
+            maplocal%weight = 0.d0 
+            maplocal%var    = 1.d0 
         end where 
 
 !         write(*,*) "Ready to interpolate..."
@@ -1489,7 +1493,7 @@ contains
         write(*,*) "count maskp: ",count(maskp)
         write(*,*) "range weight: ",minval(maplocal%weight), maxval(maplocal%weight)
         write(*,*) "range var:    ",minval(maplocal%var), maxval(maplocal%var)
-!         write(*,*) "dim : ", size(sum( maplocal%var*maplocal%weight, dim=2 ),1)
+        write(*,*) "dim : ", size(sum( maplocal%var*maplocal%weight, dim=2 ),1)
 
 !         maplocal%num   = 0.d0 
 !         maplocal%denom = 0.d0 
@@ -1497,8 +1501,10 @@ contains
 !             maplocal%num   = maplocal%num   + maplocal%var(:,i)*maplocal%weight(:,i)
 !             maplocal%denom = maplocal%denom + maplocal%weight(:,i)
 !         end do
-        maplocal%num   = sum( maplocal%var*maplocal%weight, dim=2 ) 
-        maplocal%denom = sum( maplocal%weight, dim=2 ) 
+!         maplocal%num   = sum( maplocal%var*maplocal%weight, dim=2 ) 
+!         maplocal%denom = sum( maplocal%weight, dim=2 ) 
+        maplocal%num   = sum( maplocal%var, dim=2 ) 
+        maplocal%denom = 1.d0 !sum( maplocal%weight, dim=2 ) 
 
         where(abs(maplocal%num)   .lt. 1d-20) maplocal%num   = 0.d0 
         where(abs(maplocal%denom) .lt. 1d-20) maplocal%denom = 0.d0 
@@ -1620,8 +1626,8 @@ contains
 
         type(map_class), intent(IN)           :: map 
         real(dp), dimension(:), intent(IN)    :: var1
-        real(dp), dimension(:), intent(OUT)   :: var2
-        integer,  dimension(:), intent(OUT)   :: mask2
+        real(dp), dimension(:), intent(INOUT) :: var2
+        integer,  dimension(:), intent(INOUT) :: mask2
         logical,  dimension(:), intent(IN), optional :: mask_pack 
         logical,  dimension(:), allocatable   :: maskp 
         character(len=*) :: name, method
