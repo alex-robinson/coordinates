@@ -1636,8 +1636,8 @@ contains
         logical            :: fill_pts, fill_border
         real(dp) :: shephard_exponent
         real(dp) :: max_distance, missing_val 
-        integer,  dimension(:), allocatable   :: i_neighb, quad_neighb
-        real(dp), dimension(:), allocatable   :: dist_neighb, weight_neighb, v_neighb
+        real(dp), dimension(:), allocatable   :: weight_neighb, v_neighb
+        real(dp), dimension(:), allocatable   :: v_neighb_tmp 
 
         integer :: i, k, q, j, ntot, check  
         logical :: found 
@@ -1664,9 +1664,7 @@ contains
         maskp = .TRUE. 
         if (present(mask_pack)) maskp = mask_pack 
 
-        allocate(i_neighb(map%nmax),dist_neighb(map%nmax), &
-                 weight_neighb(map%nmax),v_neighb(map%nmax), &
-                 quad_neighb(map%nmax))
+        allocate(v_neighb(map%nmax),weight_neighb(map%nmax),v_neighb_tmp(map%nmax))
         
         ! Initialize mask to show which points have been mapped
         mask2 = 0 
@@ -1729,12 +1727,6 @@ contains
 
                 end if 
 
-                ! Initialize temp neighbors with errors
-                i_neighb      = ERR_IND 
-                dist_neighb   = ERR_DIST 
-                weight_neighb = 0.0_dp 
-                quad_neighb   = 0
-
                 ! Check number of neighbors available for calculations
                 ntot = count(v_neighb .ne. missing_val)
 
@@ -1745,28 +1737,24 @@ contains
                 end if 
 
                 ! Fill in temp neighbors with valid values when available
+                v_neighb_tmp  = v_neighb 
+                v_neighb      = missing_val 
+                weight_neighb = 0.0_dp 
+
+                ! Reinitialize temp neighbor and weight values so that they appear in order (1:ntot)
                 if (ntot .gt. 0) then 
                     q = 0 
                     do k = 1, map%nmax 
-                        if (v_neighb(k) .ne. missing_val) then
+                        if (v_neighb_tmp(k) .ne. missing_val) then
                             q = q+1
-                            i_neighb(q)      = map%i(i,k)
-                            dist_neighb(q)   = map%dist(i,k)
                             weight_neighb(q) = map%weight(i,k)
-                            quad_neighb(q)   = map%quadrant(i,k)
+                            v_neighb(q)      = var1(map%i(i,k))
+!                             dist_neighb(q)   = map%dist(i,k)
+!                             quad_neighb(q)   = map%quadrant(i,k)
                         end if 
                     end do 
 
-                    ! Reinitialize temp neighbor values so that they appear in order (1:ntot)
-                    v_neighb = missing_val 
-                    q = 0
-                    do k = 1, map%nmax 
-                        if (i_neighb(k) .gt. 0) then 
-                            q = q+1
-                            v_neighb(q) = var1(i_neighb(k))
-                        end if 
-                    end do  
-
+                
                 end if           
 
 
@@ -1790,18 +1778,10 @@ contains
                 ! Note, will not necessarily fill ALL points, if 
                 ! no neighbor within nmax can be found without a missing value
                 if ( fill_pts .and. var2(i) .eq. missing_val) then  
-    !                 do k = 1, map%nmax 
-                        if (var1(map%i(i,1)) .ne. missing_val) then
-                            var2(i)  = var1(map%i(i,1))
-                            mask2(i) = 2 
-    !                         exit 
-                        end if 
-    !                     if (var1(map%i(i,k)) .ne. missing_val) then
-    !                         var2(i)  = var1(map%i(i,k))
-    !                         mask2(i) = 2 
-    !                         exit 
-    !                     end if 
-    !                 end do 
+                    if (var1(map%i(i,1)) .ne. missing_val) then
+                        var2(i)  = var1(map%i(i,1))
+                        mask2(i) = 2 
+                    end if
                 end if 
 
             end if ! End of neighbor checking if-statement 
@@ -1809,7 +1789,7 @@ contains
 
         end do 
 
-        where( dabs(var2) .lt. 1d-20 ) var2 = 0.d0 
+        where (dabs(var2) .lt. 1d-20) var2 = 0.d0 
 
         !write(*,*) "Mapped field: "//trim(name)
 !         if (count(var2 .eq. missing_val) .gt. 0) &

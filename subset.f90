@@ -11,6 +11,7 @@ module subset
 
         type(points_class) :: pts
         type(grid_class)   :: grid 
+!         type(map_class)    :: map0_tosub, map0_fromsub 
         type(map_class)    :: map_tosub, map_fromsub 
         integer            :: npts, factor
         logical            :: subset
@@ -122,9 +123,11 @@ contains
             if (sub%factor .gt. 1) then 
                 call map_init(sub%map_tosub,grid,sub%grid, &
                               max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
+!                 sub%map_tosub = sub%map0_tosub 
 
                 call map_init(sub%map_fromsub,sub%grid,grid, &
                               max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
+!                 sub%map_fromsub = sub%map0_fromsub 
             end if
         else
             ! Intialize the sub grid & pts with the input grid characteristics
@@ -157,7 +160,7 @@ contains
         logical, dimension(:,:) :: mask_pack 
 
 !         type(map_class) :: map_local 
-        
+
         if (sub%subset) then 
 
             ! Check that mask_pack is consistent with subset of npts
@@ -174,12 +177,38 @@ contains
 
             ! Get a new subset of points from the grid
             call grid_to_points(sub%grid,sub%pts,mask_pack=mask_pack,define=.FALSE.)
-        
+            
+            ! Reduce to and fro mappings for subset grid and input grid
+            ! (should be fast, just reloading map and cutting to relevant indices)
+            ! TO DO !!
+!             if (sub%factor .gt. 1) then 
+!                 ! map_tosub 
+
+
+!                 call map_init(sub%map_fromsub,sub%grid,grid, &
+!                               max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
+!             end if
         end if 
 
         return
 
     end subroutine subset_redefine 
+
+!     subroutine subset_map_redefine(map,map0,mask_pack)
+
+!         implicit none 
+!         type(map_class) :: map, map0 
+!         logical, dimension(:,:) :: mask_pack 
+!         integer :: npts 
+
+!         npts = count(mask_pack)
+
+
+
+
+!         return 
+
+!     end subroutine subset_map_redefine
 
     subroutine subset_to_grid_double(sub,var1D,var2D,mask_pack,map, &
                                      method,radius,fill,border,missing_value)
