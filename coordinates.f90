@@ -22,7 +22,7 @@ module coordinates
     integer,  parameter :: dp  = kind(1.0d0)
     integer,  parameter :: sp  = kind(1.0)
     real(dp), parameter :: ERR_DIST = 1E8_dp 
-    integer,  parameter :: ERR_IND = -1 
+    integer,  parameter :: ERR_IND  = -1 
     real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
 
     type points_class 
@@ -1066,7 +1066,7 @@ contains
                         map%i(i,kc)      = i1 
                         map%border(i,kc) = pts1%border(i1)
 
-                        ! Get quandrants of neighbors
+                        ! Get quadrants of neighbors
                         if (map%is_same_map .and. map%is_cartesian) then
                             ! Use cartesian points to determine quadrants
                             map%quadrant(i,kc) = quadrant_cartesian(x,y,pts1%x(i1)*pts1%xy_conv,pts1%y(i1)*pts1%xy_conv)
@@ -1342,6 +1342,277 @@ contains
 
     end subroutine map_field_points_grid_double
 
+    subroutine map_field_points_points_double1(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
+        ! Methods include "radius", "nn" (nearest neighbor) and "quadrant"
+        
+        implicit none 
+
+        type(map_class), intent(IN)           :: map 
+        real(dp), dimension(:), intent(IN)    :: var1
+        real(dp), dimension(:), intent(OUT)   :: var2
+        integer,  dimension(:), intent(OUT)   :: mask2
+        logical,  dimension(:), intent(IN), optional :: mask_pack 
+        logical,  dimension(:), allocatable   :: maskp 
+        character(len=*) :: name, method
+        real(dp), optional :: radius, missing_value 
+        logical,  optional :: fill, border 
+        logical            :: fill_pts, fill_border
+        real(dp) :: shephard_exponent
+        real(dp) :: max_distance, missing_val 
+
+        type map_local_type
+            integer :: npts 
+            real(dp), dimension(:,:), allocatable :: var
+            integer,  dimension(:,:), allocatable :: i, quadrant, border  
+            real(sp), dimension(:,:), allocatable :: dist, weight
+            logical,  dimension(:), allocatable   :: is_border 
+            real(sp), dimension(:), allocatable   :: num, denom 
+            real(sp), dimension(:), allocatable   :: var2, field
+            integer,  dimension(:), allocatable   :: mask2, fieldm 
+        end type 
+        real(dp), dimension(:), allocatable :: tmp1 
+
+        type(map_local_type) :: maplocal
+
+        integer :: i, k, q, j, ntot, check  
+        logical :: found 
+
+        ! Set neighborhood radius to very large value (to include all neighbors)
+        ! or to radius specified by user
+        max_distance = 1E7_dp
+        if (present(radius)) max_distance = radius 
+
+        ! Set grid missing value by default or that that specified by user
+        missing_val  = MISSING_VALUE_DEFAULT
+        if (present(missing_value)) missing_val = missing_val 
+
+        ! By default, grid points with missing values will not be filled in
+        fill_pts = .TRUE. 
+        if (present(fill)) fill_pts = fill 
+
+        ! By default, border points will not be filled in 
+        fill_border = .FALSE. 
+        if (present(border)) fill_border = border 
+
+        ! By default, all var2 points are interpolated
+        allocate(maskp(size(var2)))
+        maskp = .TRUE. 
+        if (present(mask_pack)) maskp = mask_pack 
+
+        ! If fill is desired, initialize output points to missing values
+        if (fill_pts) var2 = missing_val 
+
+        ! Check to make sure map is the right size
+        if (maxval(map%i(1,:)) .gt. size(var1,1)) then
+            write(*,*) "Problem! Indices get too big."
+            write(*,*) maxval(map%i(1,:)), size(var1,1)
+        end if 
+
+        ! ## Eliminate unwanted neighbors ##
+
+        ! Allocate and populated local map
+        maplocal%npts = count(maskp)  
+        allocate(maplocal%i(maplocal%npts,map%nmax))
+        allocate(maplocal%dist(maplocal%npts,map%nmax))
+        allocate(maplocal%weight(maplocal%npts,map%nmax))
+        allocate(maplocal%var(maplocal%npts,map%nmax))
+        allocate(maplocal%quadrant(maplocal%npts,map%nmax))
+        allocate(maplocal%border(maplocal%npts,map%nmax))
+
+        allocate(maplocal%is_border(maplocal%npts))
+        allocate(maplocal%num(maplocal%npts))
+        allocate(maplocal%denom(maplocal%npts))
+
+        do i = 1, map%nmax 
+            maplocal%i(:,i)        = pack(map%i(:,i),maskp)
+            maplocal%dist(:,i)     = pack(map%dist(:,i),maskp)
+            maplocal%weight(:,i)   = pack(map%weight(:,i),maskp)
+            maplocal%quadrant(:,i) = pack(map%quadrant(:,i),maskp)
+            maplocal%border(:,i)   = pack(map%border(:,i),maskp)
+        end do 
+
+        ! Eliminate missing indices
+!         maplocal%i        = map%i
+!         maplocal%dist     = map%dist         
+        where (maplocal%i .eq. ERR_IND) 
+            maplocal%i    = 1               ! Set dummy accessible index > 0
+            maplocal%dist = max_distance 
+        end where 
+
+!         ! Eliminate points that shouldn't be interpolated 
+!         do i = 1, map%nmax 
+!             where (.not. maskp) maplocal%dist(:,i) = max_distance 
+!         end do 
+        
+!         ! Eliminate neighbors outside of distance limit (in meters)
+!         where(maplocal%dist .gt. max_distance) maplocal%dist = max_distance
+
+        ! Eliminate border points 
+        maplocal%is_border = .FALSE. 
+        if ( (.not. fill_border) ) then 
+            where ( sum(maplocal%border,dim=2) .gt. 0.25_dp ) maplocal%is_border = .TRUE. 
+            do i = 1, map%nmax
+                where (maplocal%is_border) maplocal%dist(:,i) = max_distance 
+            end do 
+        end if 
+
+        ! Eliminate extra neighbors depending on interpolation method
+        if (method .eq. "nn") then 
+            maplocal%dist(:,2:map%nmax) = max_distance 
+        else if (method .eq. "quadrant") then 
+            call quadrant_search(maplocal%dist,maplocal%quadrant,max_distance)
+        end if 
+
+        ! Populate new local var1 with neighbors and weights
+        allocate(tmp1(size(var1,1)))
+        do i = 1, map%nmax
+            tmp1 = var1(maplocal%i(:,i))
+            maplocal%var(:,i) = pack(tmp1,maskp)
+            write(*,*) i, "tmp1: ",minval(tmp1),maxval(tmp1)
+            write(*,*) i, "var: ",minval(maplocal%var(:,i)),maxval(maplocal%var(:,i))
+            
+        end do  
+
+!         maplocal%weight = map%weight 
+        where (maplocal%dist .ge. max_distance .or. maplocal%var .eq. missing_val) 
+            maplocal%weight = 0.0 
+            maplocal%var    = 0.d0 
+        end where 
+
+!         write(*,*) "Ready to interpolate..."
+!         write(*,*) "var:        ", minval(maplocal%var),maxval(maplocal%var)
+!         write(*,*) "weight:     ", minval(maplocal%weight),maxval(maplocal%weight)
+!         write(*,*) "var*weight: ", minval(maplocal%var*maplocal%weight), &
+!                                    maxval(maplocal%var*maplocal%weight)
+!         stop 
+
+        write(*,*) "count maskp: ",count(maskp)
+        write(*,*) "range weight: ",minval(maplocal%weight), maxval(maplocal%weight)
+        write(*,*) "range var:    ",minval(maplocal%var), maxval(maplocal%var)
+!         write(*,*) "dim : ", size(sum( maplocal%var*maplocal%weight, dim=2 ),1)
+
+!         maplocal%num   = 0.d0 
+!         maplocal%denom = 0.d0 
+!         do i = 1, map%nmax 
+!             maplocal%num   = maplocal%num   + maplocal%var(:,i)*maplocal%weight(:,i)
+!             maplocal%denom = maplocal%denom + maplocal%weight(:,i)
+!         end do
+        maplocal%num   = sum( maplocal%var*maplocal%weight, dim=2 ) 
+        maplocal%denom = sum( maplocal%weight, dim=2 ) 
+
+        where(abs(maplocal%num)   .lt. 1d-20) maplocal%num   = 0.d0 
+        where(abs(maplocal%denom) .lt. 1d-20) maplocal%denom = 0.d0 
+             
+!         write(*,*) "num:   ",minval(maplocal%num,maplocal%denom .gt. 0.d0), maxval(maplocal%num,maplocal%denom .gt. 0.d0)
+!         write(*,*) "denom: ",minval(maplocal%denom,maplocal%denom .gt. 0.d0), maxval(maplocal%denom,maplocal%denom .gt. 0.d0)
+
+        allocate(maplocal%var2(maplocal%npts))
+        allocate(maplocal%mask2(maplocal%npts))
+        allocate(maplocal%field(size(var2,1)))
+        allocate(maplocal%fieldm(size(var2,1)))
+        maplocal%field  = missing_val  
+        maplocal%fieldm = nint(missing_val) 
+        mask2           = 0 
+
+        maplocal%var2  = pack(var2,maskp)
+        maplocal%mask2 = 0 
+        where (maplocal%denom .gt. 0.d0) 
+            maplocal%var2  = maplocal%num / maplocal%denom
+            maplocal%mask2 = 1 
+        end where 
+
+        var2  = unpack(maplocal%var2, maskp, maplocal%field  ) 
+        mask2 = unpack(maplocal%mask2,maskp, maplocal%fieldm )
+        
+!         if (maxval(maplocal%var2) > 3000d0) then 
+!             write(*,*) "Weighted interp finished: "
+!             write(*,*) trim(name)," :", minval(var1), maxval(var1)
+!             write(*,*) trim(name)," :", minval(maplocal%var2), maxval(maplocal%var2)
+!             write(*,*) trim(name)," :", minval(var2), maxval(var2)
+!             stop
+!         end if  
+
+!         ! Perform weighted interpolations 
+!         do i = 1, map%npts 
+
+!             ntot = count(maplocal%weight .gt. 0.d0)
+
+!             if ( ntot .ge. 1) then 
+
+!                 ! Calculate the weighted average
+!                 var2(i)  = weighted_ave(var1(maplocal%i(i,:)),dble(maplocal%weight(i,:)))
+!                 mask2(i) = 1
+
+!             else
+!                 ! If no neighbors exist, field not mapped here.
+!                 mask2(i) = 0 
+
+!             end if 
+
+!             write(*,*) i 
+!         end do 
+
+!         write(*,*) "Done allocating."
+!         stop 
+
+!         ! Fill missing points with nearest neighbor if desired
+!         ! Note, will not necessarily fill ALL points, if 
+!         ! no neighbor within nmax can be found without a missing value
+!         if ( fill_pts .and. var2(i) .eq. missing_val) then  
+!             do k = 1, map%nmax 
+!                 if (var1(map%i(i,k)) .ne. missing_val) then
+!                     var2(i)  = var1(map%i(i,k))
+!                     mask2(i) = 2 
+!                     exit 
+!                 end if 
+!             end do 
+!         end if 
+
+        return 
+
+    end subroutine map_field_points_points_double1
+
+    subroutine quadrant_search(dist,quadrant,max_distance)
+        ! Set distances to max distance if a neighbor in a given quadrant
+        ! has been found 
+
+        implicit none 
+
+        real(sp), dimension(:,:), intent(INOUT) :: dist 
+        integer,  dimension(:,:), intent(IN)    :: quadrant 
+!         logical,  dimension(:), intent(IN)      :: mask 
+        real(dp), intent(IN)                    :: max_distance 
+        integer :: i, q, k 
+        logical :: found 
+
+        ! For quadrant method, limit the number of neighbors to 
+        ! 4 points in different quadrants
+
+        do i = 1, size(dist,1)
+
+!             if (mask(i)) then 
+
+                do q = 1, 4 
+                    found = .FALSE. 
+                    do k = 1, size(dist,2)
+                        if (dist(i,k) .lt. max_distance .and. quadrant(i,k) .eq. q) then 
+                            if (found) then 
+                                dist(i,k) = max_distance 
+                            else
+                                found = .TRUE. 
+                            end if 
+                        end if 
+                    end do 
+                end do 
+
+!             end if
+
+        end do 
+
+        return
+
+    end subroutine quadrant_search
+
     subroutine map_field_points_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
         ! Methods include "radius", "nn" (nearest neighbor) and "quadrant"
         
@@ -1374,23 +1645,23 @@ contains
         missing_val  = MISSING_VALUE_DEFAULT
         if (present(missing_value)) missing_val = missing_val 
 
-        ! By default, grid points with missing values will not be filled in
-        fill_pts = .FALSE. 
+        ! By default, fill in grid points with missing values
+        fill_pts = .TRUE. 
         if (present(fill)) fill_pts = fill 
 
         ! By default, border points will not be filled in 
         fill_border = .FALSE. 
         if (present(border)) fill_border = border 
 
-        allocate(i_neighb(map%nmax),dist_neighb(map%nmax), &
-                 weight_neighb(map%nmax),v_neighb(map%nmax), &
-                 quad_neighb(map%nmax))
-        allocate(maskp(size(var2)))
-
         ! By default, all var2 points are interpolated
+        allocate(maskp(size(var2)))
         maskp = .TRUE. 
         if (present(mask_pack)) maskp = mask_pack 
 
+        allocate(i_neighb(map%nmax),dist_neighb(map%nmax), &
+                 weight_neighb(map%nmax),v_neighb(map%nmax), &
+                 quad_neighb(map%nmax))
+        
         ! Initialize mask to show which points have been mapped
         mask2 = 0 
 
@@ -1493,7 +1764,7 @@ contains
                 end if           
 
 
-                if ( ntot .gt. 1) then 
+                if ( ntot .ge. 1) then 
 
                     ! Calculate the weighted average
                     var2(i)  = weighted_ave(v_neighb(1:ntot),weight_neighb(1:ntot))
@@ -1505,13 +1776,13 @@ contains
 
                 else
                     ! If no neighbors exist, field not mapped here.
-                    mask2(i) = 0 
+                    mask2(i) = 0  
 
                 end if 
 
             end if ! End of neighbor checking if-statement 
             end if ! End packing mask check if-statement 
-            
+
             ! Fill missing points with nearest neighbor if desired
             ! Note, will not necessarily fill ALL points, if 
             ! no neighbor within nmax can be found without a missing value
@@ -1527,9 +1798,16 @@ contains
 
         end do 
 
+        where( dabs(var2) .lt. 1d-20 ) var2 = 0.d0 
+
         !write(*,*) "Mapped field: "//trim(name)
 !         if (count(var2 .eq. missing_val) .gt. 0) &
 !             write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
+
+        if (count(mask2 .eq. 0) .gt. 0 .and. .not. fill_pts) then 
+            write(*,*) "Warning, array contains non-interpolated points."
+            write(*,*) "Ensure that it was already properly intialized with data."
+        end if 
 
         return
     end subroutine map_field_points_points_double

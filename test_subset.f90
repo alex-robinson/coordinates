@@ -157,12 +157,13 @@ program test_subset
     call map_init(mgridhi_gridlo,sub%grid,gridlo,max_neighbors=60,lat_lim=4.d0)
     call map_init(mgridlo_gridhi,gridlo,sub%grid,max_neighbors=10,lat_lim=4.d0)
     
-    do i = 1, 100 ! Loop for performance testing 
-
     ! Map the calculated data to the low resolution grid 
     call grid_allocate(gridlo,setlo%zs,-9999.d0)
     call grid_allocate(gridlo,setlo%dzs,-9999.d0)
     call grid_allocate(gridlo,setlo%mask,-9999)
+
+    do i = 1, 100 ! Loop for performance testing 
+
     call subset_to_grid(sub,sethi%zs,setlo%zs,sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)
     call subset_to_grid(sub,sethi%dzs,setlo%dzs,sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)
     call subset_to_grid(sub,sethi%mask,setlo%mask,sub%mask_pack,map=mgridhi_gridlo,border=.TRUE.)
@@ -177,7 +178,7 @@ program test_subset
     call subset_to_points(sub,setlo%zs,sethi%zs,sub%mask_pack,map=mgridlo_gridhi,method="radius",border=.TRUE.)
     call subset_to_points(sub,setlo%zs,sethi%zs,sub%mask_pack,map=mgridlo_gridhi,method="radius",border=.TRUE.)
     call subset_to_points(sub,setlo%mask,sethi%mask,sub%mask_pack,map=mgridlo_gridhi,border=.TRUE.)
-    
+
     ! Remap to original grid
     set2 = set 
     call subset_to_grid(sub,sethi%zs,set2%zs,sub%mask_pack,method="radius")

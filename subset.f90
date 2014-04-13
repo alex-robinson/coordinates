@@ -344,8 +344,7 @@ contains
 
         call subset_to_grid_double(sub,dble(var1D),var2Dtmp,mask_pack,map, &
                                    "nn",radius,fill,border,missing_value)
-
-        var2D = int(var2Dtmp)
+        var2D = nint(var2Dtmp)
 
         return 
 
@@ -376,8 +375,7 @@ contains
 
         call subset_to_points_double(sub,dble(var2D),var1Dtmp,mask_pack,map, &
                                      "nn",radius,fill,border,missing_value)
-
-        var1D = int(var1Dtmp)
+        var1D = nint(var1Dtmp)
 
         return 
 

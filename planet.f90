@@ -263,6 +263,7 @@ contains
 
         if (denominator .gt. 0.0_dp) then
             weighted_ave = numerator / denominator
+!             weighted_ave = min(dabs(weighted_ave),1d20)
         else 
             write(*,*) "weighted_ave:: No weights provided."
             weighted_ave = -9999.0_dp
