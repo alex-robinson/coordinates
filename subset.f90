@@ -219,8 +219,8 @@ contains
 
         implicit none 
  
-        type(subset_class), intent(INOUT)  :: sub 
-        type(map_class), intent(IN), optional :: map 
+        type(subset_class), intent(INOUT), target  :: sub 
+        type(map_class), intent(IN), optional, target :: map 
         double precision, intent(OUT)   :: var2D(:,:)
         double precision, intent(IN)    :: var1D(:)
         logical, intent(IN)             :: mask_pack(:,:)
@@ -232,7 +232,7 @@ contains
         double precision :: missing_val
         logical, optional :: fill, border
 
-        type(map_class) :: map_local 
+        type(map_class), pointer :: map_local 
 
         if ( (sub%subset .and. sub%factor .gt. 1) .or. present(map)) then 
 
@@ -246,8 +246,8 @@ contains
             end if 
 
             ! Determine map to use here 
-            map_local = sub%map_fromsub 
-            if (present(map)) map_local = map 
+            map_local => sub%map_fromsub 
+            if (present(map)) map_local => map 
 
             ! Assign a missing_value for use with mapping routine
             missing_val = -9999.d0
@@ -291,8 +291,8 @@ contains
 
         implicit none 
  
-        type(subset_class), intent(INOUT)     :: sub 
-        type(map_class), intent(IN), optional :: map 
+        type(subset_class), intent(INOUT), target     :: sub 
+        type(map_class), intent(IN), optional, target :: map 
         double precision, intent(IN)    :: var2D(:,:)
         double precision, intent(OUT)   :: var1D(:)
         logical, intent(IN)             :: mask_pack(:,:)
@@ -302,7 +302,7 @@ contains
         double precision :: missing_val
         logical, optional :: fill, border 
 
-        type(map_class) :: map_local 
+        type(map_class), pointer :: map_local 
 
         if ( (sub%subset .and. sub%factor .gt. 1) .or. present(map)) then 
 
@@ -316,8 +316,8 @@ contains
             end if 
 
             ! Determine map to use here 
-            map_local = sub%map_tosub 
-            if (present(map)) map_local = map 
+            map_local => sub%map_tosub 
+            if (present(map)) map_local => map 
 
             ! Assign a missing_value for use with mapping routine
             missing_val = -9999.d0
