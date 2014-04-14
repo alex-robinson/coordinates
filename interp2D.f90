@@ -10,13 +10,17 @@ module interp2D
     integer,  parameter :: ERR_IND  = -1 
     real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
 
+    interface interp_bilinear 
+        module procedure interp_bilinear_dble 
+    end interface
+
     private
     public :: interp_bilinear
 
 contains
 
 
-    function interp_bilinear(x,y,z,xout,yout,missing_value,mask) result(zout)
+    function interp_bilinear_dble(x,y,z,xout,yout,missing_value,mask) result(zout)
         ! Find closest x-indices and closest y-indices on original
         ! grid (assume these and next indices will bracket our point)
         ! Perform weighted interpolation 
@@ -107,12 +111,15 @@ contains
                 ! Only interpolate points inside the original grid (for now)
                 if (i .gt. 0 .and. i-1 .gt. 0 .and. j .gt. 0 .and. j-1 .gt. 0) then 
                     
-                    alpha1 = (xout(i1) - x(i-1)) / (x(i)-x(i-1))
-                    p0 = z(i-1,j-1) + alpha1*(z(i,j-1)-z(i-1,j-1))
-                    p1 = z(i-1,j)   + alpha1*(z(i,j)-z(i-1,j))
-                    
-                    alpha2 = (yout(j1) - y(j-1)) / (y(j)-y(j-1))
-                    zout(i1,j1) = p0 + alpha2*(p1-p0)
+                    ! Only interpolate points with all neighbors available
+                    if (count([z(i-1,j),z(i,j),z(i,j-1),z(i-1,j-1)] .eq. missing_val) .eq. 0) then
+                        alpha1 = (xout(i1) - x(i-1)) / (x(i)-x(i-1))
+                        p0 = z(i-1,j-1) + alpha1*(z(i,j-1)-z(i-1,j-1))
+                        p1 = z(i-1,j)   + alpha1*(z(i,j)-z(i-1,j))
+                        
+                        alpha2 = (yout(j1) - y(j-1)) / (y(j)-y(j-1))
+                        zout(i1,j1) = p0 + alpha2*(p1-p0)
+                    end if 
 
                 end if 
 
@@ -124,77 +131,16 @@ contains
 
         return 
 
-    end function interp_bilinear
+    end function interp_bilinear_dble
 
+    subroutine fill_dble(z)
 
+        implicit none 
 
+        real(dp), intent(INOUT) :: z(:,:)
 
-    ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    ! Subroutine :  t o h i r e s
-    ! Author     :  Alex Robinson
-    ! Purpose    :  interpolate a cartesian grid to a higher resolution
-    !               Note: assumes lower res is a multiple of higher res!
-    ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-    subroutine tohires(in,out,ratio,m)
+        return 
 
-        implicit none
-
-        real(dp) :: in(:,:), out(:,:)
-        integer :: nxl, nyl, nx, ny 
-        integer :: nin, i, j, inow, jnow, ih, jh, jh2, q, m
-        real(dp) :: ratio, f, frac
-
-        nxl = size(in,1)
-        nyl = size(in,2)
-        nx  = size(out,1)
-        ny  = size(out,2) 
-
-        nin = ceiling(1/ratio) - 1 
-        frac = 1.d0 / (nin+1)
-                
-        out = 0.d0
-
-        ! Loop through lo-res grid
-        do inow = 1, nxl-1
-            ih = 1 + ceiling((inow-1)/ratio)
-          
-            do jnow = 1, nyl
-                jh = 1 + ceiling((jnow-1)/ratio)
-
-                ! Save matching points horizontally
-                out(jh,ih) = in(jnow,inow)
-                out(jh,ih+nin+1) = in(jnow,inow+1)
-
-                ! Fill in gaps horizontally
-                do q = 1, nin
-                    f = q*frac
-                    out(jh,ih+q) = (1-f)*in(jnow,inow) + f*in(jnow,inow+1)
-                end do
-
-            end do
-        end do
-
-        ! Loop through hi-res grid
-        do ih= 1, nx
-            do jnow= 1, nyl-1
-
-                jh  = 1 + ceiling((jnow-1)/ratio)
-                jh2 = 1 + ceiling(jnow/ratio)
-
-                ! Fill in gaps vertically
-                do q = 1, nin
-                    f = q*frac
-                    out(jh+q,ih) = (1-f)*out(jh,ih) + f*out(jh2,ih)
-                end do
-
-            end do
-        end do      
-
-        if (m .eq. 1) then
-            write(*,*) "Code to fix mask!" ! Not yet needed
-        end if  
-
-        return
-    end subroutine tohires
+    end subroutine fill_dble 
 
 end module interp2D

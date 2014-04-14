@@ -15,7 +15,8 @@ module coordinates
     use oblimap_projection_module
     use planet 
     use ncio 
-
+    use interp2D 
+    
     implicit none 
 
     !! real(dp) definition and some internal constants
@@ -87,8 +88,7 @@ module coordinates
         ! Grid related variables
         logical :: is_grid
         type(grid_axis_class) :: G    ! Used if is_grid==.TRUE. 
-
-        logical :: is_extended 
+ 
         integer :: nbnd               ! Number of boundary points 
 
         ! Vectors of x, y, lon and lat points (will be allocated to size npts)
@@ -138,6 +138,7 @@ module coordinates
     public :: points_class, points_init, points_allocate, points_write, points_print 
     public :: grid_class, grid_init, grid_allocate, grid_write, grid_print
     public :: grid_to_points, points_to_grid
+    public :: grid_compare_map, pts_compare_map
     public :: map_class, map_init, map_field, map_print
 
 contains
@@ -907,32 +908,8 @@ contains
         map%nmax          = max_neighbors 
         map%xy_conv       = pts2%xy_conv 
 
-        ! Check if both maps use the same projection  
-        if (pts1%is_projection .and. pts2%is_projection        .and. &
-            trim(pts1%mtype)       .eq. trim(pts2%mtype)       .and. &
-            trim(pts1%planet%name) .eq. trim(pts2%planet%name) .and. &
-            pts1%proj%lambda .eq. pts2%proj%lambda    .and. &
-            pts1%proj%phi    .eq. pts2%proj%phi       .and. &
-            pts1%proj%alpha  .eq. pts2%proj%alpha     .and. &
-            pts1%proj%x_e    .eq. pts2%proj%x_e       .and. &
-            pts1%proj%y_n    .eq. pts2%proj%y_n ) then 
-            
-            ! Both maps come from the same projection
-            map%is_same_map = .TRUE. 
-
-        else if (pts1%is_cartesian .and. .not. pts1%is_projection .and. &
-                 pts2%is_cartesian .and. .not. pts2%is_projection) then 
-            ! Both maps are generic cartesian grids (assume origin is the same)
-            map%is_same_map = .TRUE. 
-
-        else if (.not. pts1%is_cartesian .and. .not. pts2%is_cartesian) then 
-            ! Both maps are latlon maps
-            map%is_same_map = .TRUE. 
-
-        else
-            map%is_same_map = .FALSE.
-
-        end if 
+        ! Check if the same map is defined for both sets of points
+        map%is_same_map = pts_compare_map(pts1,pts2)
 
         ! Note: do not assign max distance here, save all distances
         ! up until the maximum number of neighbors
@@ -1094,6 +1071,74 @@ contains
         return
     end subroutine map_calc_weights
 
+    function pts_compare_map(pts1,pts2) result(same_map)
+
+        implicit none 
+
+        type(points_class) :: pts1, pts2 
+        logical :: same_map 
+
+        ! Check if both maps use the same projection  
+        if (pts1%is_projection .and. pts2%is_projection        .and. &
+            trim(pts1%mtype)       .eq. trim(pts2%mtype)       .and. &
+            same_projection(pts1%proj,pts2%proj) ) then 
+            
+            ! Both maps come from the same projection
+            same_map = .TRUE. 
+
+        else if (pts1%is_cartesian .and. .not. pts1%is_projection .and. &
+                 pts2%is_cartesian .and. .not. pts2%is_projection) then 
+            ! Both maps are generic cartesian grids (assume origin is the same)
+            same_map = .TRUE. 
+
+        else if (.not. pts1%is_cartesian .and. .not. pts2%is_cartesian) then 
+            ! Both maps are latlon maps
+            same_map = .TRUE. 
+
+        else
+            same_map = .FALSE.
+
+        end if 
+
+        return 
+
+    end function pts_compare_map 
+
+    function grid_compare_map(grid1,grid2) result(same_map)
+
+        implicit none 
+
+        type(grid_class) :: grid1, grid2
+        logical :: same_map 
+
+        ! Check if both maps use the same projection  
+        if (grid1%is_projection .and. grid2%is_projection        .and. &
+            trim(grid1%mtype)       .eq. trim(grid2%mtype)       .and. &
+            same_projection(grid1%proj,grid2%proj) ) then 
+            
+            ! Both maps come from the same projection
+            same_map = .TRUE. 
+
+        else if (grid1%is_cartesian .and. .not. grid1%is_projection .and. &
+                 grid2%is_cartesian .and. .not. grid2%is_projection) then 
+            ! Both maps are generic cartesian grids (assume origin is the same)
+            same_map = .TRUE. 
+
+        else if (.not. grid1%is_cartesian .and. .not. grid2%is_cartesian) then 
+            ! Both maps are latlon maps
+            same_map = .TRUE. 
+
+        else
+            same_map = .FALSE.
+
+        end if 
+
+        return 
+
+    end function grid_compare_map 
+
+
+
     subroutine map_field_grid_grid_integer(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
 
         implicit none 
@@ -1234,7 +1279,7 @@ contains
 
     end subroutine map_field_points_points_integer
 
-    subroutine map_field_grid_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
+    subroutine map_field_grid_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack,grid0)
 
         implicit none 
 
@@ -1243,7 +1288,8 @@ contains
         real(dp), dimension(:,:), intent(INOUT) :: var2
         integer, dimension(:,:),  intent(INOUT) :: mask2
         logical,  dimension(:,:), intent(IN), optional :: mask_pack 
-        
+        type(grid_class), optional :: grid0 
+
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
@@ -1264,10 +1310,15 @@ contains
         mask_pack_vec = .TRUE. 
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
-        call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2_vec,mask2_vec, &
-                                     method,radius,fill,border,missing_value, &
-                                     mask_pack_vec)
-        
+        if (.not. trim(method) .eq. "bilinear") then 
+            call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2_vec,mask2_vec, &
+                                         method,radius,fill,border,missing_value, &
+                                         mask_pack_vec)
+        else 
+
+
+        end if 
+
         var2  = reshape(var2_vec, [nx2,ny2])
         mask2 = reshape(mask2_vec,[nx2,ny2])
 

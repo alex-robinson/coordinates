@@ -90,7 +90,7 @@ MODULE oblimap_projection_module
 
     private
     public :: pi, degrees_to_radians, radians_to_degrees
-    public :: projection_class, projection_init
+    public :: projection_class, projection_init, same_projection
     public :: oblique_sg_projection, inverse_oblique_sg_projection
 
 CONTAINS
@@ -194,6 +194,32 @@ CONTAINS
 
   END SUBROUTINE projection_init 
 
+  function same_projection(proj1,proj2) result(same_proj)
+
+    implicit none 
+    type(projection_class), intent(IN) :: proj1, proj2 
+    logical  :: same_proj 
+    real(dp) :: eps = 1.e-8_dp
+
+    same_proj = .FALSE. 
+
+    if (proj1%lambda .eq. proj2%lambda    .and. &
+        proj1%phi    .eq. proj2%phi       .and. &
+        proj1%alpha  .eq. proj2%alpha     .and. &
+        proj1%x_e    .eq. proj2%x_e       .and. &
+        proj1%y_n    .eq. proj2%y_n       .and. &
+        dabs(proj1%f-proj2%f) .le. eps    .and. &
+        dabs(proj1%a-proj2%a) .le. eps    .and. &
+        dabs(proj1%e-proj2%e) .le. eps    .and. &
+        dabs(proj1%R-proj2%R) .le. eps         ) then
+
+            same_proj = .TRUE. 
+
+    end if 
+
+    return 
+
+    end function same_projection
 
   SUBROUTINE oblique_sg_projection(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj)
     ! This subroutine projects with an oblique stereographic projection the longitude-latitude
