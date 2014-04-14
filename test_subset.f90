@@ -155,9 +155,9 @@ program test_subset
                    y0=grid%G%y(1),dy=50.d0,ny=floor((grid%G%ny-1)*(grid%G%dy/50.d0)+1))
     call grid_write(gridlo,file_outlo,xnm="xc",ynm="yc",create=.TRUE.)  
 
-    ! Initiliaze maps to/from low resolution grid
-    call map_init(mgridhi_gridlo,sub%grid,gridlo,max_neighbors=60,lat_lim=4.d0)
-    call map_init(mgridlo_gridhi,gridlo,sub%grid,max_neighbors=10,lat_lim=4.d0)
+    ! Initialize maps to/from low resolution grid
+    call map_init(mgridhi_gridlo,sub%grid,gridlo,max_neighbors=9,lat_lim=2.d0)
+    call map_init(mgridlo_gridhi,gridlo,sub%grid,max_neighbors=6,lat_lim=2.d0)
     
     ! Map the calculated data to the low resolution grid 
     call grid_allocate(gridlo,setlo%zs,  missing_value)

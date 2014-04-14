@@ -46,7 +46,7 @@ contains
         integer :: npts              ! Number of points to allocate to the subset
         integer :: factor            ! Resolution factor (should be >= 1)
         integer, optional :: max_neighbors ! Maximum number of neighbors to use for mapping
-        integer :: max_neighbs 
+        integer :: max_neighbs(2)
         double precision, optional :: lat_lim
         double precision :: lat_limit 
 
@@ -70,8 +70,8 @@ contains
             stop 
         end if 
 
-        max_neighbs = 10 
-        if (present(max_neighbors)) max_neighbs = max_neighbors
+        max_neighbs = [6,9] 
+        if (present(max_neighbors)) max_neighbs(2) = max_neighbors
 
         lat_limit   = 4.d0 
         if (present(lat_lim)) lat_limit = lat_lim 
@@ -122,11 +122,11 @@ contains
             ! (intial map generation can take some time)
             if (sub%factor .gt. 1) then 
                 call map_init(sub%map_tosub,grid,sub%grid, &
-                              max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
+                              max_neighbors=max_neighbs(1),lat_lim=lat_limit,fldr="maps",load=.TRUE.)
 !                 sub%map_tosub = sub%map0_tosub 
 
                 call map_init(sub%map_fromsub,sub%grid,grid, &
-                              max_neighbors=max_neighbs,lat_lim=lat_limit,fldr="maps",load=.TRUE.)
+                              max_neighbors=max_neighbs(2),lat_lim=lat_limit,fldr="maps",load=.TRUE.)
 !                 sub%map_fromsub = sub%map0_fromsub 
             end if
         else
