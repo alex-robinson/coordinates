@@ -52,6 +52,9 @@ $(objdir)/ncio.o: ../ncio/ncio.f90
 $(objdir)/interp1D.o: interp1D.f90
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
+$(objdir)/interp2D.o: interp2D.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
 $(objdir)/interp_time.o: interp_time.f90
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
@@ -86,10 +89,10 @@ test_subset: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/
 	@echo "    test_subset.x is ready."
 	@echo " "
 
-test_interp: $(objdir)/interp1D.o $(objdir)/interp_time.o
-	#$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x $^ test_interp.f90 $(LFLAGS)
+test_interp: $(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o
+	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x $^ test_interp.f90 $(LFLAGS)
 	@echo " "
-	@echo "    interpolation source compiled and ready."
+	@echo "    test_interp.x is ready."
 	@echo " "
 
 # Program to test distance calculations using the geographiclib library

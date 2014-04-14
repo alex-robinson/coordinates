@@ -1772,15 +1772,15 @@ contains
 
                 end if 
 
-!                 ! Fill missing points with nearest neighbor if desired
-!                 ! Note, will not necessarily fill ALL points, if 
-!                 ! no neighbor within nmax can be found without a missing value
-!                 if ( fill_pts .and. var2(i) .eq. missing_val) then  
-!                     if (var1(map%i(i,1)) .ne. missing_val) then
-!                         var2(i)  = var1(map%i(i,1))
-!                         mask2(i) = 2 
-!                     end if
-!                 end if 
+                ! Fill missing points with nearest neighbor if desired
+                ! Note, will not necessarily fill ALL points, if 
+                ! no neighbor within nmax can be found without a missing value
+                if ( fill_pts .and. var2(i) .eq. missing_val) then  
+                    if (var1(map%i(i,1)) .ne. missing_val) then
+                        var2(i)  = var1(map%i(i,1))
+                        mask2(i) = 2 
+                    end if
+                end if 
 
             end if ! End of neighbor checking if-statement 
             end if ! End packing mask check if-statement 

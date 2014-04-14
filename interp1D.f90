@@ -3,20 +3,89 @@ module interp1D
 
     implicit none 
 
+    !! real(dp) definition and some internal constants
+    integer,  parameter :: dp  = kind(1.0d0)
+    integer,  parameter :: sp  = kind(1.0)
+    real(dp), parameter :: ERR_DIST = 1E8_dp 
+    integer,  parameter :: ERR_IND  = -1 
+    real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
+
+    private
+    public :: interp_linear_pt, interp_linear
+    public :: interp_spline
+    
 contains
 
+    ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    !   Subroutine :  i n t e r p 1
+    !   Author     :  Alex Robinson
+    !   Purpose    :  Interpolates for the y value at the desired x value, 
+    !                 given x and y values around the desired point.
+    ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    function interp_linear_pt(x,y,xout) result(yout)
+
+        implicit none
+
+        real(dp), intent(IN)  :: x(2), y(2), xout
+        real(dp) :: yout
+        real(dp) :: alph
+
+        if ( xout .lt. x(1) .or. xout .gt. x(2) ) then
+            write(*,*) "interp1: xout < x0 or xout > x1 !"
+            write(*,*) "xout = ",xout
+            write(*,*) "x0   = ",x(1)
+            write(*,*) "x1   = ",x(2)
+            stop
+        end if
+
+        alph = (xout - x(1)) / (x(2) - x(1))
+
+        yout = y(1) + alph*(y(2) - y(1))
+
+        return
+
+    end function interp_linear_pt 
+
+    function interp_linear(x,y,xout) result(yout)
+        ! Interpolate y from ordered x to ordered xout positions
+
+        implicit none 
+ 
+        double precision, dimension(:), intent(IN) :: x, y
+        double precision, dimension(:), intent(IN) :: xout
+        double precision, dimension(size(xout)) :: yout 
+        integer :: i, j, n, nout 
+
+        n    = size(x) 
+        nout = size(xout)
+
+        do i = 1, nout 
+            if (xout(i) .lt. x(1)) then
+                yout(i) = y(1)
+            else if (xout(i) .gt. x(n)) then
+                yout(i) = y(n)
+            else
+                do j = 1, n 
+                    if (xout(i) .ge. x(i)) exit 
+                end do 
+                yout(i) = interp_linear_pt(x(j-1:j),y(j-1:j),xout(i))
+            end if 
+        end do
+
+        return 
+
+      end function interp_linear 
 
     function interp_spline(x,y,xout) result(yout)
 
         implicit none 
-
-        integer :: nout 
-        double precision, dimension(:) :: x, y
-        double precision, dimension(:) :: xout
+ 
+        double precision, dimension(:), intent(IN) :: x, y
+        double precision, dimension(:), intent(IN) :: xout
         double precision, dimension(size(xout)) :: yout 
         double precision, dimension(:), allocatable :: b, c, d 
         double precision :: uh, dx, yh  
-        integer :: i, n 
+        integer :: i, n, nout 
 
         n    = size(x) 
         nout = size(xout)
