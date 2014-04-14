@@ -225,7 +225,7 @@ contains
         double precision, optional :: fill_value
 
         integer :: q, nx, ny, i, j
-        integer, parameter :: qmax = 40 ! Iterations 
+        integer, parameter :: qmax = 400 ! Iterations 
 !         integer, parameter :: nr   = 1  ! Neighbor radius
         integer :: nr 
         double precision, dimension (2*nr+1,2*nr+1) :: neighb, weight, weight0 
@@ -263,7 +263,8 @@ contains
                         where (neighb .eq. missing_value) weight = 0.d0
                         wtot = sum(weight)
 
-                        if (wtot/sum(weight0) .gt. 0.5d0) filled(i,j) = sum(neighb*weight)/wtot
+!                         if (wtot/sum(weight0) .gt. 0.2d0) filled(i,j) = sum(neighb*weight)/wtot
+                        if (wtot .gt. 0.d0) filled(i,j) = sum(neighb*weight)/wtot
 
                     end if 
                 end do 
