@@ -53,11 +53,20 @@ program test
 
     ! Add some missing data 
     var(10:15,10:15) = missing_value
-    
+    var(30:37,:)     = missing_value 
+    var(:,55:61)     = missing_value 
+
     ! Test bilinear interpolation
     varhi = interp_bilinear(grid%G%x,grid%G%y,var,gridhi%G%x,gridhi%G%y,missing_value)
-
+    
     call grid_write(gridhi,file_outhi,xnm="xc",ynm="yc",create=.TRUE.)
     call nc_write(file_outhi,"zs",varhi,dim1="xc",dim2="yc")
+
+    call fill_weighted(varhi,missing_value,nr=1)
+    call nc_write(file_outhi,"zs_filled1",varhi,dim1="xc",dim2="yc")
+
+!     varhi = interp_bilinear(grid%G%x,grid%G%y,var,gridhi%G%x,gridhi%G%y,missing_value)
+!     call fill_weighted(varhi,missing_value,nr=3)
+!     call nc_write(file_outhi,"zs_filled3",varhi,dim1="xc",dim2="yc")
 
 end program test

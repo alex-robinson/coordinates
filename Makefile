@@ -68,7 +68,7 @@ $(objdir)/projection_oblimap2.o: projection_oblimap2.f90
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
 $(objdir)/coordinates.o: coordinates.f90 $(objdir)/ncio.o $(objdir)/planet.o $(objdir)/geodesic.o \
-						 $(objdir)/projection_oblimap2.o $(objdir)/interp2D.o
+						 $(objdir)/projection_oblimap2.o #$(objdir)/interp2D.o
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
 $(objdir)/subset.o: subset.f90 $(objdir)/coordinates.o
