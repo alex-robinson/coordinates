@@ -90,13 +90,6 @@ contains
             sub%npts = npts 
             if (sub%npts .gt. sub%grid%npts) sub%npts = sub%grid%npts 
 
-            ! Initialize an array to handle data and interpolation mask on the grid 
-            ! (to avoid reallocating continuously) 
-            if (allocated(sub%var2D)) deallocate(sub%var2D)
-            allocate(sub%var2D(sub%grid%G%nx,sub%grid%G%ny)) 
-            if (allocated(sub%mask2D)) deallocate(sub%mask2D)
-            allocate(sub%mask2D(sub%grid%G%nx,sub%grid%G%ny)) 
-
             ! Allocate temporary x,y vectors to store points of interest
             ! for new coordinates definition
             if (allocated(x)) deallocate(x)
@@ -142,6 +135,13 @@ contains
         allocate(sub%mask_pack(sub%grid%G%nx,sub%grid%G%ny))
         sub%mask_pack = .TRUE. 
         
+        ! Initialize arrays to handle data and interpolation mask on the grid 
+        ! (to avoid reallocating continuously) 
+        if (allocated(sub%var2D)) deallocate(sub%var2D)
+        allocate(sub%var2D(sub%grid%G%nx,sub%grid%G%ny)) 
+        if (allocated(sub%mask2D)) deallocate(sub%mask2D)
+        allocate(sub%mask2D(sub%grid%G%nx,sub%grid%G%ny)) 
+
         write(*,"(a,i10,1x,a1,1x,i10)") "subset:: subset_init :: Initialized subset, npts = ", &
                                        sub%npts, "/",sub%grid%npts
         return
