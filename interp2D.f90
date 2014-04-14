@@ -263,7 +263,7 @@ contains
                         where (neighb .eq. missing_value) weight = 0.d0
                         wtot = sum(weight)
 
-                        if (wtot .gt. 0.d0) filled(i,j) = sum(neighb*weight)/wtot
+                        if (wtot/sum(weight0) .gt. 0.5d0) filled(i,j) = sum(neighb*weight)/wtot
 
                     end if 
                 end do 
