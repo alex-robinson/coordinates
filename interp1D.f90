@@ -39,7 +39,6 @@ contains
         end if
 
         alph = (xout - x(1)) / (x(2) - x(1))
-
         yout = y(1) + alph*(y(2) - y(1))
 
         return
@@ -59,16 +58,30 @@ contains
         n    = size(x) 
         nout = size(xout)
 
+        write(*,*) minval(x), maxval(x), n, nout
+
         do i = 1, nout 
             if (xout(i) .lt. x(1)) then
                 yout(i) = y(1)
+                write(*,*) 1, xout(i)
             else if (xout(i) .gt. x(n)) then
                 yout(i) = y(n)
+                write(*,*) 2, xout(i)
             else
                 do j = 1, n 
-                    if (xout(i) .ge. x(i)) exit 
-                end do 
-                yout(i) = interp_linear_pt(x(j-1:j),y(j-1:j),xout(i))
+                    if (x(j) .ge. xout(i)) exit 
+                end do
+
+                if (j .eq. 1) then 
+                    yout(i) = y(1) 
+                    write(*,*) 3, xout(i)
+                else if (j .eq. n+1) then 
+                    yout(i) = y(n)
+                    write(*,*) 4, xout(i)
+                else 
+                    yout(i) = interp_linear_pt(x(j-1:j),y(j-1:j),xout(i))
+                    write(*,*) 5, xout(i)
+                end if 
             end if 
         end do
 

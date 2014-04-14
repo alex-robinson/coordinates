@@ -164,7 +164,7 @@ program test_subset
     call grid_allocate(gridlo,setlo%dzs, missing_value)
     call grid_allocate(gridlo,setlo%mask,nint(missing_value))
 
-    do i = 1, 100 ! Loop for performance testing 
+    do i = 1, 1 ! Loop for performance testing 
 
     call subset_to_grid(sub,sethi%zs,  setlo%zs,  sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)
     call subset_to_grid(sub,sethi%dzs, setlo%dzs, sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)

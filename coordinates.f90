@@ -491,7 +491,7 @@ contains
 
         ! Make sure we can convert the units of the points as needed
         select case(trim(pts%units))
-            case("kilometers")
+            case("kilometers","km")
                 pts%xy_conv = 1.d3  ! To convert from km => m (for cartesian grids)
             case DEFAULT
                 pts%xy_conv = 1.d0 

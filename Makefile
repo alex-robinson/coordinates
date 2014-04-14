@@ -89,7 +89,9 @@ test_subset: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/
 	@echo "    test_subset.x is ready."
 	@echo " "
 
-test_interp: $(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o
+test_interp: $(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
+			 $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o \
+			 $(objdir)/projection_oblimap2.o  $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x $^ test_interp.f90 $(LFLAGS)
 	@echo " "
 	@echo "    test_interp.x is ready."
