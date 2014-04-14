@@ -16,7 +16,7 @@ module interp2D
 
     private
     public :: interp_bilinear
-    public :: fill_weighted
+    public :: fill_weighted, fill_weighted0
 
 contains
 
@@ -134,90 +134,6 @@ contains
 
     end function interp_bilinear_dble
 
-!     subroutine fill_bilinear_dble(z,missing_value)
-
-!         implicit none 
-
-!         real(dp), intent(INOUT) :: z(:,:)
-!         real(dp), intent(IN) :: missing_value
-!         integer :: i, j, q, nx, ny 
-!         integer :: x_idx(2), y_idx(2)
-!         real(dp) :: neighb(4), weights(4) 
-
-!         nx = size(z,1)
-!         ny = size(z,2)
-
-!         do i = 1, nx 
-!             do j = 1, ny 
-
-!                 if (z(i,j) .eq. missing_value) then 
-!                     x_idx = find_neighbors_1D(z(:,j),i,missing_value)
-!                     y_idx = find_neighbors_1D(z(i,:),j,missing_value)
-
-!                     ! At least one of four neighbors found
-!                     if (count(x_idx .lt. 0) .eq. 0 .and. count(y_idx .lt. 0) .lt. 4) then 
-
-!                     weights = 0.d0 
-!                     if (x_idx(1) .lt. 0 .and. x_idx(2)) then 
-!                         neighb(1:2)  = 0.d0 
-!                         weights(1:2) = 0.d0 
-!                     else 
-!                         neighb(1)  = z(x_idx(1),j)
-!                         weights(1) = 
-!                     ! ## Now handle different interpolation cases depending on available neighbors
-
-!                     8
-!                     end if 
-
-
-!                 end if 
-
-!             end do 
-!         end do 
-
-!         return 
-
-!     end subroutine fill_bilinear_dble 
-
-
-    function find_neighbors_1D(x,i,missing) result(ineighb)
-
-        implicit none 
-
-        double precision, intent(IN) :: x(:), missing 
-        integer, intent(IN) :: i
-        integer :: ineighb(2) 
-        integer :: j, step  
-
-
-        ! Find negative neighbors 
-        ineighb(1) = -1 
-        if (i .gt. 1) then 
-            do j = i-1, 1, -1
-                if (.not. x(j) .eq. missing) then 
-                    ineighb(1) = j 
-                    exit
-                end if  
-            end do 
-        end if 
-
-        ! Find positive neighbors 
-        ineighb(2) = -1 
-        if (i .lt. size(x)) then 
-            do j = i+1, size(x)
-                if (.not. x(j) .eq. missing) then 
-                    ineighb(2) = j
-                    exit
-                end if 
-            end do 
-        end if 
-
-
-
-        return 
-
-    end function find_neighbors_1D
-
     subroutine fill_weighted(var,missing_value,fill_value,nr)
         implicit none 
         double precision, dimension(:,:) :: var 
@@ -241,12 +157,12 @@ contains
         end if 
 
         ! Define the default neighbor weighting 
-        do i = -nr, nr 
-        do j = -nr, nr 
-            weight0(i,j) = dsqrt(dble(i)*dble(i) + dble(j)*dble(j))
-        end do 
-        end do 
-
+        ! All weights == 1 incorporates some numerical diffusion to make
+        ! the resulting extrapolated values smoother
+        weight0 = 1
+!         do i = 1, nr
+!             weight0(nr+1-i:nr+1+i,nr+1-i:nr+1+i) = nr+1-i     !1/dble(i)
+!         end do  
 
         do q = 1, qmax 
 
@@ -263,19 +179,19 @@ contains
                         where (neighb .eq. missing_value) weight = 0.d0
                         wtot = sum(weight)
 
-!                         if (wtot/sum(weight0) .gt. 0.2d0) filled(i,j) = sum(neighb*weight)/wtot
-                        if (wtot .gt. 0.d0) filled(i,j) = sum(neighb*weight)/wtot
+                        ! Total neighbors should be 9*nr, so only fill points
+                        ! with at least 3*nr valid neighbors (1/3)
+                        if (count(weight .gt. 0.d0) .ge. (3*nr)) filled(i,j) = sum(neighb*weight)/wtot
 
                     end if 
                 end do 
             end do 
 
             where(filled .ne. missing_value) var = filled 
+            if ( count(var(1+nr+1:nx-(nr+1),1+nr+1:ny-(nr+1)) .eq. missing_value) .eq. 0 ) exit 
 
-            !write(*,*) q," : Missing values: ", count(var .eq. missing_value)
-            if ( count(var(1+nr+1:nx-nr-1,1+nr+1:ny-nr-1) .eq. missing_value) .eq. 0 ) exit 
-            write(*,*) "Still missing... ", count(var(1+nr:nx-nr,1+nr:ny:nr) .eq. missing_value), &
-                        " of ", nx*ny
+!             write(*,*) "Still missing... ", count(var(1+nr:nx-nr,1+nr:ny:nr) .eq. missing_value), &
+!                         " of ", nx*ny
         end do 
 
         ! Fill in boundaries too 
@@ -419,11 +335,11 @@ contains
         end if 
 
         ! Define the default neighbor weighting 
-        do i = -nr, nr 
-        do j = -nr, nr 
-            weight0(i,j) = dsqrt(dble(i)*dble(i) + dble(j)*dble(j))
-        end do 
-        end do 
+!         do i = -nr, nr 
+!         do j = -nr, nr 
+!             weight0(i,j) = dsqrt(dble(i)*dble(i) + dble(j)*dble(j))
+!         end do 
+!         end do 
 
 
         do q = 1, qmax 

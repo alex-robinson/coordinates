@@ -65,8 +65,16 @@ program test
     call fill_weighted(varhi,missing_value,nr=1)
     call nc_write(file_outhi,"zs_filled1",varhi,dim1="xc",dim2="yc")
 
-!     varhi = interp_bilinear(grid%G%x,grid%G%y,var,gridhi%G%x,gridhi%G%y,missing_value)
-!     call fill_weighted(varhi,missing_value,nr=3)
-!     call nc_write(file_outhi,"zs_filled3",varhi,dim1="xc",dim2="yc")
+    varhi = interp_bilinear(grid%G%x,grid%G%y,var,gridhi%G%x,gridhi%G%y,missing_value)
+    call fill_weighted(varhi,missing_value,nr=2)
+    call nc_write(file_outhi,"zs_filled2",varhi,dim1="xc",dim2="yc")
+
+    varhi = interp_bilinear(grid%G%x,grid%G%y,var,gridhi%G%x,gridhi%G%y,missing_value)
+    call fill_weighted(varhi,missing_value,nr=3)
+    call nc_write(file_outhi,"zs_filled3",varhi,dim1="xc",dim2="yc")
+
+    varhi = interp_bilinear(grid%G%x,grid%G%y,var,gridhi%G%x,gridhi%G%y,missing_value)
+    call fill_weighted(varhi,missing_value,nr=4)
+    call nc_write(file_outhi,"zs_filled4",varhi,dim1="xc",dim2="yc")
 
 end program test
