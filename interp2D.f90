@@ -304,25 +304,29 @@ contains
 
     end function interp_nearest_dble
 
-    subroutine fill_nearest_dble(z,missing_value,fill_value,nr)
+    subroutine fill_nearest_dble(z,missing_value,fill_value,n)
         implicit none 
         double precision, dimension(:,:) :: z 
         double precision :: missing_value 
         double precision, optional :: fill_value
+        integer, optional :: n 
+        integer :: nr 
 
         integer :: q, nx, ny, i, j
         integer, parameter :: qmax = 100 ! Iterations 
-!         integer, parameter :: nr   = 1  ! Neighbor radius
-        integer :: nr 
-        double precision, dimension (2*nr+1,2*nr+1) :: neighb, weight, weight0 
+        double precision, dimension (:,:), allocatable :: neighb, weight, weight0 
         double precision :: wtot, mval 
         double precision, dimension(:,:), allocatable :: filled
         integer :: ij(2)
+
+        nr = 4
+        if (present(n)) nr = n 
 
         nx = size(z,1)
         ny = size(z,2) 
 
         allocate(filled(nx,ny))
+        allocate(neighb(2*nr+1,2*nr+1),weight(2*nr+1,2*nr+1),weight0(2*nr+1,2*nr+1))
 
         if (present(fill_value)) then
             where(z .eq. missing_value) z = fill_value 
@@ -399,27 +403,32 @@ contains
         return
     end subroutine fill_nearest_dble
 
-    subroutine fill_weighted_dble(z,missing_value,fill_value,nr)
+    subroutine fill_weighted_dble(z,missing_value,fill_value,n)
         implicit none 
         double precision, dimension(:,:) :: z 
         double precision :: missing_value 
         double precision, optional :: fill_value
-
+        integer, optional :: n 
+        integer :: nr 
         integer :: q, nx, ny, i, j
         integer, parameter :: qmax = 100 ! Iterations 
 !         integer, parameter :: nr   = 1  ! Neighbor radius
-        integer :: nr 
-        double precision, dimension (2*nr+1,2*nr+1) :: neighb, weight, weight0 
+        
+        double precision, dimension (:,:), allocatable :: neighb, weight, weight0 
         double precision :: wtot, mval 
         double precision, dimension(:,:), allocatable :: filled
         integer, dimension(:,:), allocatable :: nquad 
         integer :: quadmin 
+
+        nr = 4
+        if (present(n)) nr = n 
 
         nx = size(z,1)
         ny = size(z,2) 
 
         allocate(filled(nx,ny))
         allocate(nquad(nx,ny))
+        allocate(neighb(2*nr+1,2*nr+1),weight(2*nr+1,2*nr+1),weight0(2*nr+1,2*nr+1))
 
         if (present(fill_value)) then
             where(z .eq. missing_value) z = fill_value 
@@ -551,19 +560,19 @@ contains
 
     end function interp_nearest_int 
 
-    subroutine fill_nearest_int(z,missing_value,fill_value,nr)
+    subroutine fill_nearest_int(z,missing_value,fill_value,n)
 
         implicit none 
         
         integer, dimension(:,:) :: z 
         integer :: missing_value 
         double precision, optional :: fill_value
-        integer :: nr 
+        integer, optional :: n
 
         double precision, dimension(size(z,1),size(z,2)) :: z_dble 
 
         z_dble = dble(z) 
-        call fill_nearest_dble(z_dble,dble(missing_value),fill_value,nr)
+        call fill_nearest_dble(z_dble,dble(missing_value),fill_value,n)
         z = nint(z_dble)
 
         return 
