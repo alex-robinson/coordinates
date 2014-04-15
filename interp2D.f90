@@ -15,7 +15,7 @@ module interp2D
     end interface
 
     interface interp_nearest 
-        module procedure interp_nearest_dble
+        module procedure interp_nearest_dble, interp_nearest_int
     end interface
 
     interface fill_weighted
@@ -147,7 +147,7 @@ contains
 
     end function interp_bilinear_dble
 
-    function interp_nearest_dble(x,y,z,xout,yout,missing_value,mask) result(zout)
+    function interp_nearest_dble0(x,y,z,xout,yout,missing_value,mask) result(zout)
         ! Find closest x-indices and closest y-indices on original
         ! grid (assume these and next indices will bracket our point)
         ! Pick closest point 
@@ -162,11 +162,12 @@ contains
         logical,  dimension(size(xout,1),size(yout,1)) :: mask_interp 
         real(dp) :: missing_val 
 
-        integer, dimension(3,size(z,2)) :: dist
+        integer, dimension(size(z,1),size(z,2)) :: dist
         real(dp) :: mindist 
 
-        integer :: i, j, i1, j1, ij(2), imin  
-        integer :: nx, ny, nx1, ny1  
+        integer :: i, j, i1, j1, ij(2)
+        integer :: nx, ny, nx1, ny1   
+        integer :: imin, jmin 
 
         nx = size(x,1)
         ny = size(y,1)
@@ -182,36 +183,118 @@ contains
         missing_val = MISSING_VALUE_DEFAULT
         if (present(missing_value)) missing_val = missing_value
 
-        write(*,*) "Nearest neighbor ..."
+        ! Now loop over output grid points and perform
+        ! nearest neighbor interpolation where desired 
+        zout = missing_val 
+
+        do i1 = 1, nx1 
+        do j1 = 1, ny1 
+
+            ! Only interpolate points of interest 
+            if (mask_interp(i1,j1)) then 
+
+                dist = ERR_DIST 
+                imin = minloc(dabs(x-xout(i1)),dim=1)
+                if (imin .le. 1)  imin = 2
+                if (imin .ge. nx) imin = nx-1
+
+                jmin = minloc(dabs(y-yout(j1)),dim=1)
+                if (jmin .le. 1)  jmin = 2
+                if (jmin .ge. ny) jmin = ny-1
+
+!                 do i = 1, nx 
+!                 do j = 1, ny
+                do i = imin-1,imin+1 
+                do j = jmin-1,jmin+1
+                        dist(i,j) = dsqrt( (x(i)-xout(i1))**2 + (y(j)-yout(j1))**2 )
+                end do 
+                end do 
+
+                where(z .eq. missing_val) dist = ERR_DIST
+
+                ij = minloc(dist) 
+                i  = ij(1)
+                j  = ij(2)
+
+                zout(i1,j1) = z(i,j) 
+            end if 
+
+        end do 
+        end do
+        
+
+        return 
+
+    end function interp_nearest_dble0
+
+    function interp_nearest_dble(x,y,z,xout,yout,missing_value,mask) result(zout)
+        ! Find closest x-indices and closest y-indices on original
+        ! grid (assume these and next indices will bracket our point)
+        ! Pick closest point 
+        ! Faster than other version that uses a bigger matrix
+        implicit none 
+
+        real(dp), dimension(:) :: x, y, xout, yout 
+        real(dp), dimension(:,:) :: z
+        real(dp), optional :: missing_value 
+        logical, dimension(:,:), optional :: mask 
+        real(dp), dimension(size(xout,1),size(yout,1)) :: zout 
+        logical,  dimension(size(xout,1),size(yout,1)) :: mask_interp 
+        real(dp) :: missing_val 
+
+        integer, parameter :: nr = 3, nd = 2*nr+1 
+        integer, dimension(nd,nd) :: dist
+        real(dp) :: mindist 
+
+        integer :: i, j, i1, j1, ij(2), imin, jmin  
+        integer :: nx, ny, nx1, ny1   
+
+        nx = size(x,1)
+        ny = size(y,1)
+
+        nx1 = size(xout,1)
+        ny1 = size(yout,1)
+
+        ! Determine which points we are interested in interpolating
+        mask_interp = .TRUE. 
+        if (present(mask)) mask_interp = mask 
+
+        ! Determine missing value if present 
+        missing_val = MISSING_VALUE_DEFAULT
+        if (present(missing_value)) missing_val = missing_value
 
         ! Now loop over output grid points and perform
         ! nearest neighbor interpolation where desired 
         zout = missing_val 
+
         do i1 = 1, nx1 
-            write(*,*) "i1 =",i1
         do j1 = 1, ny1 
 
-!             ! Only interpolate points of interest 
-!             if (mask_interp(i1,j1)) then 
+            ! Only interpolate points of interest 
+            if (mask_interp(i1,j1)) then 
 
-!                 imin = minloc(x-xout(i1))
-!                 if (imin .eq. 1)  imin = 2
-!                 if (imin .eq. nx) imin = nx-1 
+                imin = minloc(dabs(x-xout(i1)),dim=1)
+                if (imin .le. nr)      imin = nr+1
+                if (imin .ge. nx-nr)   imin = nx-nr-1
 
-!                 do i = imin-1,imin+1 
-!                     do j = 1, ny 
-!                         dist(i,j) = dsqrt( (x(i)-xout(i1))**2 + (y(j)-yout(j1))**2 )
-!                     end do 
-!                 end do 
+                jmin = minloc(dabs(y-yout(j1)),dim=1)
+                if (jmin .le. nr)      jmin = nr+1
+                if (jmin .ge. ny-nr)   jmin = ny-nr-1  
 
-!                 where(z(ij(1)-1,ij(1)+1,:) .eq. missing_val) dist = ERR_DIST
+                do i = 1, nd
+                    do j = 1, nd 
+                        dist(i,j) = dsqrt( (x(imin+(i-nr))-xout(i1))**2 + (y(jmin+(j-nr))-yout(j1))**2 )
+                    end do 
+                end do 
 
-!                 ij = minloc(dist) 
-!                 i  = ij(1)
-!                 j  = ij(2) 
+                where(z(imin-nr:imin+nr,jmin-nr:jmin+nr) .eq. missing_val) dist = ERR_DIST
 
-!                 zout(i1,j1) = z(i,j) 
-!             end if 
+                ij = minloc(dist) 
+                i  = imin+(ij(1)-nr)
+                j  = jmin+(ij(2)-nr) 
+
+                if (z(i,j) .ne. missing_val) zout(i1,j1) = z(i,j) 
+            end if 
 
         end do 
         end do
@@ -449,19 +532,38 @@ contains
     
     ! Interface alternatives that use the above main routines 
 
+    function interp_nearest_int(x,y,z,xout,yout,missing_value,mask) result(zout)
+        ! Find closest x-indices and closest y-indices on original
+        ! grid (assume these and next indices will bracket our point)
+        ! Pick closest point 
+        implicit none 
+
+        real(dp), dimension(:) :: x, y, xout, yout 
+        integer, dimension(:,:) :: z
+        integer, optional :: missing_value 
+        logical, dimension(:,:), optional :: mask 
+        integer, dimension(size(xout,1),size(yout,1)) :: zout 
+        logical,  dimension(size(xout,1),size(yout,1)) :: mask_interp 
+
+        zout = nint(interp_nearest_dble(x,y,dble(z),xout,yout,dble(missing_value),mask))
+
+        return 
+
+    end function interp_nearest_int 
+
     subroutine fill_nearest_int(z,missing_value,fill_value,nr)
 
         implicit none 
         
         integer, dimension(:,:) :: z 
-        double precision :: missing_value 
+        integer :: missing_value 
         double precision, optional :: fill_value
         integer :: nr 
 
         double precision, dimension(size(z,1),size(z,2)) :: z_dble 
 
         z_dble = dble(z) 
-        call fill_nearest_dble(z_dble,missing_value,fill_value,nr)
+        call fill_nearest_dble(z_dble,dble(missing_value),fill_value,nr)
         z = nint(z_dble)
 
         return 

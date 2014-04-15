@@ -69,6 +69,7 @@ program test
     call grid_write(gridhi,file_outhi,xnm="xc",ynm="yc",create=.TRUE.)
     call nc_write(file_outhi,"zs",varhi,dim1="xc",dim2="yc")
 
+    ! Test missing value filling routines
     call fill_weighted(varhi,missing_value,nr=1)
     call nc_write(file_outhi,"zs_filled1",varhi,dim1="xc",dim2="yc")
 
@@ -88,8 +89,16 @@ program test
     call fill_nearest(varhi,missing_value,nr=4)
     call nc_write(file_outhi,"zs_nearest",varhi,dim1="xc",dim2="yc")
 
-!     maskhi = interp_nearest(grid%G%x,grid%G%y,mask,gridhi%G%x,gridhi%G%y,missing_value)
-!     call fill_nearest(varhi,missing_value,nr=4)
-!     call nc_write(file_outhi,"zs_nearest",varhi,dim1="xc",dim2="yc")
+    ! Add some missing data 
+    mask(10:15,10:15) = int(missing_value)
+    mask(30:37,:)     = int(missing_value)
+    mask(:,55:61)     = int(missing_value)
+
+    maskhi = interp_nearest(grid%G%x,grid%G%y,mask,gridhi%G%x,gridhi%G%y,int(missing_value))
+    call nc_write(file_outhi,"mask",maskhi,dim1="xc",dim2="yc")
+    
+    maskhi = interp_nearest(grid%G%x,grid%G%y,mask,gridhi%G%x,gridhi%G%y,nint(missing_value))
+    call fill_nearest(maskhi,nint(missing_value),nr=4)
+    call nc_write(file_outhi,"mask_filled",maskhi,dim1="xc",dim2="yc")
 
 end program test
