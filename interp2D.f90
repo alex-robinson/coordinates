@@ -14,9 +14,21 @@ module interp2D
         module procedure interp_bilinear_dble 
     end interface
 
+    interface interp_nearest 
+        module procedure interp_nearest_dble
+    end interface
+
+    interface fill_weighted
+        module procedure fill_weighted_dble 
+    end interface
+
+    interface fill_nearest
+        module procedure fill_nearest_dble, fill_nearest_int  
+    end interface
+
     private
-    public :: interp_bilinear
-    public :: fill_weighted, fill_weighted0
+    public :: interp_bilinear, interp_nearest
+    public :: fill_weighted, fill_nearest 
 
 contains
 
@@ -25,6 +37,7 @@ contains
         ! Find closest x-indices and closest y-indices on original
         ! grid (assume these and next indices will bracket our point)
         ! Perform weighted interpolation 
+
         implicit none 
 
         real(dp), dimension(:) :: x, y, xout, yout 
@@ -134,35 +147,113 @@ contains
 
     end function interp_bilinear_dble
 
-    subroutine fill_weighted(var,missing_value,fill_value,nr)
+    function interp_nearest_dble(x,y,z,xout,yout,missing_value,mask) result(zout)
+        ! Find closest x-indices and closest y-indices on original
+        ! grid (assume these and next indices will bracket our point)
+        ! Pick closest point 
+        ! Don't use - this is very slow!!! Could probably be improved with vectors
         implicit none 
-        double precision, dimension(:,:) :: var 
+
+        real(dp), dimension(:) :: x, y, xout, yout 
+        real(dp), dimension(:,:) :: z
+        real(dp), optional :: missing_value 
+        logical, dimension(:,:), optional :: mask 
+        real(dp), dimension(size(xout,1),size(yout,1)) :: zout 
+        logical,  dimension(size(xout,1),size(yout,1)) :: mask_interp 
+        real(dp) :: missing_val 
+
+        integer, dimension(3,size(z,2)) :: dist
+        real(dp) :: mindist 
+
+        integer :: i, j, i1, j1, ij(2), imin  
+        integer :: nx, ny, nx1, ny1  
+
+        nx = size(x,1)
+        ny = size(y,1)
+
+        nx1 = size(xout,1)
+        ny1 = size(yout,1)
+
+        ! Determine which points we are interested in interpolating
+        mask_interp = .TRUE. 
+        if (present(mask)) mask_interp = mask 
+
+        ! Determine missing value if present 
+        missing_val = MISSING_VALUE_DEFAULT
+        if (present(missing_value)) missing_val = missing_value
+
+        write(*,*) "Nearest neighbor ..."
+
+        ! Now loop over output grid points and perform
+        ! nearest neighbor interpolation where desired 
+        zout = missing_val 
+        do i1 = 1, nx1 
+            write(*,*) "i1 =",i1
+        do j1 = 1, ny1 
+
+!             ! Only interpolate points of interest 
+!             if (mask_interp(i1,j1)) then 
+
+!                 imin = minloc(x-xout(i1))
+!                 if (imin .eq. 1)  imin = 2
+!                 if (imin .eq. nx) imin = nx-1 
+
+!                 do i = imin-1,imin+1 
+!                     do j = 1, ny 
+!                         dist(i,j) = dsqrt( (x(i)-xout(i1))**2 + (y(j)-yout(j1))**2 )
+!                     end do 
+!                 end do 
+
+!                 where(z(ij(1)-1,ij(1)+1,:) .eq. missing_val) dist = ERR_DIST
+
+!                 ij = minloc(dist) 
+!                 i  = ij(1)
+!                 j  = ij(2) 
+
+!                 zout(i1,j1) = z(i,j) 
+!             end if 
+
+        end do 
+        end do
+        
+
+        return 
+
+    end function interp_nearest_dble
+
+    subroutine fill_nearest_dble(z,missing_value,fill_value,nr)
+        implicit none 
+        double precision, dimension(:,:) :: z 
         double precision :: missing_value 
         double precision, optional :: fill_value
 
         integer :: q, nx, ny, i, j
-        integer, parameter :: qmax = 400 ! Iterations 
+        integer, parameter :: qmax = 100 ! Iterations 
 !         integer, parameter :: nr   = 1  ! Neighbor radius
         integer :: nr 
         double precision, dimension (2*nr+1,2*nr+1) :: neighb, weight, weight0 
         double precision :: wtot, mval 
         double precision, dimension(:,:), allocatable :: filled
-        nx = size(var,1)
-        ny = size(var,2) 
+        integer :: ij(2)
+
+        nx = size(z,1)
+        ny = size(z,2) 
 
         allocate(filled(nx,ny))
 
         if (present(fill_value)) then
-            where(var .eq. missing_value) var = fill_value 
+            where(z .eq. missing_value) z = fill_value 
         end if 
 
         ! Define the default neighbor weighting 
         ! All weights == 1 incorporates some numerical diffusion to make
         ! the resulting extrapolated values smoother
         weight0 = 1
-!         do i = 1, nr
-!             weight0(nr+1-i:nr+1+i,nr+1-i:nr+1+i) = nr+1-i     !1/dble(i)
-!         end do  
+        do i = 1, 2*nr+1
+        do j = 1, 2*nr+1 
+            weight0(i,j) = 1/max(1d-1,dsqrt(dble((nr+1)-i)**2 + dble((nr+1)-j)**2))
+        end do 
+        end do  
 
         do q = 1, qmax 
 
@@ -171,239 +262,210 @@ contains
             do i = 1+nr, nx-nr
                 do j = 1+nr, ny-nr
                     
-                    if (var(i,j) .eq. missing_value) then 
+                    if (z(i,j) .eq. missing_value) then 
 
-                        neighb = var(i-nr:i+nr,j-nr:j+nr)
+                        neighb = z(i-nr:i+nr,j-nr:j+nr)
+
+                        weight = weight0
+                        where (neighb .eq. missing_value)  weight = 0.d0
+                        wtot = sum(weight)
+
+                        ! Should only use the nearest neighbor in this case
+                        if (wtot .gt. 0) then 
+                            ij = maxloc(weight) 
+                            filled(i,j) = neighb(ij(1),ij(2))
+                        end if 
+
+                    end if 
+                end do 
+            end do 
+
+            where(filled .ne. missing_value) z = filled 
+            if ( count(z(1+nr+1:nx-(nr+1),1+nr+1:ny-(nr+1)) .eq. missing_value) .eq. 0 ) exit 
+
+!             write(*,*) "Still missing... ", count(z(1+nr:nx-nr,1+nr:ny:nr) .eq. missing_value), &
+!                         " of ", nx*ny
+        end do 
+
+        if (q .ge. qmax) then 
+            write(*,*) "Too many iterations to fill array of size: ", nx, ny 
+            stop 
+        end if 
+
+        ! Fill in boundaries too 
+        do i = 1+nr, 1, -1
+            where(z(i,:) .eq. missing_value) z(i,:) = z(i+1,:)
+        end do 
+        do i = nx-nr, nx
+            where(z(i,:) .eq. missing_value) z(i,:) = z(i-1,:)
+        end do 
+        do j = 1+nr, 1, -1
+            where(z(:,j) .eq. missing_value) z(:,j) = z(:,j+1)
+        end do 
+        do j = ny-nr, ny
+            where(z(:,j) .eq. missing_value) z(:,j) = z(:,j-1)
+        end do 
+
+
+!         if (count(z .eq. missing_value) .gt. 0) then 
+!             where(z .eq. missing_value) z = minval(z,mask=z .ne. missing_value)
+!         end if 
+
+!         write(*,*) "Fill iterations: ",q 
+
+        return
+    end subroutine fill_nearest_dble
+
+    subroutine fill_weighted_dble(z,missing_value,fill_value,nr)
+        implicit none 
+        double precision, dimension(:,:) :: z 
+        double precision :: missing_value 
+        double precision, optional :: fill_value
+
+        integer :: q, nx, ny, i, j
+        integer, parameter :: qmax = 100 ! Iterations 
+!         integer, parameter :: nr   = 1  ! Neighbor radius
+        integer :: nr 
+        double precision, dimension (2*nr+1,2*nr+1) :: neighb, weight, weight0 
+        double precision :: wtot, mval 
+        double precision, dimension(:,:), allocatable :: filled
+        integer, dimension(:,:), allocatable :: nquad 
+        integer :: quadmin 
+
+        nx = size(z,1)
+        ny = size(z,2) 
+
+        allocate(filled(nx,ny))
+        allocate(nquad(nx,ny))
+
+        if (present(fill_value)) then
+            where(z .eq. missing_value) z = fill_value 
+        end if 
+
+        ! Define the default neighbor weighting 
+        ! All weights == 1 incorporates some numerical diffusion to make
+        ! the resulting extrapolated values smoother
+        weight0 = 1
+        do i = 1, 2*nr+1
+        do j = 1, 2*nr+1 
+            weight0(i,j) = 1/max(1d-1,dsqrt(dble((nr+1)-i)**2 + dble((nr+1)-j)**2))
+        end do 
+        end do  
+!         write(*,"(10f12.3)") weight0(nr+1,:)
+
+        quadmin = 4 
+
+        do q = 1, qmax 
+
+            filled = missing_value 
+            nquad  = 0
+
+            do i = 1+nr, nx-nr
+                do j = 1+nr, ny-nr
+                    
+                    if (z(i,j) .eq. missing_value) then 
+
+                        neighb = z(i-nr:i+nr,j-nr:j+nr)
 
                         weight = weight0
                         where (neighb .eq. missing_value) weight = 0.d0
                         wtot = sum(weight)
 
+                        nquad(i,j) = count_quadrants(weight .gt. 0)
+                        if (nquad(i,j) .ge. quadmin) filled(i,j) = sum(neighb*weight)/wtot
+!                         write(*,*) i,j, nquad(i,j)
+
                         ! Total neighbors should be 9*nr, so only fill points
                         ! with at least 3*nr valid neighbors (1/3)
-                        if (count(weight .gt. 0.d0) .ge. (3*nr)) filled(i,j) = sum(neighb*weight)/wtot
+!                         if (count(weight .gt. 0.d0) .ge. 1) filled(i,j) = sum(neighb*weight)/wtot
 
                     end if 
                 end do 
             end do 
 
-            where(filled .ne. missing_value) var = filled 
-            if ( count(var(1+nr+1:nx-(nr+1),1+nr+1:ny-(nr+1)) .eq. missing_value) .eq. 0 ) exit 
+            where(filled .ne. missing_value) z = filled 
+            if ( count(z(1+nr+1:nx-(nr+1),1+nr+1:ny-(nr+1)) .eq. missing_value) .eq. 0 ) exit 
 
-!             write(*,*) "Still missing... ", count(var(1+nr:nx-nr,1+nr:ny:nr) .eq. missing_value), &
+            quadmin = maxval(nquad)
+
+!             write(*,*) "Still missing... ", count(z(1+nr:nx-nr,1+nr:ny:nr) .eq. missing_value), &
 !                         " of ", nx*ny
         end do 
 
+        if (q .ge. qmax) then 
+            write(*,*) "Too many iterations to fill array of size: ", nx, ny 
+            stop 
+        end if 
+
         ! Fill in boundaries too 
         do i = 1+nr, 1, -1
-            where(var(i,:) .eq. missing_value) var(i,:) = var(i+1,:)
+            where(z(i,:) .eq. missing_value) z(i,:) = z(i+1,:)
         end do 
         do i = nx-nr, nx
-            where(var(i,:) .eq. missing_value) var(i,:) = var(i-1,:)
+            where(z(i,:) .eq. missing_value) z(i,:) = z(i-1,:)
         end do 
         do j = 1+nr, 1, -1
-            where(var(:,j) .eq. missing_value) var(:,j) = var(:,j+1)
+            where(z(:,j) .eq. missing_value) z(:,j) = z(:,j+1)
         end do 
         do j = ny-nr, ny
-            where(var(:,j) .eq. missing_value) var(:,j) = var(:,j-1)
+            where(z(:,j) .eq. missing_value) z(:,j) = z(:,j-1)
         end do 
 
 
-!         if (count(var .eq. missing_value) .gt. 0) then 
-!             where(var .eq. missing_value) var = minval(var,mask=var .ne. missing_value)
+!         if (count(z .eq. missing_value) .gt. 0) then 
+!             where(z .eq. missing_value) z = minval(z,mask=z .ne. missing_value)
 !         end if 
 
-        write(*,*) "Fill iterations: ",q 
+!         write(*,*) "Fill iterations: ",q 
 
         return
-    end subroutine fill_weighted
+    end subroutine fill_weighted_dble
 
-    subroutine fill_weighted1(var,missing_value,fill_value,nr)
+    function count_quadrants(not_missing) result(n)
+        ! Assuming the origin in the center of array 'not_missing',
+        ! count how many quadrants contain valid neighbors
+
+        implicit none 
+
+        logical, dimension(:,:) :: not_missing 
+        integer :: quadrants(4)
+        integer :: n 
+        integer :: nr, nx
+
+        nx = size(not_missing,1)
+        nr = (nx-1) / 2
+
+        quadrants =  [count(not_missing(nr+1:nx,nr+1:nx)), &
+                      count(not_missing(1:nr,nr+1:nx)), &
+                      count(not_missing(1:nr,1:nr)), &
+                      count(not_missing(nr+1:nx,1:nr))]
+        
+        n = count(quadrants .gt. 0)
+
+        return 
+
+    end function count_quadrants
+
+    
+    ! Interface alternatives that use the above main routines 
+
+    subroutine fill_nearest_int(z,missing_value,fill_value,nr)
 
         implicit none 
         
-        double precision, dimension(:,:) :: var 
+        integer, dimension(:,:) :: z 
         double precision :: missing_value 
         double precision, optional :: fill_value
-
-        integer :: q, nx, ny, i, j
-        integer, parameter :: qmax = 40 ! Iterations 
-!         integer, parameter :: nr   = 1  ! Neighbor radius
         integer :: nr 
-        double precision, dimension (2*nr+1,2*nr+1) :: neighb, weight, weight0 
-        double precision :: wtot, mval 
-        double precision, dimension(:,:), allocatable :: filled
 
-        logical, dimension(:,:), allocatable :: is_missing
-        integer, dimension(:,:), allocatable :: n_missing
-        integer :: di_lo, di_hi, dj_lo, dj_hi, ntot 
+        double precision, dimension(size(z,1),size(z,2)) :: z_dble 
 
-!         integer, dimension(:), allocatable :: nx_miss, ny_miss
-        nx = size(var,1)
-        ny = size(var,2) 
+        z_dble = dble(z) 
+        call fill_nearest_dble(z_dble,missing_value,fill_value,nr)
+        z = nint(z_dble)
 
-        allocate(filled(nx,ny))
-        allocate(is_missing(nx,ny),n_missing(nx,ny))
+        return 
 
-        if (present(fill_value)) then
-            where(var .eq. missing_value) var = fill_value 
-        end if 
-
-        ! Define the default neighbor weighting 
-        do i = -nr, nr 
-        do j = -nr, nr 
-            weight0(i,j) = dsqrt(dble(i)*dble(i) + dble(j)*dble(j))
-        end do 
-        end do 
-
-        do q = 1, 1 !qmax 
-
-            filled = missing_value 
-
-            is_missing = .FALSE. 
-            where(var .eq. missing_value) is_missing = .TRUE. 
-
-            ! Find out where missing neighbor values are aggregated
-            n_missing = 0 
-            do i = 1, nx
-                do j = 1, ny
-                    if (var(i,j) .eq. missing_value) then 
-                        di_lo = nr - max(nr-( i-1),0)
-                        di_hi = nr - max(nr-(nx-i),0)
-                        dj_lo = nr - max(nr-( j-1),0)
-                        dj_hi = nr - max(nr-(ny-j),0)
-
-                        n_missing(i,j) = count(var(i-di_lo:i+di_hi,j-dj_lo:j+dj_hi) .eq. missing_value)
-
-                        ! Neighborhood size
-                        ntot = (di_hi+di_lo+1)*(dj_hi+dj_lo+1)
-
-!                         if (i .eq. nx .and. j .eq. ny) then 
-!                             write(*,*) i, j, n_missing(i,j), ntot, dble(n_missing(i,j))/dble(ntot)
-!                             write(*,*) di_lo, di_hi, dj_lo, dj_hi 
-!                             write(*,*) var(i-di_lo:i+di_hi,j-dj_lo:j+dj_hi)
-!                             stop 
-!                         end if 
-
-                        ! Prioritizes interpolation of points with more of neighbors
-                        if (dble(n_missing(i,j))/dble(ntot) .le. 1.0d0) then 
-
-                            neighb = missing_value 
-                            neighb(1:di_lo+1+di_hi,1:dj_lo+1+dj_hi) = var(i-di_lo:i+di_hi,j-dj_lo:j+dj_hi)
-                            weight = 1.d0
-                            where (neighb .eq. missing_value) weight = 0.d0
-
-                            filled(i,j) = sum(neighb*weight)/sum(weight) 
-                        end if 
-                    end if 
-                end do 
-            end do 
-
-            ! Now fill in original matrix with this pass's fill values
-            where(filled .ne. missing_value) var = filled 
-
-            !write(*,*) q," : Missing values: ", count(var .eq. missing_value)
-            if ( count(var .eq. missing_value) .eq. 0 ) exit 
-        end do
-
-        write(*,*) "Fill iterations: ",q 
-
-        return
-
-    end subroutine fill_weighted1
-
-    subroutine fill_weighted0(var,missing_value,fill_value,nr)
-        implicit none 
-        double precision, dimension(:,:) :: var 
-        double precision :: missing_value 
-        double precision, optional :: fill_value
-
-        integer :: q, nx, ny, i, j
-        integer, parameter :: qmax = 40 ! Iterations 
-!         integer, parameter :: nr   = 1  ! Neighbor radius
-        integer :: nr 
-        double precision, dimension (2*nr+1,2*nr+1) :: neighb, weight, weight0 
-        double precision :: wtot, mval 
-        double precision, dimension(:,:), allocatable :: filled
-        nx = size(var,1)
-        ny = size(var,2) 
-
-        allocate(filled(nx,ny))
-
-        if (present(fill_value)) then
-            where(var .eq. missing_value) var = fill_value 
-        end if 
-
-        ! Define the default neighbor weighting 
-!         do i = -nr, nr 
-!         do j = -nr, nr 
-!             weight0(i,j) = dsqrt(dble(i)*dble(i) + dble(j)*dble(j))
-!         end do 
-!         end do 
-
-
-        do q = 1, qmax 
-
-            filled = missing_value 
-
-            do i = 1+nr, nx-nr
-                do j = 1+nr, ny-nr
-                    neighb = var(i-nr:i+nr,j-nr:j+nr)
-
-                    weight = 0.d0 
-                    where (neighb .ne. missing_value) weight = 1.d0
-!                     weight = weight0
-!                     where (neighb .eq. missing_value) weight = 0.d0
-                    wtot = sum(weight)
-
-                    if (wtot .gt. 0.d0) then 
-                        mval = sum(neighb*weight)/wtot
-                        where (neighb .eq. missing_value) neighb = mval 
-                    end if 
-
-                    filled(i-nr:i+nr,j-nr:j+nr) = neighb 
-
-                end do 
-            end do 
-
-            where(filled .ne. missing_value) var = filled 
-
-            !write(*,*) q," : Missing values: ", count(var .eq. missing_value)
-            if ( count(var .eq. missing_value) .eq. 0 ) exit 
-
-            ! Now reverse directions for better results
-            filled = missing_value 
-
-            do i = nx-nr, 1+nr, -1
-                do j = ny-nr, 1+nr, -1
-                    neighb = var(i-nr:i+nr,j-nr:j+nr)
-
-                    weight = 0.d0 
-                    where (neighb .ne. missing_value) weight = 1.d0
-                    wtot = sum(weight)
-
-                    if (wtot .gt. 0.d0) then 
-                        mval = sum(neighb*weight)/wtot
-                        where (neighb .eq. missing_value) neighb = mval 
-                    end if 
-
-                    filled(i-nr:i+nr,j-nr:j+nr) = neighb 
-
-                end do 
-            end do 
-
-            where(filled .ne. missing_value) var = filled 
-
-            !write(*,*) q," : Missing values: ", count(var .eq. missing_value)
-            if ( count(var .eq. missing_value) .eq. 0 ) exit 
-        end do 
-        if (count(var .eq. missing_value) .gt. 0) then 
-            where(var .eq. missing_value) var = minval(var,mask=var .ne. missing_value)
-        end if 
-
-        write(*,*) "Fill iterations: ",q 
-
-        return
-    end subroutine fill_weighted0
+    end subroutine fill_nearest_int 
 
 end module interp2D

@@ -11,8 +11,7 @@ module subset
 
         type(points_class) :: pts
         type(grid_class)   :: grid 
-!         type(map_class)    :: map0_tosub, map0_fromsub 
-        type(map_class)    :: map_tosub, map_fromsub 
+        type(map_class)    :: map_tosub, map_fromsub !, map_self 
         integer            :: npts, factor
         logical            :: subset
         double precision, allocatable :: var2D(:,:) 
@@ -129,6 +128,8 @@ contains
             call grid_to_points(sub%grid,sub%pts)
 
         end if 
+
+        ! Initialize the self-filling map 
 
         ! Allocate the packing mask for later use 
         if (allocated(sub%mask_pack)) deallocate(sub%mask_pack)

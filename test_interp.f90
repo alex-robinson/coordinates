@@ -17,6 +17,7 @@ program test
     type(grid_class) :: grid, gridlo, gridhi 
     double precision, dimension(:), allocatable   :: x, y
     double precision, dimension(:,:), allocatable :: var, varlo, varhi
+    integer, dimension(:,:), allocatable :: mask, masklo, maskhi 
     character(len=256) :: outfldr,file_input, file_inputhi
     character(len=256) :: file_outlo, file_outhi
     integer :: i, j 
@@ -47,9 +48,15 @@ program test
     call grid_allocate(grid,var)
     call grid_allocate(gridhi,varhi)
     
+    call grid_allocate(grid,mask)
+    call grid_allocate(gridhi,maskhi)
+    
     ! Load an example low resolution variable
     call nc_read(file_input,"zs",var)
     write(*,*) "zs range: ",minval(var), maxval(var)
+
+    call nc_read(file_input,"mask",mask)
+    write(*,*) "mask range: ",minval(mask), maxval(mask)
 
     ! Add some missing data 
     var(10:15,10:15) = missing_value
@@ -76,5 +83,13 @@ program test
     varhi = interp_bilinear(grid%G%x,grid%G%y,var,gridhi%G%x,gridhi%G%y,missing_value)
     call fill_weighted(varhi,missing_value,nr=4)
     call nc_write(file_outhi,"zs_filled4",varhi,dim1="xc",dim2="yc")
+
+    varhi = interp_bilinear(grid%G%x,grid%G%y,var,gridhi%G%x,gridhi%G%y,missing_value)
+    call fill_nearest(varhi,missing_value,nr=4)
+    call nc_write(file_outhi,"zs_nearest",varhi,dim1="xc",dim2="yc")
+
+!     maskhi = interp_nearest(grid%G%x,grid%G%y,mask,gridhi%G%x,gridhi%G%y,missing_value)
+!     call fill_nearest(varhi,missing_value,nr=4)
+!     call nc_write(file_outhi,"zs_nearest",varhi,dim1="xc",dim2="yc")
 
 end program test
