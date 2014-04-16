@@ -42,7 +42,7 @@ program test
                    lambda=-40d0,phi=72.d0,alpha=7.5d0,x=x,y=y)
 
     ! Check if the grids are defined as the same map 
-    write(*,*) "Same grid: ", grid_compare_map(grid,gridhi)
+    write(*,*) "Same grid: ", compare_map(grid,gridhi)
 
     ! Allocate grid variables for testing 
     call grid_allocate(grid,var)
