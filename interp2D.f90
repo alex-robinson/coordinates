@@ -33,7 +33,7 @@ module interp2D
 contains
 
 
-    function interp_bilinear_dble(x,y,z,xout,yout,missing_value,mask) result(zout)
+    function interp_bilinear_dble(x,y,z,xout,yout,missing_value,mask,fill) result(zout)
         ! Find closest x-indices and closest y-indices on original
         ! grid (assume these and next indices will bracket our point)
         ! Perform weighted interpolation 
@@ -44,10 +44,11 @@ contains
         real(dp), dimension(:,:) :: z
         real(dp), optional :: missing_value 
         logical, dimension(:,:), optional :: mask 
+        logical, optional :: fill 
         real(dp), dimension(size(xout,1),size(yout,1)) :: zout 
         logical,  dimension(size(xout,1),size(yout,1)) :: mask_interp 
         real(dp) :: missing_val 
-
+        logical  :: fill_missing 
         integer, dimension(size(xout,1)) :: x_idx
         integer, dimension(size(yout,1)) :: y_idx
         
@@ -69,6 +70,9 @@ contains
         missing_val = MISSING_VALUE_DEFAULT
         if (present(missing_value)) missing_val = missing_value
 
+        fill_missing = .FALSE. 
+        if (present(fill)) fill_missing = fill 
+
         ! Get x-indices corresponding to nearest neighbor
         ! greater-than-equal-to x-value of interest
         do i1 = 1, nx1 
@@ -84,7 +88,7 @@ contains
                     if (x(i) .ge. xout(i1)) exit 
                 end do 
 
-                x_idx(i1) = i 
+                x_idx(i1) = i
             end if 
 
         end do 
@@ -108,7 +112,6 @@ contains
             end if 
 
         end do 
-
 
         ! Now loop over output grid points and perform
         ! bilinear interpolation where desired 
@@ -142,6 +145,12 @@ contains
         end do 
         end do
         
+
+!         if (fill_missing) then
+!             write(*,*) "Filling in...", missing_val, count(zout .eq. missing_val), nx1*ny1
+!             call fill_weighted(zout,missing_val)
+!             write(*,*) "Filled in... ", missing_val, count(zout .eq. missing_val), nx1*ny1
+!         end if 
 
         return 
 

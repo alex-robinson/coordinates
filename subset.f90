@@ -3,6 +3,7 @@
 module subset
 
     use coordinates
+!     use interp2D
     use ncio 
 
     implicit none
@@ -279,6 +280,10 @@ contains
 
         end if 
 
+!         if (present(fill) .and. method .ne. "nn") then 
+!             if (fill) call fill_weighted(var2D,missing_val)
+!         end if 
+        
         return
 
     end subroutine subset_to_grid_double
@@ -378,6 +383,11 @@ contains
         call subset_to_grid_double(sub,dble(var1D),var2Dtmp,mask_pack,map, &
                                    "nn",radius,fill,border,missing_value)
         var2D = nint(var2Dtmp)
+
+!         if (present(fill)) then 
+!             write(*,*) "subset_to_grid nearest..."
+!             if (fill) call fill_nearest(var2D,nint(missing_value))
+!         end if 
 
         return 
 

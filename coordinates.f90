@@ -15,7 +15,6 @@ module coordinates
     use oblimap_projection_module
     use planet 
     use ncio 
-    use interp2D 
 
     implicit none 
 
@@ -1348,27 +1347,12 @@ contains
         mask_pack_vec = .TRUE. 
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
-        if (.not. trim(method) .eq. "bilinear") then 
-            call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2_vec,mask2_vec, &
-                                         method,radius,fill,border,missing_value, &
-                                         mask_pack_vec)
-        
-            var2  = reshape(var2_vec, [nx2,ny2])
-            mask2 = reshape(mask2_vec,[nx2,ny2])
-
-        else 
-
-            if ( compare_map(map,grid0) ) then 
-                var2 = interp_bilinear(grid0%G%x,grid0%G%y,var1,map%G%x,map%G%y,missing_value,mask_pack)
-            else
-                write(*,*) "coordinates:: map_field:: "// &
-                "Error: Bilinear interpolation not possible between different grid types."
-                write(*,*) "Grid 1: ",trim(map%name1)
-                write(*,*) "Grid 2: ",trim(grid0%name)
-                stop 
-            end if 
-
-        end if 
+        call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2_vec,mask2_vec, &
+                                     method,radius,fill,border,missing_value, &
+                                     mask_pack_vec)
+    
+        var2  = reshape(var2_vec, [nx2,ny2])
+        mask2 = reshape(mask2_vec,[nx2,ny2])
 
         return
 
@@ -1874,11 +1858,14 @@ contains
                 ! Fill missing points with nearest neighbor if desired
                 ! Note, will not necessarily fill ALL points, if 
                 ! no neighbor within nmax can be found without a missing value
-                if ( fill_pts .and. var2(i) .eq. missing_val) then  
-                    if (var1(map%i(i,1)) .ne. missing_val) then
-                        var2(i)  = var1(map%i(i,1))
-                        mask2(i) = 2 
-                    end if
+                if ( fill_pts .and. var2(i) .eq. missing_val) then 
+                    do k = 1, map%nmax  
+                        if (var1(map%i(i,k)) .ne. missing_val) then
+                            var2(i)  = var1(map%i(i,k))
+                            mask2(i) = 2 
+                            exit 
+                        end if
+                    end do 
                 end if 
 
             end if ! End of neighbor checking if-statement 

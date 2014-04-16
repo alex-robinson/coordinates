@@ -9,6 +9,7 @@ program test_subset
     use ncio 
     use coordinates
     use subset 
+    use interp2D
 
     implicit none
 
@@ -23,7 +24,7 @@ program test_subset
         integer             :: nx, ny 
         double precision    :: lambda, phi, alpha
         double precision, dimension(:), allocatable  :: x, y 
-        double precision, dimension(:,:), allocatable :: lon, lat, zs, dzs
+        double precision, dimension(:,:), allocatable :: lon, lat, zs, dzs, diff
         integer,          dimension(:,:), allocatable :: mask
     end type 
 
@@ -74,6 +75,7 @@ program test_subset
     call grid_allocate(grid, set%zs)
     call grid_allocate(grid, set%dzs)
     call grid_allocate(grid, set%mask)
+    call grid_allocate(grid, set%diff)
 
     call nc_read(file_input,"lon2D",set%lon)
     call nc_read(file_input,"lat2D",set%lat)
@@ -103,20 +105,24 @@ program test_subset
     !
     ! =======================================================================
 
-    call subset_init(sub,grid,factor=2,npts=grid%npts)
+    call subset_init(sub,grid,factor=3,npts=grid%npts*3)
 !     call subset_init(sub,grid,factor=2,npts=0)
 !     call subset_init(sub,grid,factor=1,npts=1000)
-
+    
     ! Specify the local points object with subset information (redundant, but convenient)
     ptshi = sub%pts 
     
     ! Generate a mask for the subset of points based on elevation gradient
     ! and redefine the subset based on this mask 
     call subset_gen_mask(sub%mask_pack,set%dzs,ptshi%npts, &
-                         min_spacing=floor(50.d0/sub%grid%G%dx),method="max",map=sub%map_tosub)
+                         min_spacing=floor(40.d0/sub%grid%G%dx),method="max",map=sub%map_tosub)
     write(*,*) "ptshi%npts =",ptshi%npts 
     call subset_redefine(sub,sub%mask_pack)
     ptshi = sub%pts 
+
+    ! Check the mask
+    call grid_write(sub%grid,"output/subsetting/mask_pack.nc",xnm="xc",ynm="yc",create=.TRUE.)
+    call nc_write("output/subsetting/mask_pack.nc","mask_pack",sub%mask_pack,dim1="xc",dim2="yc") 
 
     ! Map the original gridded data to the 1D subset
     call points_allocate(ptshi, sethi%zs,missing_value)
@@ -142,6 +148,16 @@ program test_subset
     call nc_write(file_out1,"dzs",set1%dzs,dim1="xc",dim2="yc")
     call nc_write(file_out1,"mask",set1%mask,dim1="xc",dim2="yc")
 
+    set1%diff = missing_value
+    where(.not. set1%zs .eq. missing_value) set1%diff = set1%zs-set%zs
+    call nc_write(file_out1,"zs_diff",set1%diff,dim1="xc",dim2="yc")
+
+    ! Check how well filling works
+    call subset_to_grid(sub,sethi%zs,set1%zs,sub%mask_pack,method="radius",fill=.TRUE.)
+    set1%diff = missing_value
+    where(.not. set1%zs .eq. missing_value) set1%diff = set1%zs-set%zs
+    call nc_write(file_out1,"zs_diff_fill",set1%diff,dim1="xc",dim2="yc")
+
     ! =======================================================================
     !
     ! Step 3: Map pts between another grid
@@ -164,7 +180,7 @@ program test_subset
     call grid_allocate(gridlo,setlo%dzs, missing_value)
     call grid_allocate(gridlo,setlo%mask,nint(missing_value))
 
-    do i = 1, 1 ! Loop for performance testing 
+    do i = 1, 100 ! Loop for performance testing 
 
     call subset_to_grid(sub,sethi%zs,  setlo%zs,  sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)
     call subset_to_grid(sub,sethi%dzs, setlo%dzs, sub%mask_pack,map=mgridhi_gridlo,method="radius",border=.TRUE.)
@@ -178,7 +194,7 @@ program test_subset
 
     ! Remap to hi resolution
     call subset_to_points(sub,setlo%zs,sethi%zs,sub%mask_pack,map=mgridlo_gridhi,method="radius",border=.TRUE.)
-    call subset_to_points(sub,setlo%zs,sethi%zs,sub%mask_pack,map=mgridlo_gridhi,method="radius",border=.TRUE.)
+    call subset_to_points(sub,setlo%dzs,sethi%dzs,sub%mask_pack,map=mgridlo_gridhi,method="radius",border=.TRUE.)
     call subset_to_points(sub,setlo%mask,sethi%mask,sub%mask_pack,map=mgridlo_gridhi,border=.TRUE.)
 
     ! Remap to original grid
