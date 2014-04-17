@@ -2462,7 +2462,7 @@ contains
             write(*,"(a16,i8,i6)") "         nx,ny = ",map%G%nx, map%G%ny 
         end if 
 
-        write(*,"(a,g10.4,a)") " ** Size in memory ~", &
+        write(*,"(a,g11.4,a)") " ** Size in memory ~", &
                    ( (map%npts*map%nmax)*2.d0*4.d0 + (map%npts*map%nmax)*3.d0*4.d0 + &
                      (map%npts)*2.d0*8.d0 )  *7.6294d-6,"Mb"
         ! 2 real arrays (4 bytes per value): dist, weight
