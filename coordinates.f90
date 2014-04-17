@@ -1879,10 +1879,10 @@ contains
 !         if (count(var2 .eq. missing_val) .gt. 0) &
 !             write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
 
-        if (count(mask2 .eq. 0) .gt. 0 .and. .not. fill_pts) then 
-            write(*,*) "Warning, array contains non-interpolated points."
-            write(*,*) "Ensure that it was already properly intialized with data."
-        end if 
+!         if (count(mask2 .eq. 0) .gt. 0 .and. .not. fill_pts) then 
+!             write(*,*) "Warning, array contains non-interpolated points."
+!             write(*,*) "Ensure that it was already properly intialized with data."
+!         end if 
 
         return
     end subroutine map_field_points_points_double
