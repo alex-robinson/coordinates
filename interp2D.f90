@@ -22,13 +22,18 @@ module interp2D
         module procedure fill_weighted_dble 
     end interface
 
+    interface fill_mean
+        module procedure fill_mean_dble 
+    end interface
+
     interface fill_nearest
         module procedure fill_nearest_dble, fill_nearest_int  
     end interface
 
     private
     public :: interp_bilinear, interp_nearest
-    public :: fill_weighted, fill_nearest 
+    public :: fill_weighted, fill_nearest, fill_mean
+    public :: diffuse  
 
 contains
 
@@ -522,6 +527,60 @@ contains
         return
     end subroutine fill_weighted_dble
 
+    ! Fill in missing values of an array with neighbor averages
+    ! or with a specified fill_value
+    subroutine fill_mean_dble(var,missing_value,fill_value)
+        implicit none 
+        double precision, dimension(:,:) :: var 
+        double precision :: missing_value 
+        double precision, optional :: fill_value
+
+        integer :: q, nx, ny, i, j 
+        integer, parameter :: qmax = 50 ! Iterations 
+
+        double precision, dimension (3,3) :: neighb, weight
+        double precision :: wtot, mval 
+        double precision, dimension(:,:), allocatable :: filled
+        nx = size(var,1)
+        ny = size(var,2) 
+
+        allocate(filled(nx,ny))
+
+        if (present(fill_value)) then
+            where(var .eq. missing_value) var = fill_value 
+        end if 
+
+        do q = 1, qmax 
+
+            filled = missing_value 
+
+            do i = 2, nx-1 
+                do j = 2, ny-1 
+                    neighb = var(i-1:i+1,j-1:j+1)
+
+                    weight = 0.d0 
+                    where (neighb .ne. missing_value) weight = 1.d0
+                    wtot = sum(weight)
+
+                    if (wtot .gt. 0.d0) then 
+                        mval = sum(neighb*weight)/wtot
+                        where (neighb .eq. missing_value) neighb = mval 
+                    end if 
+
+                    filled(i-1:i+1,j-1:j+1) = neighb 
+
+                end do 
+            end do 
+
+            where(filled .ne. missing_value) var = filled 
+
+!             write(*,*) q," : Missing values: ", count(var .eq. missing_value)
+            if ( count(var .eq. missing_value) .eq. 0 ) exit 
+        end do 
+
+        return
+    end subroutine fill_mean_dble
+
     function count_quadrants(not_missing) result(n)
         ! Assuming the origin in the center of array 'not_missing',
         ! count how many quadrants contain valid neighbors
@@ -587,5 +646,63 @@ contains
         return 
 
     end subroutine fill_nearest_int 
+
+    subroutine diffuse(z,iter,missing_value)
+
+        implicit none 
+
+        double precision :: z(:,:)
+        double precision :: missing_value 
+        integer :: iter, nx, ny, q, i, j 
+        double precision :: ztmp(size(z,1),size(z,2))
+        logical :: mask(3,3)
+
+        nx = size(z,1)
+        ny = size(z,2)
+
+        do q = 1, iter 
+
+            ztmp = z 
+            do i = 2, nx-1 
+            do j = 2, ny-1 
+                mask = z(i-1:i+1,j-1:j+1) .ne. missing_value 
+                if (count(mask) .gt. 0) ztmp(i,j) = sum(z(i-1:i+1,j-1:j+1),mask) / count(mask)
+            end do 
+            end do 
+
+            ! Borders 
+            j = 1
+            do i = 1, nx 
+                mask(1,1:2) = z(i,j:j+1) .ne. missing_value 
+                if (count(mask(1,1:2)) .gt. 0) ztmp(i,j) = sum(z(i,j:j+1),mask(1,1:2)) / count(mask(1,1:2))
+            end do 
+
+            j = ny
+            do i = 1, nx 
+                mask(1,1:2) = z(i,j-1:j) .ne. missing_value 
+                if (count(mask(1,1:2)) .gt. 0) ztmp(i,j) = sum(z(i,j-1:j),mask(1,1:2)) / count(mask(1,1:2))
+            end do 
+
+            i = 1
+            do j = 1, ny 
+                mask(1:2,1) = z(i:i+1,j) .ne. missing_value 
+                if (count(mask(1:2,1)) .gt. 0) ztmp(i,j) = sum(z(i:i+1,j),mask(1:2,1)) / count(mask(1:2,1))
+            end do 
+
+            i = nx
+            do j = 1, ny 
+                mask(1:2,1) = z(i-1:i,j) .ne. missing_value 
+                if (count(mask(1:2,1)) .gt. 0) ztmp(i,j) = sum(z(i-1:i,j),mask(1:2,1)) / count(mask(1:2,1))
+            end do 
+
+
+            z = ztmp 
+
+        end do 
+
+        return 
+
+    end subroutine diffuse
+
 
 end module interp2D
