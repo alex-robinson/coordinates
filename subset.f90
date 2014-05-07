@@ -271,7 +271,9 @@ contains
         else if (sub%subset) then 
 
             ! Step 1: unpack the 1D vector into the 2D array using mask
-            var2D = unpack(var1D,mask_pack,var2D)
+            allocate(var2Dtmp(size(var2D,1),size(var2D,2)))
+            var2Dtmp = missing_val 
+            var2D = unpack(var1D,mask_pack,var2Dtmp)
 
         else
 

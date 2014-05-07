@@ -1732,7 +1732,7 @@ contains
 
         ! Set grid missing value by default or that that specified by user
         missing_val  = MISSING_VALUE_DEFAULT
-        if (present(missing_value)) missing_val = missing_val 
+        if (present(missing_value)) missing_val = missing_value 
 
         ! By default, fill in grid points with missing values
         fill_pts = .TRUE. 

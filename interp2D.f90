@@ -647,15 +647,16 @@ contains
 
     end subroutine fill_nearest_int 
 
-    subroutine diffuse(z,iter,missing_value)
+    subroutine diffuse(z,iter,missing_value,mask)
 
         implicit none 
 
         double precision :: z(:,:)
+        logical, optional :: mask(:,:)
         double precision :: missing_value 
         integer :: iter, nx, ny, q, i, j 
         double precision :: ztmp(size(z,1),size(z,2))
-        logical :: mask(3,3)
+        logical :: mask_tmp(3,3)
 
         nx = size(z,1)
         ny = size(z,2)
@@ -665,34 +666,34 @@ contains
             ztmp = z 
             do i = 2, nx-1 
             do j = 2, ny-1 
-                mask = z(i-1:i+1,j-1:j+1) .ne. missing_value 
-                if (count(mask) .gt. 0) ztmp(i,j) = sum(z(i-1:i+1,j-1:j+1),mask) / count(mask)
+                mask_tmp = z(i-1:i+1,j-1:j+1) .ne. missing_value 
+                if (count(mask_tmp) .gt. 0) ztmp(i,j) = sum(z(i-1:i+1,j-1:j+1),mask_tmp) / count(mask_tmp)
             end do 
             end do 
 
             ! Borders 
             j = 1
             do i = 1, nx 
-                mask(1,1:2) = z(i,j:j+1) .ne. missing_value 
-                if (count(mask(1,1:2)) .gt. 0) ztmp(i,j) = sum(z(i,j:j+1),mask(1,1:2)) / count(mask(1,1:2))
+                mask_tmp(1,1:2) = z(i,j:j+1) .ne. missing_value 
+                if (count(mask_tmp(1,1:2)) .gt. 0) ztmp(i,j) = sum(z(i,j:j+1),mask_tmp(1,1:2)) / count(mask_tmp(1,1:2))
             end do 
 
             j = ny
             do i = 1, nx 
-                mask(1,1:2) = z(i,j-1:j) .ne. missing_value 
-                if (count(mask(1,1:2)) .gt. 0) ztmp(i,j) = sum(z(i,j-1:j),mask(1,1:2)) / count(mask(1,1:2))
+                mask_tmp(1,1:2) = z(i,j-1:j) .ne. missing_value 
+                if (count(mask_tmp(1,1:2)) .gt. 0) ztmp(i,j) = sum(z(i,j-1:j),mask_tmp(1,1:2)) / count(mask_tmp(1,1:2))
             end do 
 
             i = 1
             do j = 1, ny 
-                mask(1:2,1) = z(i:i+1,j) .ne. missing_value 
-                if (count(mask(1:2,1)) .gt. 0) ztmp(i,j) = sum(z(i:i+1,j),mask(1:2,1)) / count(mask(1:2,1))
+                mask_tmp(1:2,1) = z(i:i+1,j) .ne. missing_value 
+                if (count(mask_tmp(1:2,1)) .gt. 0) ztmp(i,j) = sum(z(i:i+1,j),mask_tmp(1:2,1)) / count(mask_tmp(1:2,1))
             end do 
 
             i = nx
             do j = 1, ny 
-                mask(1:2,1) = z(i-1:i,j) .ne. missing_value 
-                if (count(mask(1:2,1)) .gt. 0) ztmp(i,j) = sum(z(i-1:i,j),mask(1:2,1)) / count(mask(1:2,1))
+                mask_tmp(1:2,1) = z(i-1:i,j) .ne. missing_value 
+                if (count(mask_tmp(1:2,1)) .gt. 0) ztmp(i,j) = sum(z(i-1:i,j),mask_tmp(1:2,1)) / count(mask_tmp(1:2,1))
             end do 
 
 
