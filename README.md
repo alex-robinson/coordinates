@@ -121,19 +121,20 @@ call map_field(map1,"var_name",var_ccsm3,var_grl,mask_map,"quadrant")
 
 ```
 
-In the above example, the arrays `var_ccsm3` and `var_grl` should already be defined in the program.
+In the above example, the 2D arrays `var_ccsm3` and `var_grl` should already be defined in the program.
 The only additional variables that need to be defined to complete a mapping are:
 `gCCSM3`, `gGRL` and `map1`. Furthermore, defining the mapping between the two grids is trivial,
 since all the necessary grid information is accessible in the grid objects.
 The user simply specifies how many nearest neighbors to check for. In this way,
 the additional code needed to incorporate mapping via the coordinates
-library is as minimal as possible. Note: the array `mask_map` can also be
+library is as minimal as possible. Note: the 2D array `mask_map` can also be
 used to track which points in the target array were overwritten by the mapping.
 
 For a more complete example based on similar definitions, see the test program **test_ccsm3.f90**,
 which includes mapping tests to various regional domains and back to the global grid, as defined
-in the paper about oblique stereographic projections by Reerink et al. (2010): www.geosci-model-dev.net/3/13/2010/
-The example can be made by calling `make ccsm3`.
+in the paper about oblique stereographic projections by
+Reerink et al. (2010, www.geosci-model-dev.net/3/13/2010/).
+The example can be made by calling `make ccsm3` (see below in **Makefile** for details).
 
 ## Projections
 
@@ -153,8 +154,8 @@ latlon center of the grid (phi, lambda) and the angle alpha, which represents th
 level at which the Cartesian plane slices through the spherical surface. Typical
 values are (as in Reerink et al, 2010):
 
-- Greenland: phi=72°, lambda=-40°, alpha=7.5°
-- Antarctica: phi=-90°, lambda=0°, alpha=19.0°
+- Greenland:  lambda=320°, phi= 72°, alpha= 7.5°
+- Antarctica: lambda=  0°, phi=-90°, alpha=19.0°
 
 Typically the smaller the extent of the Cartesian domain, the smaller the value of
 alpha that should be used.
@@ -215,13 +216,15 @@ change paths `netcdf_inc_ifort` and `netcdf_lib_ifort`.
 Compile the test program call: `make ccsm3` (or `make ccsm3 ifort=1` if using ifort).
 If it compiles without error, run the test program: `./test_ccsm3.x`.
 
-A matrix with the following results should be output to the screen at the end of the run:
+A matrix with the following results for mapping to a regional Antarctic projection
+and back to the global CCSM3 grid should be output to the screen at the end of the run:
 
     Ts     240.2     277.6     259.6      0.0114      0.0360      0.0304
     MB       0.0       0.6       0.2      0.0003      0.0008      0.0484
     Hs    -109.9    3628.4    1337.6      0.9612      2.2264      0.0257
 
 If your results match those above, the program is working correctly.
+
 Fore more details, the individual source code compilation rules along with
 dependencies can be found in the Makefile:
 
