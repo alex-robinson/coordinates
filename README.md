@@ -213,7 +213,7 @@ netcdf_lib = /opt/local/lib
 Note: by default the compiler is `gfortran`. If you will use `ifort`, make sure to
 change paths `netcdf_inc_ifort` and `netcdf_lib_ifort`.
 
-Compile the test program call: `make ccsm3` (or `make ccsm3 ifort=1` if using ifort).
+Compile the test program call: `make ccsm3` (or `make ccsm3 ifort=1` if using ifort).  
 If it compiles without error, run the test program: `./test_ccsm3.x`.
 
 A matrix with the following results for mapping to a regional Antarctic projection
