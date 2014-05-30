@@ -11,12 +11,12 @@ usage:
 	@echo ""
 
 objdir = .obj
-netcdfI = /home/robinson/apps/netcdf/netcdf/include
-netcdfL = /home/robinson/apps/netcdf/netcdf/lib
 # netcdfI_local = /usr/include
 # netcdfL_local = /usr/lib
 netcdfI_local = /opt/local/include
 netcdfL_local = /opt/local/lib
+netcdfI = /home/robinson/apps/netcdf/netcdf/include
+netcdfL = /home/robinson/apps/netcdf/netcdf/lib
 
 ifort ?= 0
 debug ?= 0 

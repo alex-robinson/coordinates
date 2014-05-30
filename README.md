@@ -159,3 +159,60 @@ geographiclib has been converted to Fortran90 and is included in this library.
 ## Interpolation
 
 Documentation needed.
+
+## Installation
+
+The coordinates library depends on the Fortran **NetCDF** library (http://www.unidata.ucar.edu/software/netcdf/),
+which must already be installed on the user's system. To interface with NetCDF,
+coordinates makes use of the library **NCIO** (https://github.com/alex-robinson/ncio),
+which has been incorporated into the coordinates library - therefore no additional
+installation is necessary.
+
+With **NetCDF** already installed, coordinates should work on any system with
+a Fortran compiler. Simply download the latest stable version to begin using it.
+
+### Makefile
+
+Inside of the Makefile, the individual source code compilation rules along with dependencies can be found:
+
+```Makefile
+## Individual libraries or modules ##
+$(objdir)/ncio.o: ncio.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
+$(objdir)/interp1D.o: interp1D.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
+$(objdir)/interp2D.o: interp2D.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
+$(objdir)/interp_time.o: interp_time.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
+$(objdir)/planet.o: planet.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
+$(objdir)/geodesic.o: geodesic.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
+$(objdir)/projection_oblimap2.o: projection_oblimap2.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
+$(objdir)/coordinates.o: coordinates.f90 $(objdir)/ncio.o $(objdir)/planet.o $(objdir)/geodesic.o \
+						 $(objdir)/projection_oblimap2.o
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
+$(objdir)/subset.o: subset.f90 $(objdir)/coordinates.o
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+```
+
+To be able to compile the test cases, just make sure that the paths to the NetCDF
+include and lib directories are properly specified for your system:
+
+```Makefile
+netcdfI_local = /opt/local/include
+netcdfL_local = /opt/local/lib
+```
+
+Then see if it compiles: `make ccsm3`. If it compiles with out error,
+run the test program: `./test_ccsm3.x`.
