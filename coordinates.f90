@@ -27,22 +27,22 @@ module coordinates
 
     type points_class 
 
-        character (len=128) :: name 
-        character (len=128) :: mtype    ! latlon, cartesian, stereographic, etc
-        character (len=128) :: units
-
-        integer :: npts
-        real(dp), allocatable, dimension(:)   :: x, y, lon, lat, area
-        integer,  allocatable, dimension(:)   :: border
-        real(dp) :: xy_conv 
+        character (len=128) :: name     ! name of this domain (world, GRL, etc)
+        character (len=128) :: mtype    ! map type: latlon, cartesian, stereographic, etc
+        character (len=128) :: units    ! units of the axes
+        type(planet_class)  :: planet   ! which planet are we on?
 
         ! Projection parameters
         logical :: is_cartesian, is_projection
         logical :: is_lon180
         type(projection_class) :: proj
 
-        type(planet_class) :: planet 
-            
+        ! Points information
+        integer :: npts
+        real(dp), allocatable, dimension(:)   :: x, y, lon, lat, area
+        integer,  allocatable, dimension(:)   :: border
+        real(dp) :: xy_conv 
+
     end type 
 
     type grid_axis_class
@@ -56,6 +56,12 @@ module coordinates
         character (len=128) :: name 
         character (len=128) :: mtype     ! latlon, cartesian, stereographic, etc
         character (len=128) :: units
+        type(planet_class)  :: planet 
+
+        ! Projection parameters
+        logical :: is_cartesian, is_projection
+        logical :: is_lon180
+        type(projection_class) :: proj
 
         type(grid_axis_class) :: G
         integer :: npts
@@ -63,26 +69,18 @@ module coordinates
         integer,  allocatable, dimension(:,:) :: border
         real(dp) :: xy_conv
 
-        ! Projection parameters
-        logical :: is_cartesian, is_projection
-        logical :: is_lon180
-        type(projection_class) :: proj
-
-        type(planet_class) :: planet 
-
     end type 
 
     type map_class
         character (len=128) :: name1, name2     ! Names of coordinate set1 and set2
         character (len=128) :: mtype
         character (len=128) :: units 
+        type(planet_class)  :: planet 
 
         ! Projection parameters
         logical  :: is_cartesian, is_projection, is_same_map
         logical  :: is_lon180
         type(projection_class) :: proj
-
-        type(planet_class) :: planet 
 
         ! Grid related variables
         logical :: is_grid
