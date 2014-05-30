@@ -182,14 +182,14 @@ adding the statement `use coordinates`.
 
 A test program is available to make sure the library is working properly.
 To be able to compile it, first make sure that the paths to the NetCDF
-include and lib directories are properly specified for your system:
+include and lib directories are properly specified for your system in the Makefile:
 
 ```Makefile
 netcdfI_local = /opt/local/include
 netcdfL_local = /opt/local/lib
 ```
 
-Then see if it compiles: `make ccsm3`. If it compiles with out error,
+Compile the test program call: `make ccsm3`. If it compiles with out error,
 run the test program: `./test_ccsm3.x`.
 
 Fore more details, the individual source code compilation rules along with
