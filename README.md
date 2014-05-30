@@ -206,6 +206,11 @@ $(objdir)/subset.o: subset.f90 $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 ```
 
+As can be seen above, the main coordinates module depends on
+NCIO, planet, geodesic and projection_oblimap2. Once the coordinates.o object
+file is compiled along with these dependencies, it is possible to use
+the coordinates module in a Fortran program with `use coordinates`.
+
 To be able to compile the test cases, just make sure that the paths to the NetCDF
 include and lib directories are properly specified for your system:
 
