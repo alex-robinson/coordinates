@@ -173,7 +173,7 @@ a Fortran compiler. Simply download the latest stable version to begin using it.
 
 ### Makefile
 
-The main coordinates module depends on other cooordinates modules
+The main coordinates module depends on other internal modules
 (NCIO, planet, geodesic and projection_oblimap2) that must
 be compiled together with the coordinates module itself. This is accomplished
 here via a Makefile. Once the coordinates.o object file is compiled along
@@ -185,12 +185,15 @@ To be able to compile it, first make sure that the paths to the NetCDF
 include and lib directories are properly specified for your system in the Makefile:
 
 ```Makefile
-netcdfI_local = /opt/local/include
-netcdfL_local = /opt/local/lib
+netcdf_inc = /opt/local/include
+netcdf_lib = /opt/local/lib
 ```
 
-Compile the test program call: `make ccsm3`. If it compiles with out error,
-run the test program: `./test_ccsm3.x`.
+Note: by default the compiler is `gfortran`. If you will use `ifort`, make sure to
+change paths `netcdf_inc_ifort` and `netcdf_lib_ifort`.
+
+Compile the test program call: `make ccsm3` (or `make ccsm3 ifort=1`).
+If it compiles with out error, run the test program: `./test_ccsm3.x`.
 
 Fore more details, the individual source code compilation rules along with
 dependencies can be found in the Makefile:

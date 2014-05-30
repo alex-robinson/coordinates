@@ -11,12 +11,12 @@ usage:
 	@echo ""
 
 objdir = .obj
-# netcdfI_local = /usr/include
-# netcdfL_local = /usr/lib
-netcdfI_local = /opt/local/include
-netcdfL_local = /opt/local/lib
-netcdfI = /home/robinson/apps/netcdf/netcdf/include
-netcdfL = /home/robinson/apps/netcdf/netcdf/lib
+# netcdf_inc = /usr/include
+# netcdf_lib = /usr/lib
+netcdf_inc = /opt/local/include
+netcdf_lib = /opt/local/lib
+netcdf_inc_ifort = /home/robinson/apps/netcdf/netcdf/include
+netcdf_lib_ifort = /home/robinson/apps/netcdf/netcdf/lib
 
 ifort ?= 0
 debug ?= 0 
@@ -29,8 +29,8 @@ endif
 
 ifeq ($(ifort),1)
 	## IFORT OPTIONS ##
-	FLAGS        = -module $(objdir) -L$(objdir) -I$(netcdfI)
-	LFLAGS		 = -L$(netcdfL) -lnetcdf
+	FLAGS        = -module $(objdir) -L$(objdir) -I$(netcdf_inc_ifort)
+	LFLAGS		 = -L$(netcdf_lib_ifort) -lnetcdf
 
 	ifeq ($(debug), 1)
 	    DFLAGS   = -C -traceback -ftrapuv -fpe0 -check all -vec-report0
@@ -40,8 +40,8 @@ ifeq ($(ifort),1)
 	endif
 else
 	## GFORTRAN OPTIONS ##
-	FLAGS        = -I$(objdir) -J$(objdir) -I$(netcdfI_local)
-	LFLAGS		 = -L$(netcdfL_local) -lnetcdff -lnetcdf
+	FLAGS        = -I$(objdir) -J$(objdir) -I$(netcdf_inc)
+	LFLAGS		 = -L$(netcdf_lib) -lnetcdff -lnetcdf
 
 	ifeq ($(debug), 1)
 	    DFLAGS   = -w -p -ggdb -ffpe-trap=invalid,zero,overflow,underflow -fbacktrace -fcheck=all
