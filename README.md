@@ -130,20 +130,23 @@ the additional code needed to incorporate mapping via the coordinates
 library is as minimal as possible. Note: the 2D array `mask_map` can also be
 used to track which points in the target array were overwritten by the mapping.
 
+The mapping is only performed once and saved to a NetCDF file, by default in the `maps/` subdirectory.
+If later another mapping between the same grids with the same number of neighbors is performed,
+the map is loaded into memory from the file.
+
 For a more complete example based on similar definitions, see the test program **test_ccsm3.f90**,
 which includes mapping tests to various regional domains and back to the global grid, as defined
 in the paper about oblique stereographic projections by
 Reerink et al. (2010, www.geosci-model-dev.net/3/13/2010/).
-The example can be made by calling `make ccsm3` (see below in **Makefile** for details).
+The example can be compiled by calling `make ccsm3` (see below in **Makefile** for details).
 
-## Projections
+## Algorithms
+
+### Oblique stereographic projections
 
 The coordinates library has the ability to manipulate projected grids - Cartesian
 representations of curvilinear coordinates. Currently only oblique stereographic
 (including polar stereographic) projections are supported.
-
-### Oblique stereographic projections
-
 The algorithms implemented by Reerink et al. (2010, see www.geosci-model-dev.net/3/13/2010/)
 are used to transform coordinates
 between latlon and stereographic coordinates. These algorithms were ported from
@@ -160,7 +163,7 @@ values are (as in Reerink et al, 2010):
 Typically the smaller the extent of the Cartesian domain, the smaller the value of
 alpha that should be used.
 
-## Distance calculations
+### Distance calculations
 
 Unless the sets of points are located on the same Cartesian/projected coordinate system,
 all distance calculations are performed using geodesic calculations. The coordinates
@@ -177,11 +180,13 @@ http://geographiclib.sourceforge.net/html/Fortran/
 
 geographiclib has been converted to Fortran90 and is included in this library.
 
-## Interpolation
+### Interpolation
 
 Documentation needed.
 
-## Installation
+## Getting started
+
+### Installation
 
 The coordinates library depends on the Fortran **NetCDF** library (http://www.unidata.ucar.edu/software/netcdf/),
 which must already be installed on the user's system. To interface with NetCDF,
@@ -213,7 +218,7 @@ netcdf_lib = /opt/local/lib
 Note: by default the compiler is `gfortran`. If you will use `ifort`, make sure to
 change paths `netcdf_inc_ifort` and `netcdf_lib_ifort`.
 
-Compile the test program call: `make ccsm3` (or `make ccsm3 ifort=1` if using ifort).  
+To compile the test program call: `make ccsm3` (or `make ccsm3 ifort=1` if using ifort).  
 If it compiles without error, run the test program: `./test_ccsm3.x`.
 
 A matrix with the following results for mapping to a regional Antarctic projection
