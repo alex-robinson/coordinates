@@ -95,6 +95,7 @@ objects. Thus to perform operations in a user's program, no temporary variables
 are needed. Let's say you are working with 2 gridded domains (a 2° resolution latlon grid
 used with CCSM3 and a 20KM resolution regional projection over Greenland) and you need to
 map a variable from one to the other. The steps to acheive this are:
+
 1. Initialize each grid.
 2. Initialize the map.
 3. Map the variable.
