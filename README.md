@@ -173,7 +173,27 @@ a Fortran compiler. Simply download the latest stable version to begin using it.
 
 ### Makefile
 
-Inside of the Makefile, the individual source code compilation rules along with dependencies can be found:
+The main coordinates module depends on other cooordinates modules
+(NCIO, planet, geodesic and projection_oblimap2) that must
+be compiled together with the coordinates module itself. This is accomplished
+here via a Makefile. Once the coordinates.o object file is compiled along
+with these dependencies, it is possible to use it in a Fortran program by
+adding the statement `use coordinates`.
+
+A test program is available to make sure the library is working properly.
+To be able to compile it, first make sure that the paths to the NetCDF
+include and lib directories are properly specified for your system:
+
+```Makefile
+netcdfI_local = /opt/local/include
+netcdfL_local = /opt/local/lib
+```
+
+Then see if it compiles: `make ccsm3`. If it compiles with out error,
+run the test program: `./test_ccsm3.x`.
+
+Fore more details, the individual source code compilation rules along with
+dependencies can be found in the Makefile:
 
 ```Makefile
 ## Individual libraries or modules ##
@@ -205,19 +225,3 @@ $(objdir)/coordinates.o: coordinates.f90 $(objdir)/ncio.o $(objdir)/planet.o $(o
 $(objdir)/subset.o: subset.f90 $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 ```
-
-As can be seen above, the main coordinates module depends on
-NCIO, planet, geodesic and projection_oblimap2. Once the coordinates.o object
-file is compiled along with these dependencies, it is possible to use
-the coordinates module in a Fortran program with `use coordinates`.
-
-To be able to compile the test cases, just make sure that the paths to the NetCDF
-include and lib directories are properly specified for your system:
-
-```Makefile
-netcdfI_local = /opt/local/include
-netcdfL_local = /opt/local/lib
-```
-
-Then see if it compiles: `make ccsm3`. If it compiles with out error,
-run the test program: `./test_ccsm3.x`.
