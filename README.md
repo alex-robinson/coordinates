@@ -153,8 +153,8 @@ latlon center of the grid (phi, lambda) and the angle alpha, which represents th
 level at which the Cartesian plane slices through the spherical surface. Typical
 values are (as in Reerink et al, 2010):
 
-Greenland: phi=72°, lambda=-40°, alpha=7.5°
-Antarctica: phi=-90°, lambda=0°, alpha=19.0°
+- Greenland: phi=72°, lambda=-40°, alpha=7.5°
+- Antarctica: phi=-90°, lambda=0°, alpha=19.0°
 
 Typically the smaller the extent of the Cartesian domain, the smaller the value of
 alpha that should be used.
