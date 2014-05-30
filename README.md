@@ -192,9 +192,16 @@ netcdf_lib = /opt/local/lib
 Note: by default the compiler is `gfortran`. If you will use `ifort`, make sure to
 change paths `netcdf_inc_ifort` and `netcdf_lib_ifort`.
 
-Compile the test program call: `make ccsm3` (or `make ccsm3 ifort=1`).
-If it compiles with out error, run the test program: `./test_ccsm3.x`.
+Compile the test program call: `make ccsm3` (or `make ccsm3 ifort=1` if using ifort).
+If it compiles without error, run the test program: `./test_ccsm3.x`.
 
+A matrix with the following results should be output to the screen at the end of the run:
+
+    Ts     240.2     277.6     259.6      0.0114      0.0360      0.0304
+    MB       0.0       0.6       0.2      0.0003      0.0008      0.0484
+    Hs    -109.9    3628.4    1337.6      0.9612      2.2264      0.0257
+
+If your results match those above, the program is working correctly.
 Fore more details, the individual source code compilation rules along with
 dependencies can be found in the Makefile:
 
