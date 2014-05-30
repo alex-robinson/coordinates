@@ -11,6 +11,12 @@ usage:
 	@echo ""
 
 objdir = .obj
+netcdfI = /home/robinson/apps/netcdf/netcdf/include
+netcdfL = /home/robinson/apps/netcdf/netcdf/lib
+# netcdfI_local = /usr/include
+# netcdfL_local = /usr/lib
+netcdfI_local = /opt/local/include
+netcdfL_local = /opt/local/lib
 
 ifort ?= 0
 debug ?= 0 
@@ -23,8 +29,8 @@ endif
 
 ifeq ($(ifort),1)
 	## IFORT OPTIONS ##
-	FLAGS        = -module $(objdir) -L$(objdir) -I/home/robinson/apps/netcdf/netcdf/include
-	LFLAGS		 = -L/home/robinson/apps/netcdf/netcdf/lib -lnetcdf
+	FLAGS        = -module $(objdir) -L$(objdir) -I$(netcdfI)
+	LFLAGS		 = -L$(netcdfL) -lnetcdf
 
 	ifeq ($(debug), 1)
 	    DFLAGS   = -C -traceback -ftrapuv -fpe0 -check all -vec-report0
@@ -34,8 +40,8 @@ ifeq ($(ifort),1)
 	endif
 else
 	## GFORTRAN OPTIONS ##
-	FLAGS        = -I$(objdir) -J$(objdir) -I/opt/local/include
-	LFLAGS		 = -L/opt/local/lib -lnetcdff -lnetcdf
+	FLAGS        = -I$(objdir) -J$(objdir) -I$(netcdfI_local)
+	LFLAGS		 = -L$(netcdfL_local) -lnetcdff -lnetcdf
 
 	ifeq ($(debug), 1)
 	    DFLAGS   = -w -p -ggdb -ffpe-trap=invalid,zero,overflow,underflow -fbacktrace -fcheck=all
@@ -46,7 +52,7 @@ endif
 
 
 ## Individual libraries or modules ##
-$(objdir)/ncio.o: ../ncio/ncio.f90
+$(objdir)/ncio.o: ncio.f90
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
 $(objdir)/interp1D.o: interp1D.f90
