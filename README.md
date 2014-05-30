@@ -114,7 +114,7 @@ call grid_init(gGRL,name="GRL-20KM",mtype="stereographic",units="kilometers", &
                  lambda=-40.d0,phi=72.d0,alpha=7.5d0)
 
 ! Generate map
-call map_init(map1,gCCSM3,gGRL,max_neighbors=10,lat_lim=4.0d0,fldr="maps",load=.TRUE.)
+call map_init(map1,gCCSM3,gGRL,max_neighbors=10)
 
 ! Map variable using 'quadrant' method
 call map_field(map1,"var_name",var_ccsm3,var_grl,mask_map,"quadrant")
@@ -123,9 +123,12 @@ call map_field(map1,"var_name",var_ccsm3,var_grl,mask_map,"quadrant")
 
 In the above example, the arrays `var_ccsm3` and `var_grl` should already be defined in the program.
 The only additional variables that need to be defined to complete a mapping are:
-`gCCSM3`, `gGRL` and `map1`. In this way, the additional code needed to incorporate mapping
-via the coordinates library is as minimal as possible. Note: the array `mask_map` can
-also be used to track which points in the target array were overwritten by the mapping.
+`gCCSM3`, `gGRL` and `map1`. Furthermore, defining the mapping between the two grids is trivial,
+since all the necessary grid information is accessible in the grid objects.
+The user simply specifies how many nearest neighbors to check for. In this way,
+the additional code needed to incorporate mapping via the coordinates
+library is as minimal as possible. Note: the array `mask_map` can also be 
+used to track which points in the target array were overwritten by the mapping.
 
 For a more complete example based on similar definitions, see the test program **test_ccsm3.f90**,
 which includes mapping tests to various regional domains and back to the global grid, as defined
