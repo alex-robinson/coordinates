@@ -71,7 +71,14 @@ where `nmax` is the maximum number of neighbors to be stored,
 of that neighbor relative to the target point (I, II, III, IV) and `border` shows whether
 the neighbor is located on the border of the source grid. `dist` and `weight` store
 the distance and Shepard's inverse distance weighting between the neighbor and the
-target point.
+target point. A `map` object is initialized with the subroutine `map_init()`, which can
+take several combinations of arguments:
+```fortran
+call map_init(pts1,pts2,...)    ! Map from points to points
+call map_init(grid1,grid2,...)  ! Map from grid to grid
+call map_init(pts1,grid2,...)   ! Map from points to grid
+call map_init(grid1,pts2,...)   ! Map from grid to points
+```
 
 This mapping information is saved to a NetCDF map file after it is calculated (via `map_write()`).
 Initial mapping calculations can take time (typically > 1min for large grids), however it is
@@ -79,6 +86,53 @@ only done once. Because the map files are saved with names corresponding to the 
 and target grids, the map is then always available. Because the neighbor distances
 are saved in the map file, essentially any mapping algorithm can be supported without
 the need to recalculate the map.
+
+## A practical example
+
+An underlying theme of the coordinates library is that all necessary information
+to represent and manipulate a set of points / grid is contained in the coordinates
+objects. Thus to perform operations in a user's program, no temporary variables
+are needed. Let's say you are working with 2 gridded domains (a 2° resolution latlon grid
+used with CCSM3 and a 20KM resolution regional projection over Greenland) and you need to
+map a variable from one to the other. The steps to acheive this are:
+1. Initialize each grid.
+2. Initialize the map.
+3. Map the variable.
+
+```fortran
+type(grid_class) :: gCCSM3, gGRL
+type(map_class)  :: map1
+
+! Global CCSM3 grid definition
+call grid_init(gCCSM3,name="CCSM3-T42",mtype="latlon",units="degrees",
+               x0=0.d0,dx=2.d0,nx=180,y0=-90.d0,dx=2.d0,ny=90)
+
+! Oblique stereographic regional grid centered at -40°E and 72°N
+call grid_init(gGRL,name="GRL-20KM",mtype="stereographic",units="kilometers", &
+                 dx=20.d0,nx=76,dy=20.d0,ny=151, &
+                 lambda=-40.d0,phi=72.d0,alpha=7.5d0)
+
+! Generate map
+call map_init(map1,gCCSM3,gGRL,max_neighbors=10,lat_lim=4.0d0,fldr="maps",load=.TRUE.)
+
+! Map variable using 'quadrant' method
+call map_field(map1,"var_name",var_ccsm3,var_grl,mask_map,"quadrant")
+
+```
+
+In the above example, the arrays `var_ccsm3` and `var_grl` should already be defined in the program.
+The only additional variables that need to be defined to complete a mapping are:
+`gCCSM3`, `gGRL` and `map1`. In this way, the additional code needed to incorporate mapping
+via the coordinates library is as minimal as possible. Note: the array `mask_map` can
+also be used to track which points in the target array were overwritten by the mapping.
+
+For a more complete example based on similar definitions, see the test program **test_ccsm3.f90**,
+which includes mapping tests to various regional domains and back to the global grid, as defined
+in the paper about oblique stereographics projections by Reerink et al. (2010): www.geosci-model-dev.net/3/13/2010/
+
+## Projections
+
+Documentation needed.
 
 ## Distance calculations
 
@@ -96,3 +150,7 @@ More information can be found here:
 http://geographiclib.sourceforge.net/html/Fortran/
 
 geographiclib has been converted to Fortran90 and is included in this library.
+
+## Interpolation
+
+Documentation needed.
