@@ -127,12 +127,13 @@ The only additional variables that need to be defined to complete a mapping are:
 since all the necessary grid information is accessible in the grid objects.
 The user simply specifies how many nearest neighbors to check for. In this way,
 the additional code needed to incorporate mapping via the coordinates
-library is as minimal as possible. Note: the array `mask_map` can also be 
+library is as minimal as possible. Note: the array `mask_map` can also be
 used to track which points in the target array were overwritten by the mapping.
 
 For a more complete example based on similar definitions, see the test program **test_ccsm3.f90**,
 which includes mapping tests to various regional domains and back to the global grid, as defined
 in the paper about oblique stereographics projections by Reerink et al. (2010): www.geosci-model-dev.net/3/13/2010/
+The example can be made by calling `make ccsm3`.
 
 ## Projections
 
