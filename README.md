@@ -132,12 +132,32 @@ used to track which points in the target array were overwritten by the mapping.
 
 For a more complete example based on similar definitions, see the test program **test_ccsm3.f90**,
 which includes mapping tests to various regional domains and back to the global grid, as defined
-in the paper about oblique stereographics projections by Reerink et al. (2010): www.geosci-model-dev.net/3/13/2010/
+in the paper about oblique stereographic projections by Reerink et al. (2010): www.geosci-model-dev.net/3/13/2010/
 The example can be made by calling `make ccsm3`.
 
 ## Projections
 
-Documentation needed.
+The coordinates library has the ability to manipulate projected grids - Cartesian
+representations of curvilinear coordinates. Currently only oblique stereographic
+(including polar stereographic) projections are supported.
+
+### Oblique stereographic projections
+
+The algorithms implemented by Reerink et al. (2010, see www.geosci-model-dev.net/3/13/2010/)
+are used to transform coordinates
+between latlon and stereographic coordinates. These algorithms were ported from
+the OBLIMAP2 package.
+
+To define a given projected coordinate system, three parameters are needed: the
+latlon center of the grid (phi, lambda) and the angle alpha, which represents the
+level at which the Cartesian plane slices through the spherical surface. Typical
+values are (as in Reerink et al, 2010):
+
+Greenland: phi=72°, lambda=-40°, alpha=7.5°
+Antarctica: phi=-90°, lambda=0°, alpha=19.0°
+
+Typically the smaller the extent of the Cartesian domain, the smaller the value of
+alpha that should be used.
 
 ## Distance calculations
 
