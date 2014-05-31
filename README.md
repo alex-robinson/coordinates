@@ -117,7 +117,7 @@ call grid_init(gGRL,name="GRL-20KM",mtype="stereographic",units="kilometers", &
 call map_init(map1,gCCSM3,gGRL,max_neighbors=10)
 
 ! Map variable using 'quadrant' method
-call map_field(map1,"var_name",var_ccsm3,var_grl,mask_map,"quadrant")
+call map_field(map1,"var_name",var_ccsm3,var_grl,mask_map,method="quadrant")
 
 ```
 
@@ -127,7 +127,7 @@ The only additional variables that need to be defined to complete a mapping are:
 since all the necessary grid information is accessible in the grid objects.
 The user simply specifies how many nearest neighbors to check for. In this way,
 the additional code needed to incorporate mapping via the coordinates
-library is as minimal as possible. Note: the 2D array `mask_map` can also be
+library is as minimal as possible. Note: the optional 2D array `mask_map` returned can also be
 used to track which points in the target array were overwritten by the mapping.
 
 The mapping is only performed once and saved to a NetCDF file, by default in the `maps/` subdirectory.

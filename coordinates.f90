@@ -1181,8 +1181,8 @@ contains
         type(map_class), intent(IN)           :: map 
         integer, dimension(:,:), intent(IN)   :: var1
         integer, dimension(:,:), intent(OUT)  :: var2
-        integer, dimension(:,:),  intent(OUT) :: mask2
-        logical,  dimension(:,:), intent(IN), optional :: mask_pack 
+        integer, dimension(:,:),  intent(OUT), optional :: mask2
+        logical,  dimension(:,:), intent(IN), optional  :: mask_pack 
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
@@ -1208,7 +1208,7 @@ contains
                                      mask_pack_vec)
         
         var2  = reshape(int(var2_vec), [nx2,ny2])
-        mask2 = reshape(mask2_vec,[nx2,ny2])
+        if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
 
         return
 
@@ -1221,8 +1221,8 @@ contains
         type(map_class), intent(IN)           :: map 
         integer, dimension(:,:), intent(IN)   :: var1
         integer, dimension(:), intent(OUT)    :: var2
-        integer, dimension(:),  intent(OUT)   :: mask2
-        logical,  dimension(:), intent(IN), optional :: mask_pack 
+        integer, dimension(:),  intent(OUT), optional :: mask2
+        logical,  dimension(:), intent(IN),  optional :: mask_pack 
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border  
@@ -1252,8 +1252,8 @@ contains
         type(map_class), intent(IN)           :: map 
         integer, dimension(:), intent(IN)     :: var1
         integer, dimension(:,:), intent(INOUT)  :: var2
-        integer, dimension(:,:),  intent(INOUT) :: mask2
-        logical,  dimension(:,:), intent(IN), optional :: mask_pack 
+        integer, dimension(:,:),  intent(OUT), optional :: mask2
+        logical,  dimension(:,:), intent(IN),  optional :: mask_pack 
         
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
@@ -1279,7 +1279,7 @@ contains
                                      mask_pack_vec)
         
         var2  = reshape(int(var2_vec),[nx2,ny2])
-        mask2 = reshape(mask2_vec,[nx2,ny2])
+        if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
 
         return
 
@@ -1292,8 +1292,8 @@ contains
         type(map_class), intent(IN)          :: map 
         integer, dimension(:), intent(IN)    :: var1
         integer, dimension(:), intent(INOUT) :: var2
-        integer, dimension(:), intent(INOUT) :: mask2
-        logical,  dimension(:), intent(IN), optional :: mask_pack 
+        integer, dimension(:),  intent(OUT), optional :: mask2
+        logical,  dimension(:), intent(IN),  optional :: mask_pack 
         
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
@@ -1321,8 +1321,8 @@ contains
         type(map_class), intent(IN)           :: map 
         real(dp), dimension(:,:), intent(IN)  :: var1
         real(dp), dimension(:,:), intent(INOUT) :: var2
-        integer, dimension(:,:),  intent(INOUT) :: mask2
-        logical,  dimension(:,:), intent(IN), optional :: mask_pack 
+        integer, dimension(:,:),  intent(OUT), optional :: mask2
+        logical,  dimension(:,:), intent(IN),  optional :: mask_pack 
         type(grid_class), optional :: grid0 
 
         character(len=*) :: name, method
@@ -1350,7 +1350,7 @@ contains
                                      mask_pack_vec)
     
         var2  = reshape(var2_vec, [nx2,ny2])
-        mask2 = reshape(mask2_vec,[nx2,ny2])
+        if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
 
         return
 
@@ -1363,8 +1363,8 @@ contains
         type(map_class), intent(IN)           :: map 
         real(dp), dimension(:,:), intent(IN)  :: var1
         real(dp), dimension(:), intent(INOUT) :: var2
-        integer, dimension(:),  intent(INOUT) :: mask2
-        logical,  dimension(:), intent(IN), optional :: mask_pack 
+        integer, dimension(:),  intent(OUT), optional :: mask2
+        logical,  dimension(:), intent(IN),  optional :: mask_pack 
         
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
@@ -1390,8 +1390,8 @@ contains
         type(map_class), intent(IN)           :: map 
         real(dp), dimension(:), intent(IN)    :: var1
         real(dp), dimension(:,:), intent(INOUT) :: var2
-        integer,  dimension(:,:), intent(INOUT) :: mask2
-        logical,  dimension(:,:), intent(IN), optional :: mask_pack 
+        integer,  dimension(:,:), intent(OUT), optional :: mask2
+        logical,  dimension(:,:), intent(IN),  optional :: mask_pack 
         
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
@@ -1417,7 +1417,7 @@ contains
                                      mask_pack_vec)
         
         var2  = reshape(var2_vec, [nx2,ny2])
-        mask2 = reshape(mask2_vec,[nx2,ny2])
+        if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
 
         return
 
@@ -1431,8 +1431,8 @@ contains
         type(map_class), intent(IN)           :: map 
         real(dp), dimension(:), intent(IN)    :: var1
         real(dp), dimension(:), intent(INOUT) :: var2
-        integer,  dimension(:), intent(INOUT) :: mask2
-        logical,  dimension(:), intent(IN), optional :: mask_pack 
+        integer,  dimension(:), intent(OUT), optional :: mask2
+        logical,  dimension(:), intent(IN),  optional :: mask_pack 
         logical,  dimension(:), allocatable   :: maskp 
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
@@ -1609,7 +1609,7 @@ contains
         end where 
 
         var2  = unpack(maplocal%var2, maskp, maplocal%field  ) 
-        mask2 = unpack(maplocal%mask2,maskp, maplocal%fieldm )
+        if (present(mask2)) mask2 = unpack(maplocal%mask2,maskp, maplocal%fieldm )
         
 !         if (maxval(maplocal%var2) > 3000d0) then 
 !             write(*,*) "Weighted interp finished: "
@@ -1708,8 +1708,8 @@ contains
         type(map_class), intent(IN)           :: map 
         real(dp), dimension(:), intent(IN)    :: var1
         real(dp), dimension(:), intent(INOUT) :: var2
-        integer,  dimension(:), intent(INOUT) :: mask2
-        logical,  dimension(:), intent(IN), optional :: mask_pack 
+        integer,  dimension(:), intent(OUT), optional :: mask2
+        logical,  dimension(:), intent(IN),  optional :: mask_pack 
         logical,  dimension(:), allocatable   :: maskp 
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
@@ -1719,7 +1719,7 @@ contains
         real(dp) :: max_distance, missing_val 
         real(dp), dimension(:), allocatable   :: weight_neighb, v_neighb
         real(dp), dimension(:), allocatable   :: v_neighb_tmp 
-
+        integer,  dimension(:), allocatable   :: mask2_local
         integer :: i, k, q, j, ntot, check  
         logical :: found 
 
@@ -1748,7 +1748,8 @@ contains
         allocate(v_neighb(map%nmax),weight_neighb(map%nmax),v_neighb_tmp(map%nmax))
         
         ! Initialize mask to show which points have been mapped
-        mask2 = 0 
+        allocate(mask2_local(map%npts))
+        mask2_local = 0 
 
         ! If fill is desired, initialize output points to missing values
         if (fill_pts) var2 = missing_val 
@@ -1841,15 +1842,15 @@ contains
 
                     ! Calculate the weighted average
                     var2(i)  = weighted_ave(v_neighb(1:ntot),weight_neighb(1:ntot))
-                    mask2(i) = 1
+                    mask2_local(i) = 1
 
                 else if (ntot .eq. 1) then
                     var2(i)  = v_neighb(1)
-                    mask2(i) = 1 
+                    mask2_local(i) = 1 
 
                 else
                     ! If no neighbors exist, field not mapped here.
-                    mask2(i) = 0  
+                    mask2_local(i) = 0  
 
                 end if 
 
@@ -1860,7 +1861,7 @@ contains
                     do k = 1, map%nmax  
                         if (var1(map%i(i,k)) .ne. missing_val) then
                             var2(i)  = var1(map%i(i,k))
-                            mask2(i) = 2 
+                            mask2_local(i) = 2 
                             exit 
                         end if
                     end do 
@@ -1877,10 +1878,13 @@ contains
 !         if (count(var2 .eq. missing_val) .gt. 0) &
 !             write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
 
-!         if (count(mask2 .eq. 0) .gt. 0 .and. .not. fill_pts) then 
+!         if (count(mask2_local .eq. 0) .gt. 0 .and. .not. fill_pts) then 
 !             write(*,*) "Warning, array contains non-interpolated points."
 !             write(*,*) "Ensure that it was already properly intialized with data."
 !         end if 
+        
+        ! If interpolation mask available, send to output
+        if (present(mask2)) mask2 = mask2_local 
 
         return
     end subroutine map_field_points_points_double
