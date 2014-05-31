@@ -426,6 +426,23 @@ contains
 
     end subroutine grid_init_from_opts
 
+    subroutine points_init_from_points(pts,pts0,name,x,y)
+
+        implicit none
+
+        type(points_class) :: pts, pts0 
+        character(len=*)   :: name  
+        real(dp), optional :: x(:), y(:)
+
+        call points_init_from_opts(pts,name,mtype=pts0%mtype,units=pts0%units, &
+                                 planet=pts0%planet%name,lon180=pts0%is_lon180,x=x,y=y, &
+                                 lambda=pts0%proj%lambda,phi=pts0%proj%phi, &
+                                 alpha=pts0%proj%alpha,x_e=pts0%proj%x_e,y_n=pts0%proj%y_n)
+
+        return
+
+    end subroutine points_init_from_points
+
     subroutine points_init_from_par(pts,filename,x,y)
 
         implicit none
