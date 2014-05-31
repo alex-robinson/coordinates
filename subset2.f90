@@ -69,7 +69,7 @@ contains
             write(suffix2,"(a4,i2)") "-phi", sub%factor
         else if (sub%factor .ge. 1) then
             write(suffix, "(a4,i1)") "-ghi", sub%factor 
-            write(suffix2,"(a4,i2)") "-phi", sub%factor
+            write(suffix2,"(a4,i1)") "-phi", sub%factor
         else
             write(*,*) "subset_define:: Error: factor must be greater than or equal to one."
             stop 
