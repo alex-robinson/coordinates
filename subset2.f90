@@ -37,7 +37,7 @@ module subset2
 
 contains 
 
-    subroutine subset_init(sub,grid,npts,factor,max_neighbors,lat_lim)
+    subroutine subset_init(sub,grid,npts,factor,max_neighbors,lat_lim,load)
         ! Determine the coordinates of the domain
 
         implicit none 
@@ -50,6 +50,8 @@ contains
         integer :: max_neighbs(2)
         double precision, optional :: lat_lim
         double precision :: lat_limit 
+        logical, optional :: load 
+        logical :: load_map
 
         character(len=12) :: suffix 
         double precision, allocatable, dimension(:) :: x, y
@@ -76,6 +78,9 @@ contains
 
         lat_limit   = 4.d0 
         if (present(lat_lim)) lat_limit = lat_lim 
+
+        load_map = .FALSE. 
+        if (present(load)) load_map = load 
 
         if (sub%subset) then 
             ! Initialize the new grid with input grid characteristics
@@ -115,7 +120,7 @@ contains
             ! Initialize mapping to subset grid from input grid, used for mask_pack generation
             if (sub%factor .gt. 1) then 
                 call map_init(sub%map_tosub_grid,grid,sub%grid, &
-                              max_neighbors=max_neighbs(1),lat_lim=lat_limit,fldr="maps",load=.FALSE.)
+                              max_neighbors=max_neighbs(1),lat_lim=lat_limit,fldr="maps",load=load_map)
             end if
         else
             ! Intialize the sub grid & pts with the input grid characteristics
@@ -145,7 +150,7 @@ contains
 
     end subroutine subset_init 
 
-    subroutine subset_redefine(sub,grid,mask_pack,max_neighbors,lat_lim)
+    subroutine subset_redefine(sub,grid,mask_pack,max_neighbors,lat_lim,load)
         ! Re-determine the coordinates of the current domain,
         ! which may be a subset of points from a grid
         ! This function allows the surface calculations to adapt to a changing 
@@ -160,12 +165,17 @@ contains
         integer :: max_neighbs(2)
         double precision, optional :: lat_lim
         double precision :: lat_limit 
+        logical, optional :: load
+        logical :: load_map
 
         max_neighbs = [6,9] 
         if (present(max_neighbors)) max_neighbs(2) = max_neighbors
 
         lat_limit   = 4.d0 
         if (present(lat_lim)) lat_limit = lat_lim 
+
+        load_map = .FALSE.
+        if (present(load)) load_map = load
 
         if (sub%subset) then 
 
@@ -189,10 +199,10 @@ contains
             if (sub%factor .gt. 1) then 
 
                 call map_init(sub%map_tosub,grid,sub%pts, &
-                              max_neighbors=max_neighbs(1),lat_lim=lat_limit,fldr="maps",load=.FALSE.) 
+                              max_neighbors=max_neighbs(1),lat_lim=lat_limit,fldr="maps",load=load_map) 
 
                 call map_init(sub%map_fromsub,sub%pts,grid, &
-                              max_neighbors=max_neighbs(2),lat_lim=lat_limit,fldr="maps",load=.FALSE.)
+                              max_neighbors=max_neighbs(2),lat_lim=lat_limit,fldr="maps",load=load_map)
             end if
 
         end if 

@@ -41,7 +41,8 @@ program test_subset
     character(len=256) :: file_input, outfldr, file_outhi, file_outlo 
     character(len=256) :: file_out1, file_out2
     integer :: i, j 
-
+    logical :: load 
+    
     double precision, parameter :: missing_value = -9999.d0 
 
     outfldr = "output/subsetting2/"
@@ -50,7 +51,10 @@ program test_subset
     file_outlo = trim(outfldr)//"GRL-20KM_TOPO_lo.nc"
     file_out1  = trim(outfldr)//"GRL-20KM_TOPO1.nc" 
     file_out2  = trim(outfldr)//"GRL-20KM_TOPO2.nc" 
-    
+        
+    ! Load stored maps from memory?
+    load = .FALSE. 
+
     ! =======================================================================
     !
     ! Step 1: Define main grid and load data that will be used here
@@ -105,9 +109,9 @@ program test_subset
     !
     ! =======================================================================
 
-    call subset_init(sub,grid,factor=3,npts=grid%npts*3)
-!     call subset_init(sub,grid,factor=2,npts=0)
-!     call subset_init(sub,grid,factor=1,npts=1000)
+    call subset_init(sub,grid,factor=3,npts=grid%npts*3,load=load)
+!     call subset_init(sub,grid,factor=2,npts=0,load=load)
+!     call subset_init(sub,grid,factor=1,npts=1000,load=load)
     
     ! Specify the local points object with subset information (redundant, but convenient)
     ptshi = sub%pts 
@@ -117,7 +121,7 @@ program test_subset
     call subset_gen_mask(sub%mask_pack,set%dzs,ptshi%npts, &
                          min_spacing=floor(40.d0/sub%grid%G%dx),method="max",map=sub%map_tosub_grid)
     write(*,*) "ptshi%npts =",ptshi%npts 
-    call subset_redefine(sub,grid,sub%mask_pack)
+    call subset_redefine(sub,grid,sub%mask_pack,load=load)
     ptshi = sub%pts 
 
     ! Check the mask
@@ -172,8 +176,8 @@ program test_subset
     call grid_write(gridlo,file_outlo,xnm="xc",ynm="yc",create=.TRUE.)  
 
     ! Initialize maps to/from low resolution grid
-    call map_init(mgridhi_gridlo,sub%pts,gridlo,max_neighbors=9,lat_lim=2.d0)
-    call map_init(mgridlo_gridhi,gridlo,sub%pts,max_neighbors=6,lat_lim=2.d0)
+    call map_init(mgridhi_gridlo,sub%pts,gridlo,max_neighbors=9,lat_lim=2.d0,load=load)
+    call map_init(mgridlo_gridhi,gridlo,sub%pts,max_neighbors=6,lat_lim=2.d0,load=load)
     
     ! Map the calculated data to the low resolution grid 
     call grid_allocate(gridlo,setlo%zs,  missing_value)
