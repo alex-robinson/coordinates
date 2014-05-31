@@ -10,6 +10,7 @@ usage:
 	@echo " make clean      : cleans object files"
 	@echo ""
 
+# PATH options
 objdir = .obj
 # netcdf_inc = /usr/include
 # netcdf_lib = /usr/lib
