@@ -53,7 +53,7 @@ contains
         logical, optional :: load 
         logical :: load_map
 
-        character(len=12) :: suffix 
+        character(len=12) :: suffix, suffix2 
         double precision, allocatable, dimension(:) :: x, y
 
         sub%subset = .TRUE.
@@ -65,9 +65,11 @@ contains
 
         ! Define a suffix to append to the grid name
         if (sub%factor .ge. 10) then
-            write(suffix,"(a3,i2)") "-hi", sub%factor
+            write(suffix, "(a4,i2)") "-ghi", sub%factor
+            write(suffix2,"(a4,i2)") "-phi", sub%factor
         else if (sub%factor .ge. 1) then
-            write(suffix,"(a3,i1)") "-hi", sub%factor 
+            write(suffix, "(a4,i1)") "-ghi", sub%factor 
+            write(suffix2,"(a4,i2)") "-phi", sub%factor
         else
             write(*,*) "subset_define:: Error: factor must be greater than or equal to one."
             stop 
@@ -111,7 +113,7 @@ contains
             y(1:2) = [grid%G%y(1),grid%G%y(grid%G%ny)]
 
             ! Initialize the points class, which is a subset of points of the grid class
-            call points_init(sub%pts,trim(grid%name)//trim(suffix),mtype=grid%mtype, &
+            call points_init(sub%pts,trim(grid%name)//trim(suffix2),mtype=grid%mtype, &
                              units=grid%units,planet=grid%planet%name,lon180=grid%is_lon180, &
                              x=x,y=y, &
                              lambda=grid%proj%lambda,phi=grid%proj%phi, &

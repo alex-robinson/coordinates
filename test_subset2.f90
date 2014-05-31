@@ -42,7 +42,7 @@ program test_subset
     character(len=256) :: file_out1, file_out2
     integer :: i, j 
     logical :: load 
-    
+
     double precision, parameter :: missing_value = -9999.d0 
 
     outfldr = "output/subsetting2/"
@@ -53,7 +53,7 @@ program test_subset
     file_out2  = trim(outfldr)//"GRL-20KM_TOPO2.nc" 
         
     ! Load stored maps from memory?
-    load = .FALSE. 
+    load = .TRUE. 
 
     ! =======================================================================
     !
