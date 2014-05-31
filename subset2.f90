@@ -1,6 +1,6 @@
 
 
-module subset
+module subset2
 
     use coordinates
 !     use interp2D
@@ -12,7 +12,8 @@ module subset
 
         type(points_class) :: pts
         type(grid_class)   :: grid 
-        type(map_class)    :: map_tosub, map_fromsub !, map_self 
+        type(map_class)    :: map_tosub_grid
+        type(map_class)    :: map_tosub, map_fromsub
         integer            :: npts, factor
         logical            :: subset
         double precision, allocatable :: var2D(:,:) 
@@ -111,16 +112,10 @@ contains
                              lambda=grid%proj%lambda,phi=grid%proj%phi, &
                              alpha=grid%proj%alpha,x_e=grid%proj%x_e,y_n=grid%proj%y_n)
 
-            ! Initialize to and fro mappings for subset grid and input grid
-            ! (intial map generation can take some time)
+            ! Initialize mapping to subset grid from input grid, used for mask_pack generation
             if (sub%factor .gt. 1) then 
-                call map_init(sub%map_tosub,grid,sub%grid, &
-                              max_neighbors=max_neighbs(1),lat_lim=lat_limit,fldr="maps",load=.TRUE.)
-!                 sub%map_tosub = sub%map0_tosub 
-
-                call map_init(sub%map_fromsub,sub%grid,grid, &
-                              max_neighbors=max_neighbs(2),lat_lim=lat_limit,fldr="maps",load=.TRUE.)
-!                 sub%map_fromsub = sub%map0_fromsub 
+                call map_init(sub%map_tosub_grid,grid,sub%grid, &
+                              max_neighbors=max_neighbs(1),lat_lim=lat_limit,fldr="maps",load=.FALSE.)
             end if
         else
             ! Intialize the sub grid & pts with the input grid characteristics
@@ -150,7 +145,7 @@ contains
 
     end subroutine subset_init 
 
-    subroutine subset_redefine(sub,mask_pack)
+    subroutine subset_redefine(sub,grid,mask_pack,max_neighbors,lat_lim)
         ! Re-determine the coordinates of the current domain,
         ! which may be a subset of points from a grid
         ! This function allows the surface calculations to adapt to a changing 
@@ -159,9 +154,18 @@ contains
         implicit none 
 
         type(subset_class) :: sub
+        type(grid_class)   :: grid   ! The original grid 
         logical, dimension(:,:) :: mask_pack 
+        integer, optional :: max_neighbors ! Maximum number of neighbors to use for mapping
+        integer :: max_neighbs(2)
+        double precision, optional :: lat_lim
+        double precision :: lat_limit 
 
-!         type(map_class) :: map_local 
+        max_neighbs = [6,9] 
+        if (present(max_neighbors)) max_neighbs(2) = max_neighbors
+
+        lat_limit   = 4.d0 
+        if (present(lat_lim)) lat_limit = lat_lim 
 
         if (sub%subset) then 
 
@@ -180,6 +184,17 @@ contains
             ! Get a new subset of points from the grid
             call grid_to_points(sub%grid,sub%pts,mask_pack=mask_pack,define=.FALSE.)
             
+            ! Initialize to and fro mappings for subset pts and input grid
+            ! (map generation can take some time - should be called infrequently)
+            if (sub%factor .gt. 1) then 
+
+                call map_init(sub%map_tosub,grid,sub%pts, &
+                              max_neighbors=max_neighbs(1),lat_lim=lat_limit,fldr="maps",load=.FALSE.) 
+
+                call map_init(sub%map_fromsub,sub%pts,grid, &
+                              max_neighbors=max_neighbs(2),lat_lim=lat_limit,fldr="maps",load=.FALSE.)
+            end if
+
         end if 
 
         return
@@ -190,13 +205,12 @@ contains
                                      method,radius,fill,border,missing_value)
         ! This subroutine maps a subset of points (var1D) onto
         ! a 2D array (var2D) of resolution grid. 
-        ! The subset should already be initialized.
-        ! Note: currently var1D and var2D are double precision! 
+        ! The subset should already be initialized. 
 
         implicit none 
  
         type(subset_class), intent(INOUT), target  :: sub 
-        type(map_class), intent(IN), optional, target :: map 
+        type(map_class),    intent(IN),    target, optional :: map 
         double precision, intent(OUT)   :: var2D(:,:)
         double precision, intent(IN)    :: var1D(:)
         logical, intent(IN)             :: mask_pack(:,:)
@@ -212,14 +226,14 @@ contains
 
         if ( (sub%subset .and. sub%factor .gt. 1) .or. present(map)) then 
 
-            ! Consistency check 
-            if (count(mask_pack) .ne. sub%npts) then 
-                write(*,*) "subset_to_points:: Error: total masked points not equal to npts."
-                write(*,*) "count(mask_pack) =", count(mask_pack)
-                write(*,*) "sub%npts =", sub%npts
-                write(*,*) "Make sure mask_pack has been properly generated."
-                stop 
-            end if 
+!             ! Consistency check 
+!             if (count(mask_pack) .ne. sub%npts) then 
+!                 write(*,*) "subset_to_points:: Error: total masked points not equal to npts."
+!                 write(*,*) "count(mask_pack) =", count(mask_pack)
+!                 write(*,*) "sub%npts =", sub%npts
+!                 write(*,*) "Make sure mask_pack has been properly generated."
+!                 stop 
+!             end if 
 
             ! Determine map to use here 
             map_local => sub%map_fromsub 
@@ -239,7 +253,7 @@ contains
             ! Step 2: Map the temporary 2D array to the desired 2D resolution
             allocate(mask2D(map_local%G%nx,map_local%G%ny))
 
-            call map_field(map_local,"Mapped variable",sub%var2D,var2D,mask2D,method=method, &
+            call map_field(map_local,"Mapped variable",var1D,var2D,mask2D,method=method, &
                            radius=radius,fill=fill,border=border,missing_value=missing_val)
 
         else if (sub%subset) then 
@@ -269,12 +283,11 @@ contains
         ! This subroutine maps a 2D array (var2D) onto
         ! a subset of points (var1D) of resolution sub%grid. 
         ! The subset should already be initialized.
-        ! Note: currently var1D and var2D are double precision! 
 
         implicit none 
  
         type(subset_class), intent(INOUT), target     :: sub 
-        type(map_class), intent(IN), optional, target :: map 
+        type(map_class),    intent(IN),    target, optional :: map 
         double precision, intent(IN)    :: var2D(:,:)
         double precision, intent(OUT)   :: var1D(:)
         logical, intent(IN)             :: mask_pack(:,:)
@@ -288,33 +301,38 @@ contains
 
         if ( (sub%subset .and. sub%factor .gt. 1) .or. present(map)) then 
 
-            ! Consistency check 
-            if (count(mask_pack) .ne. sub%npts) then 
-                write(*,*) "subset_to_points:: Error: total masked points not equal to npts."
-                write(*,*) "count(mask_pack) =", count(mask_pack)
-                write(*,*) "sub%npts =", sub%npts
-                write(*,*) "Make sure mask_pack has been properly generated."
-                stop 
-            end if 
+!             ! Consistency check 
+!             if (count(mask_pack) .ne. sub%npts) then 
+!                 write(*,*) "subset_to_points:: Error: total masked points not equal to npts."
+!                 write(*,*) "count(mask_pack) =", count(mask_pack)
+!                 write(*,*) "sub%npts =", sub%npts
+!                 write(*,*) "Make sure mask_pack has been properly generated."
+!                 stop 
+!             end if 
 
             ! Determine map to use here 
             map_local => sub%map_tosub 
             if (present(map)) map_local => map 
 
+!             write(*,*) trim(map_local%name1), " => ",trim(map_local%name2)
+!             write(*,*) "size(var2D): ",size(var2D,1), size(var2D,2)
+!             write(*,*) "sub%npts: ", sub%npts 
+!             write(*,*) "map%npts: ", map_local%npts 
+
             ! Assign a missing_value for use with mapping routine
             missing_val = -9999.d0
             if (present(missing_value)) missing_val = missing_value 
 
-            ! Step 1: Prefill the predefined 2D array of the subset
-            sub%var2D = missing_val
+!             ! Step 1: Prefill the predefined 2D array of the subset
+!             sub%var2D = missing_val
+            var1D = missing_val 
 
             ! Step 2: Map the 2D array to the temporary 2D array of the subset
-            call map_field(map_local,"Mapped variable",var2D,sub%var2D,sub%mask2D,method=method, &
-                           radius=radius,fill=fill,border=border,missing_value=missing_val, &
-                           mask_pack=mask_pack)
+            call map_field(map_local,"Mapped variable",var2D,var1D,method=method, &
+                           radius=radius,fill=fill,border=border,missing_value=missing_val)
 
-            ! Step 3: Pack the 2D variable onto its corresponding predefined 1D points.
-            var1D = pack(sub%var2D,mask_pack)
+!             ! Step 3: Pack the 2D variable onto its corresponding predefined 1D points.
+!             var1D = pack(sub%var2D,mask_pack)
         
         else if (sub%subset) then 
 
@@ -338,7 +356,6 @@ contains
         ! This subroutine maps a subset of points (var1D) onto
         ! a 2D array (var2D) of resolution grid. 
         ! The subset should already be initialized.
-        ! Note: currently var1D and var2D are double precision! 
 
         implicit none 
  
@@ -519,6 +536,6 @@ contains
     end subroutine subset_gen_mask
 
 
-end module subset
+end module subset2
 
 

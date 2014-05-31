@@ -80,6 +80,9 @@ $(objdir)/coordinates.o: coordinates.f90 $(objdir)/ncio.o $(objdir)/planet.o $(o
 $(objdir)/subset.o: subset.f90 $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
+$(objdir)/subset2.o: subset2.f90 $(objdir)/coordinates.o
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
 ## Complete programs
 
 # Program to test interpolations of CCSM3 data
@@ -95,6 +98,13 @@ test_subset: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/
 	$(FC) $(DFLAGS) $(FLAGS) -o test_subset.x $^ test_subset.f90 $(LFLAGS)
 	@echo " "
 	@echo "    test_subset.x is ready."
+	@echo " "
+
+test_subset2: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
+	$(objdir)/interp2D.o $(objdir)/coordinates.o $(objdir)/subset2.o
+	$(FC) $(DFLAGS) $(FLAGS) -o test_subset2.x $^ test_subset2.f90 $(LFLAGS)
+	@echo " "
+	@echo "    test_subset2.x is ready."
 	@echo " "
 
 test_interp: $(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
