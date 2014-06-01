@@ -327,7 +327,7 @@ contains
         integer :: nr 
 
         integer :: q, nx, ny, i, j
-        integer, parameter :: qmax = 100 ! Iterations 
+        integer, parameter :: qmax = 400 ! Iterations 
         double precision, dimension (:,:), allocatable :: neighb, weight, weight0 
         double precision :: wtot, mval 
         double precision, dimension(:,:), allocatable :: filled
@@ -425,7 +425,7 @@ contains
         integer, optional :: n 
         integer :: nr 
         integer :: q, nx, ny, i, j
-        integer, parameter :: qmax = 100 ! Iterations 
+        integer, parameter :: qmax = 400 ! Iterations 
 !         integer, parameter :: nr   = 1  ! Neighbor radius
         
         double precision, dimension (:,:), allocatable :: neighb, weight, weight0 

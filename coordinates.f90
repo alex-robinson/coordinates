@@ -71,6 +71,13 @@ module coordinates
 
     end type 
 
+    type map_helper_class 
+        real(dp), dimension(:), allocatable   :: var, weight
+        real(dp), dimension(:), allocatable   :: var_tmp 
+        integer,  dimension(:), allocatable   :: mask2
+        logical,  dimension(:), allocatable   :: maskp 
+    end type 
+
     type map_class
         character (len=128) :: name1, name2     ! Names of coordinate set1 and set2
         character (len=128) :: mtype
@@ -97,6 +104,10 @@ module coordinates
         integer :: nmax 
         integer,  dimension(:,:), allocatable :: i, quadrant, border
         real(sp), dimension(:,:), allocatable :: dist, weight
+
+        ! Helper arrays for map_field
+        ! (preallocating here saves time during mapping)
+!         type(map_helper_class) :: tmp   
 
     end type
 
@@ -1616,7 +1627,6 @@ contains
         allocate(maplocal%fieldm(size(var2,1)))
         maplocal%field  = missing_val  
         maplocal%fieldm = nint(missing_val) 
-        mask2           = 0 
 
         maplocal%var2  = pack(var2,maskp)
         maplocal%mask2 = 0 
@@ -1771,11 +1781,11 @@ contains
         ! If fill is desired, initialize output points to missing values
         if (fill_pts) var2 = missing_val 
 
-        ! Check to make sure map is the right size
-        if (maxval(map%i(1,:)) .gt. size(var1,1)) then
-            write(*,*) "Problem! Indices get too big."
-            write(*,*) maxval(map%i(1,:)), size(var1,1)
-        end if 
+!         ! Check to make sure map is the right size
+!         if (maxval(map%i(1,:)) .gt. size(var1,1)) then
+!             write(*,*) "Problem! Indices get too big."
+!             write(*,*) maxval(map%i(1,:)), size(var1,1)
+!         end if 
 
         do i = 1, map%npts 
 
@@ -1792,7 +1802,6 @@ contains
 
             ! Skip remaining calculations if no neighbors are found
             check = count(.not. v_neighb .eq. missing_val) 
-
             if (check .gt. 0) then 
 
                 ! If method == nn (nearest neighbor), limit neighbors to 1
