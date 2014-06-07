@@ -12,6 +12,7 @@ usage:
 
 # PATH options
 objdir = .obj
+
 # netcdf_inc = /usr/include
 # netcdf_lib = /usr/lib
 netcdf_inc = /opt/local/include
@@ -19,6 +20,7 @@ netcdf_lib = /opt/local/lib
 netcdf_inc_ifort = /home/robinson/apps/netcdf/netcdf/include
 netcdf_lib_ifort = /home/robinson/apps/netcdf/netcdf/lib
 
+# Command-line options at make call
 ifort ?= 0
 debug ?= 0 
 
@@ -45,12 +47,12 @@ else
 	LFLAGS		 = -L$(netcdf_lib) -lnetcdff -lnetcdf
 
 	ifeq ($(debug), 1)
-	    DFLAGS   = -w -p -ggdb -ffpe-trap=invalid,zero,overflow,underflow -fbacktrace -fcheck=all
+	    DFLAGS   = -w -p -ggdb -ffpe-trap=invalid,zero,overflow,underflow \
+	               -fbacktrace -fcheck=all -fbackslash
 	else
-	    DFLAGS   = -O3
+	    DFLAGS   = -O3 -fbackslash
 	endif
 endif
-
 
 ## Individual libraries or modules ##
 $(objdir)/ncio.o: ncio.f90
