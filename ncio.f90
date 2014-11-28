@@ -1,3 +1,25 @@
+! The MIT License (MIT)
+!
+! Copyright (c) 2014 Alexander Robinson and Mahé Perrette
+!
+! Permission is hereby granted, free of charge, to any person obtaining a copy
+! of this software and associated documentation files (the "Software"), to deal
+! in the Software without restriction, including without limitation the rights
+! to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+! copies of the Software, and to permit persons to whom the Software is
+! furnished to do so, subject to the following conditions:
+!
+! The above copyright notice and this permission notice shall be included in all
+! copies or substantial portions of the Software.
+!
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+! IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+! FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+! AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+! LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+! OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+! SOFTWARE.
+
 module ncio
 
     use netcdf
@@ -243,6 +265,13 @@ contains
             end if
 !         end if
         
+        ! Check if the variable gave us reasonable values
+        if (maxval(dabs(v%actual_range)) .gt. 1d98) then 
+            write(*,*) "ncio:: nc_write:: warning: actual range too high,&
+                            & variable may not be defined: "//trim(v%name)
+            v%actual_range = [0.d0,0.d0]
+        end if
+
         ! Modify the variable according to scale and offset (if working with real or double data)
         if (trim(v%xtype) .eq. "NF90_FLOAT" .or. trim(v%xtype) .eq. "NF90_DOUBLE") then
             if (v%missing_set) then
