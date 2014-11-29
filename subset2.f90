@@ -236,6 +236,10 @@ contains
 
         type(map_class), pointer :: map_local 
 
+        ! Assign a missing_value for use with mapping routine
+        missing_val = -9999.d0
+        if (present(missing_value)) missing_val = missing_value 
+
         if ( (sub%subset .and. sub%factor .gt. 1) .or. present(map)) then 
 
 !             ! Consistency check 
@@ -250,10 +254,6 @@ contains
             ! Determine map to use here 
             map_local => sub%map_fromsub 
             if (present(map)) map_local => map 
-
-            ! Assign a missing_value for use with mapping routine
-            missing_val = -9999.d0
-            if (present(missing_value)) missing_val = missing_value 
 
 !             write(*,*) trim(map_local%name1), " => ",trim(map_local%name2)
 
@@ -289,6 +289,36 @@ contains
         return
 
     end subroutine subset_to_grid_double
+
+    subroutine subset_to_grid_integer(sub,var1D,var2D,mask_pack,map, &
+                                      radius,fill,border,missing_value)
+        ! This subroutine maps a subset of points (var1D) onto
+        ! a 2D array (var2D) of resolution grid. 
+        ! The subset should already be initialized.
+
+        implicit none 
+ 
+        type(subset_class), intent(INOUT)  :: sub 
+        type(map_class), intent(IN), optional :: map 
+        integer, intent(OUT)   :: var2D(:,:)
+        integer, intent(IN)    :: var1D(:)
+        logical, intent(IN)    :: mask_pack(:,:)
+
+        double precision, allocatable :: var2Dtmp(:,:)
+
+        double precision, optional :: radius, missing_value 
+        double precision :: missing_val
+        logical, optional :: fill, border
+
+        allocate(var2Dtmp(size(var2D,1),size(var2D,2)))
+
+        call subset_to_grid_double(sub,dble(var1D),var2Dtmp,mask_pack,map, &
+                                   "nn",radius,fill,border,missing_value)
+        var2D = nint(var2Dtmp)
+
+        return 
+
+    end subroutine subset_to_grid_integer 
 
     subroutine subset_to_points_double(sub,var2D,var1D,mask_pack,map, &
                                        method,radius,fill,border,missing_value)
@@ -361,42 +391,6 @@ contains
         return
 
     end subroutine subset_to_points_double
-
-
-    subroutine subset_to_grid_integer(sub,var1D,var2D,mask_pack,map, &
-                                      radius,fill,border,missing_value)
-        ! This subroutine maps a subset of points (var1D) onto
-        ! a 2D array (var2D) of resolution grid. 
-        ! The subset should already be initialized.
-
-        implicit none 
- 
-        type(subset_class), intent(INOUT)  :: sub 
-        type(map_class), intent(IN), optional :: map 
-        integer, intent(OUT)   :: var2D(:,:)
-        integer, intent(IN)    :: var1D(:)
-        logical, intent(IN)    :: mask_pack(:,:)
-
-        double precision, allocatable :: var2Dtmp(:,:)
-
-        double precision, optional :: radius, missing_value 
-        double precision :: missing_val
-        logical, optional :: fill, border
-
-        allocate(var2Dtmp(size(var2D,1),size(var2D,2)))
-
-        call subset_to_grid_double(sub,dble(var1D),var2Dtmp,mask_pack,map, &
-                                   "nn",radius,fill,border,missing_value)
-        var2D = nint(var2Dtmp)
-
-!         if (present(fill)) then 
-!             write(*,*) "subset_to_grid nearest..."
-!             if (fill) call fill_nearest(var2D,nint(missing_value))
-!         end if 
-
-        return 
-
-    end subroutine subset_to_grid_integer 
 
     subroutine subset_to_points_integer(sub,var2D,var1D,mask_pack,map, &
                                         radius,fill,border,missing_value)
