@@ -132,7 +132,8 @@ contains
 
         if (.not. present(days) .and. nd .ne. 360) then 
             write(*,*) "convert_monthly_daily_1D:: ", &
-            "Error: currently this routine only works with 360-day years."
+            "Error: This routine only works with 360-day years &
+             &unless specific days are provided."
             stop 
         else if (nd .ne. size(xout)) then 
             write(*,*) "convert_monthly_daily_1D:: ", &

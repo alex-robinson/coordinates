@@ -10,8 +10,12 @@ module interp1D
     integer,  parameter :: ERR_IND  = -1 
     real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
 
+    interface interp_linear
+        module procedure interp_linear_pt, interp_linear_vec 
+    end interface 
+
     private
-    public :: interp_linear_pt, interp_linear
+    public :: interp_linear
     public :: interp_spline
     
 contains
@@ -22,7 +26,7 @@ contains
     !   Purpose    :  Interpolates for the y value at the desired x value, 
     !                 given x and y values around the desired point.
     ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    function interp_linear_pt(x,y,xout) result(yout)
+    function interp_linear_internal(x,y,xout) result(yout)
 
         implicit none
 
@@ -43,9 +47,43 @@ contains
 
         return
 
-    end function interp_linear_pt 
+    end function interp_linear_internal 
 
-    function interp_linear(x,y,xout) result(yout)
+    function interp_linear_pt(x,y,xout) result(yout)
+        ! Interpolate y from ordered x to ordered xout positions
+
+        implicit none 
+ 
+        double precision, dimension(:), intent(IN) :: x, y
+        double precision, intent(IN) :: xout
+        double precision :: yout 
+        integer :: i, j, n, nout 
+
+        n    = size(x) 
+
+        if (xout .lt. x(1)) then
+            yout = y(1)
+        else if (xout .gt. x(n)) then
+            yout = y(n)
+        else
+            do j = 1, n 
+                if (x(j) .ge. xout) exit 
+            end do
+
+            if (j .eq. 1) then 
+                yout = y(1) 
+            else if (j .eq. n+1) then 
+                yout = y(n)
+            else 
+                yout = interp_linear_internal(x(j-1:j),y(j-1:j),xout)
+            end if 
+        end if 
+
+        return 
+
+      end function interp_linear_pt
+
+    function interp_linear_vec(x,y,xout) result(yout)
         ! Interpolate y from ordered x to ordered xout positions
 
         implicit none 
@@ -58,15 +96,15 @@ contains
         n    = size(x) 
         nout = size(xout)
 
-        write(*,*) minval(x), maxval(x), n, nout
+!         write(*,*) minval(x), maxval(x), n, nout
 
         do i = 1, nout 
             if (xout(i) .lt. x(1)) then
                 yout(i) = y(1)
-                write(*,*) 1, xout(i)
+!                 write(*,*) 1, xout(i)
             else if (xout(i) .gt. x(n)) then
                 yout(i) = y(n)
-                write(*,*) 2, xout(i)
+!                 write(*,*) 2, xout(i)
             else
                 do j = 1, n 
                     if (x(j) .ge. xout(i)) exit 
@@ -74,20 +112,20 @@ contains
 
                 if (j .eq. 1) then 
                     yout(i) = y(1) 
-                    write(*,*) 3, xout(i)
+!                     write(*,*) 3, xout(i)
                 else if (j .eq. n+1) then 
                     yout(i) = y(n)
-                    write(*,*) 4, xout(i)
+!                     write(*,*) 4, xout(i)
                 else 
-                    yout(i) = interp_linear_pt(x(j-1:j),y(j-1:j),xout(i))
-                    write(*,*) 5, xout(i)
+                    yout(i) = interp_linear_internal(x(j-1:j),y(j-1:j),xout(i))
+!                     write(*,*) 5, xout(i)
                 end if 
             end if 
         end do
 
         return 
 
-      end function interp_linear 
+      end function interp_linear_vec
 
     function interp_spline(x,y,xout) result(yout)
 
