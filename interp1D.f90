@@ -17,37 +17,42 @@ module interp1D
     private
     public :: interp_linear
     public :: interp_spline
-    
+    public :: interp_align 
+
 contains
 
-    ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    !   Subroutine :  i n t e r p 1
-    !   Author     :  Alex Robinson
-    !   Purpose    :  Interpolates for the y value at the desired x value, 
-    !                 given x and y values around the desired point.
-    ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    function interp_linear_internal(x,y,xout) result(yout)
+    function interp_align(x,y,xout,missing_value,tol) result(yout)
+        ! Fill in a vector of times with the nearest input 
+        ! times to within a certain tolerance
+        implicit none 
+ 
+        double precision, dimension(:), intent(IN) :: x, y
+        double precision, dimension(:), intent(IN) :: xout
+        double precision, intent(IN), optional :: missing_value, tol 
+        double precision, dimension(size(xout)) :: yout
+        double precision :: tolerance 
+        integer :: i, n, nout 
 
-        implicit none
+        ! Length of output vector
+        nout = size(xout)
 
-        real(dp), intent(IN)  :: x(2), y(2), xout
-        real(dp) :: yout
-        real(dp) :: alph
+        ! Define tolerance for filling points 
+!         tolerance = 0.1d0
+        tolerance = minval(xout(2:nout)-xout(1:nout-1),dim=1)*0.49d0 
+        if (present(tol)) tolerance = tol 
 
-        if ( xout .lt. x(1) .or. xout .gt. x(2) ) then
-            write(*,*) "interp1: xout < x0 or xout > x1 !"
-            write(*,*) "xout = ",xout
-            write(*,*) "x0   = ",x(1)
-            write(*,*) "x1   = ",x(2)
-            stop
-        end if
+        ! Define missing values and fill vector intially
+        yout = MISSING_VALUE_DEFAULT
+        if (present(missing_value)) yout = missing_value
 
-        alph = (xout - x(1)) / (x(2) - x(1))
-        yout = y(1) + alph*(y(2) - y(1))
-
+        do i = 1, nout 
+            n = minloc(abs(x-xout(i)),dim=1)
+            if (abs(x(n)-xout(i)) <= tolerance) yout(i) = y(n) 
+        end do 
+        
         return
 
-    end function interp_linear_internal 
+    end function interp_align
 
     function interp_linear_pt(x,y,xout) result(yout)
         ! Interpolate y from ordered x to ordered xout positions
@@ -127,6 +132,35 @@ contains
 
       end function interp_linear_vec
 
+    ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    !   Subroutine :  interp_linear_internal
+    !   Author     :  Alex Robinson
+    !   Purpose    :  Interpolates for the y value at the desired x value, 
+    !                 given x and y values around the desired point.
+    ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    function interp_linear_internal(x,y,xout) result(yout)
+
+        implicit none
+
+        real(dp), intent(IN)  :: x(2), y(2), xout
+        real(dp) :: yout
+        real(dp) :: alph
+
+        if ( xout .lt. x(1) .or. xout .gt. x(2) ) then
+            write(*,*) "interp1: xout < x0 or xout > x1 !"
+            write(*,*) "xout = ",xout
+            write(*,*) "x0   = ",x(1)
+            write(*,*) "x1   = ",x(2)
+            stop
+        end if
+
+        alph = (xout - x(1)) / (x(2) - x(1))
+        yout = y(1) + alph*(y(2) - y(1))
+
+        return
+
+    end function interp_linear_internal 
+
     function interp_spline(x,y,xout) result(yout)
 
         implicit none 
@@ -167,32 +201,7 @@ contains
 
     end function interp_spline 
 
-!     function ispline_outer(u, x, y, b, c, d, n) result(yout)
-
-!         implicit none 
-
-!         integer :: n
-!         double precision ::  u, x(n), y(n), b(n), c(n), d(n)
-!         double precision :: uh, dx, yh  
-
-!         if (u .lt. x(1)) then 
-!             dx = x(1)-u
-!             uh = x(1) + dx 
-!             yh = ispline(uh,x,y,b,c,d,n)
-!             yout = y(1) + (yh-y(1))
-!         else if (u .gt. x(n)) then
-!             dx = u-x(n)
-!             uh = x(n)-dx 
-!             yh = ispline(uh,x,y,b,c,d,n)
-!             yout = y(n) + (y(n)-yh)
-!         end if 
-
-!         return
-
-!     end function ispline_outer 
-
-
-   subroutine spline (x, y, b, c, d, n)
+subroutine spline (x, y, b, c, d, n)
 !======================================================================
 !  SOURCE: http://ww2.odu.edu/~agodunov/computing/programs/book2/Ch01/spline.f90
 !  Calculate the coefficients b(i), c(i), and d(i), i=1,2,...,n
@@ -283,7 +292,7 @@ c(n) = 3.0*c(n)
 d(n) = d(n-1)
 end subroutine spline
 
-  function ispline(u, x, y, b, c, d, n)
+function ispline(u, x, y, b, c, d, n)
 !======================================================================
 ! SOURCE: http://ww2.odu.edu/~agodunov/computing/programs/book2/Ch01/spline.f90
 ! function ispline evaluates the cubic spline interpolation at point z
