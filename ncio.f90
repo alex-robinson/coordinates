@@ -1145,7 +1145,7 @@ contains
         call nc_check( nf90_enddef(nc_id) )
         if (.not.present(ncid)) call nc_check( nf90_close(nc_id) )
 
-        write(*,"(a,a)") "ncio:: nc_write_attr_global:: ", &
+        write(*,"(a,a)") "ncio:: nc_write_attr:: ", &
                               trim(filename)//" : "//trim(name)//" = "//trim(value)
         
         return
@@ -3472,6 +3472,9 @@ contains
 
         ! Read the string from the netcdf file
         call nc_check( nf90_get_var(nc_id, v%varid, string(1:v%dlen(1))) )
+
+        ! fill remaining char space
+        string(v%dlen(1)+1:) = ""
 
         ! Close the file. This causes netCDF to flush all buffers and make
         ! sure your data are really written to disk.
