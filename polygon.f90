@@ -30,12 +30,16 @@ module geometry
         module procedure create_polygon_novts
         module procedure create_polygon_vals
     end interface 
-  
+
+    interface point_in_polygon 
+        module procedure point_is_inside_poly
+        module procedure point_is_inside_points
+    end interface 
+
     private 
     public :: point, polygon  
     public :: create_polygon
-    public :: point_is_inside_points
-    public :: point_is_inside 
+    public :: point_in_polygon
 
 contains
     
@@ -195,7 +199,7 @@ contains
     end function ray_intersects_seg
     
     ! ## Functions to test individual points inside of polygons ##
-    function point_is_inside(p, pol) result(inside)
+    function point_is_inside_poly(p, pol) result(inside)
         logical :: inside
         type(point), intent(in) :: p
         type(polygon), intent(in) :: pol
@@ -212,7 +216,7 @@ contains
         inside = .true.
         if ( mod(cnt, 2) == 0 ) inside = .false.
 
-    end function point_is_inside
+    end function point_is_inside_poly
  
 
     function point_is_inside_points(x, y, xx, yy) result(inside)

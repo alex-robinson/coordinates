@@ -31,7 +31,7 @@ program Pointpoly
   do j = 1, size(p)
      do i = 1, size(polys)
         write(*, "('point (',F8.2,',',F8.2,') is inside ',A,'? ', L)") &
-             p(j)%x, p(j)%y, names(i), point_is_inside(p(j), polys(i))
+             p(j)%x, p(j)%y, names(i), point_in_polygon(p(j), polys(i))
      end do
      print *, ""
   end do

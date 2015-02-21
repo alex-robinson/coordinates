@@ -29,7 +29,7 @@ program test_points
     y = 0.0 
 
     write(*,*) "Points inside polygon?"
-    inside = point_is_inside_points(x, y, xx, yy)
+    inside = point_in_polygon(x, y, xx, yy)
     write(*,*) x, y, inside
 
     return 
