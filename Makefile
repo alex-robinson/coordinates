@@ -67,6 +67,9 @@ $(objdir)/interp2D.o: interp2D.f90
 $(objdir)/interp_time.o: interp_time.f90
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
+$(objdir)/polygon.o: polygon.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
 $(objdir)/planet.o: planet.f90
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
@@ -123,6 +126,20 @@ geodinverse: $(objdir)/planet.o $(objdir)/geodesic.o
 	$(FC) $(DFLAGS) $(FLAGS) -o geodinverse.x $^ geodinverse.f90
 	@echo " "
 	@echo "    geodinverse.x is ready."
+	@echo " "
+
+# Program to test polygon calculations
+Pointpoly: $(objdir)/polygon.o
+	$(FC) $(DFLAGS) $(FLAGS) -o Pointpoly.x $^ Pointpoly.f90 $(LFLAGS)
+	@echo " "
+	@echo "    Pointpoly.x is ready."
+	@echo " "
+
+# Program to test custom polygon calculations
+poly: $(objdir)/polygon.o
+	$(FC) $(DFLAGS) $(FLAGS) -o test_polygon.x $^ test_polygon.f90 $(LFLAGS)
+	@echo " "
+	@echo "    test_polygon.x is ready."
 	@echo " "
 
 clean:
