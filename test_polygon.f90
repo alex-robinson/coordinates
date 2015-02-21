@@ -32,6 +32,4 @@ program test_points
     inside = point_in_polygon(x, y, xx, yy)
     write(*,*) x, y, inside
 
-    return 
-
 end program 
