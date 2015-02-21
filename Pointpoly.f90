@@ -3,7 +3,7 @@
 ! http://rosettacode.org/wiki/Ray-casting_algorithm#Fortran
 
 program Pointpoly
-  use geometry
+  use polygons
   implicit none
  
   character(len=16), dimension(4) :: names

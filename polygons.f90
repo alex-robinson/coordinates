@@ -2,7 +2,7 @@
 ! Ray-casting algorithm and point_in_polygon test from Rosetta code:
 ! http://rosettacode.org/wiki/Ray-casting_algorithm#Fortran
 
-module geometry 
+module polygons 
 
     implicit none
 
@@ -254,4 +254,4 @@ contains
 
 
 
-end module geometry
+end module polygons

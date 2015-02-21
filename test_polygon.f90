@@ -4,7 +4,7 @@
 
 program test_points
     
-    use geometry 
+    use polygons 
 
     implicit none 
 
