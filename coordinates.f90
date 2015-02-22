@@ -585,9 +585,11 @@ contains
             stop
         end if
 
+        write(*,*) "pts_init: 0"
+
         ! Check whether input points are xy values or latlon values (for projected grid)
         latlon_in = .FALSE.
-        if (present(latlon)) latlon_in = .TRUE. 
+        if (present(latlon)) latlon_in = latlon
 
         if (latlon_in .and. .not. (pts%is_projection .and. pts%is_cartesian)) then 
             write(*,*) "points_init:: error: x/y input values can only &
