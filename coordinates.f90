@@ -113,7 +113,7 @@ module coordinates
 
     interface grid_init
         module procedure grid_init_from_opts, grid_init_from_par
-        module procedure grid_init_from_grid
+        module procedure grid_init_from_grid, grid_init_from_points
     end interface 
     
     interface grid_allocate 
@@ -123,6 +123,7 @@ module coordinates
 
     interface points_init
         module procedure points_init_from_opts, points_init_from_par
+        module procedure points_init_from_points, points_init_from_grid
     end interface 
 
     interface points_allocate 
@@ -258,6 +259,28 @@ contains
         return
 
     end subroutine grid_init_from_grid
+
+    subroutine grid_init_from_points(grid,pts0,name,x,y,x0,dx,nx,y0,dy,ny)
+        ! Initialize a new grid based on an old grid but
+        ! with new x/y coordinates 
+
+        implicit none
+
+        type(grid_class)   :: grid
+        type(points_class) :: pts0
+        character(len=*)   :: name  
+        integer, optional  :: nx, ny
+        real(dp), optional :: x(:), y(:), x0, dx, y0, dy
+        
+        call grid_init_from_opts(grid,name,mtype=pts0%mtype,units=pts0%units, &
+                                 planet=pts0%planet%name,lon180=pts0%is_lon180, &
+                                 x=x,y=y,x0=x0,dx=dx,nx=nx,y0=y0,dy=dy,ny=ny, &
+                                 lambda=pts0%proj%lambda,phi=pts0%proj%phi, &
+                                 alpha=pts0%proj%alpha,x_e=pts0%proj%x_e,y_n=pts0%proj%y_n)
+
+        return
+
+    end subroutine grid_init_from_points
 
     subroutine grid_init_from_par(grid,filename,x,y,x0,dx,nx,y0,dy,ny)
 
@@ -454,13 +477,34 @@ contains
 
     end subroutine points_init_from_points
 
-    subroutine points_init_from_par(pts,filename,x,y)
+    subroutine points_init_from_grid(pts,grid0,name,x,y,latlon)
+
+        implicit none
+
+        type(points_class) :: pts
+        type(grid_class)   :: grid0 
+        character(len=*)   :: name  
+        real(dp), optional :: x(:), y(:)
+        logical, optional  :: latlon 
+
+        call points_init_from_opts(pts,name,mtype=grid0%mtype,units=grid0%units, &
+                                 planet=grid0%planet%name,lon180=grid0%is_lon180,x=x,y=y, &
+                                 lambda=grid0%proj%lambda,phi=grid0%proj%phi, &
+                                 alpha=grid0%proj%alpha,x_e=grid0%proj%x_e,y_n=grid0%proj%y_n, &
+                                 latlon=latlon)
+
+        return
+
+    end subroutine points_init_from_grid
+
+    subroutine points_init_from_par(pts,filename,x,y,latlon)
 
         implicit none
 
         type(points_class) :: pts 
         character(len=*)   :: filename 
         real(dp), optional :: x(:), y(:)
+        logical, optional  :: latlon 
 
         character(len=256)   :: name, mtype, units
         character(len=256)   :: planet  
@@ -475,14 +519,14 @@ contains
         close(7)
 
         call points_init_from_opts(pts,name,mtype,units,planet,lon180, &
-                         x,y,lambda,phi,alpha,x_e,y_n)
+                         x,y,lambda,phi,alpha,x_e,y_n,latlon)
 
         return
 
     end subroutine points_init_from_par
 
     subroutine points_init_from_opts(pts,name,mtype,units,planet,lon180,x,y, &
-                                     lambda,phi,alpha,x_e,y_n)
+                                     lambda,phi,alpha,x_e,y_n,latlon)
 
         use oblimap_projection_module 
 
@@ -495,6 +539,8 @@ contains
         character(len=256) :: planet_name
         logical, optional  :: lon180
         real(dp), optional :: lambda, phi, alpha, x_e, y_n 
+        logical, optional :: latlon 
+        logical :: latlon_in 
         integer :: i, nborder 
         integer, allocatable :: tmpi(:)
 
@@ -539,6 +585,16 @@ contains
             stop
         end if
 
+        ! Check whether input points are xy values or latlon values (for projected grid)
+        latlon_in = .FALSE.
+        if (present(latlon)) latlon_in = .TRUE. 
+
+        if (.not. (pts%is_projection .and. pts%is_cartesian)) then 
+            write(*,*) "points_init:: error: x/y input values can only &
+                       &be latlon values for projected grids or for latlon grids."
+            stop 
+        end if 
+
         ! Assign point information
         pts%npts = size(x)
 
@@ -581,10 +637,24 @@ contains
             call projection_init(pts%proj,"stereographic",pts%planet, &
                                  lambda,phi,alpha,x_e,y_n)
 
-            do i = 1, pts%npts       
-                call inverse_oblique_sg_projection(pts%x(i)*pts%xy_conv,pts%y(i)*pts%xy_conv, &
-                                                   pts%lon(i),pts%lat(i),pts%proj)
-            end do
+            if (latlon_in) then 
+                pts%lon = pts%x 
+                pts%lat = pts%y 
+
+                do i = 1, pts%npts       
+                    call oblique_sg_projection(pts%lon(i),pts%lat(i),pts%x(i),pts%y(i),pts%proj)
+                    pts%x(i) = pts%x(i)*pts%xy_conv
+                    pts%y(i) = pts%y(i)*pts%xy_conv
+                end do
+
+            else 
+
+                do i = 1, pts%npts       
+                    call inverse_oblique_sg_projection(pts%x(i)*pts%xy_conv,pts%y(i)*pts%xy_conv, &
+                                                       pts%lon(i),pts%lat(i),pts%proj)
+                end do
+
+            end if 
 
         else if ( .not. pts%is_cartesian ) then 
             ! Points are defined in latlon space
