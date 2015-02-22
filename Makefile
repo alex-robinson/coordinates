@@ -58,6 +58,9 @@ endif
 $(objdir)/ncio.o: ncio.f90
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
+$(objdir)/index.o: index.f90
+	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+
 $(objdir)/interp1D.o: interp1D.f90
 	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
 
@@ -136,7 +139,7 @@ Pointpoly: $(objdir)/polygons.o
 	@echo " "
 
 # Program to test custom polygon calculations
-poly: $(objdir)/polygons.o
+poly: $(objdir)/polygons.o $(objdir)/index.o
 	$(FC) $(DFLAGS) $(FLAGS) -o test_polygon.x $^ test_polygon.f90 $(LFLAGS)
 	@echo " "
 	@echo "    test_polygon.x is ready."
