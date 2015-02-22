@@ -606,6 +606,7 @@ contains
         if (allocated(pts%border)) deallocate(pts%border)
         if (allocated(pts%area))   deallocate(pts%area)
         allocate(pts%x(pts%npts),pts%y(pts%npts))
+        allocate(pts%lon(pts%npts),pts%lat(pts%npts))
         allocate(pts%border(pts%npts))
         allocate(pts%area(pts%npts))
 
@@ -630,14 +631,15 @@ contains
         ! If cartesian grid is a projection, calculate the corresponding latlon points
         ! Note: xy points not needed for a latlon grid except during mapping
         if ( pts%is_projection ) then
-            ! Points are projected from latlon space, find latlon coordinates
-            allocate(pts%lon(pts%npts),pts%lat(pts%npts))
-
+            ! Points are projected, find coordinates (latlon or xy)
+            
             ! Initialize projection information
             call projection_init(pts%proj,"stereographic",pts%planet, &
                                  lambda,phi,alpha,x_e,y_n)
 
             if (latlon_in) then 
+                ! Starting with latlon points 
+
                 pts%lon = pts%x 
                 pts%lat = pts%y 
 
@@ -648,7 +650,8 @@ contains
                 end do
 
             else 
-
+                ! Starting with xy points 
+                
                 do i = 1, pts%npts       
                     call inverse_oblique_sg_projection(pts%x(i)*pts%xy_conv,pts%y(i)*pts%xy_conv, &
                                                        pts%lon(i),pts%lat(i),pts%proj)
@@ -658,7 +661,6 @@ contains
 
         else if ( .not. pts%is_cartesian ) then 
             ! Points are defined in latlon space
-            allocate(pts%lon(pts%npts),pts%lat(pts%npts))
 
             pts%lon = pts%x 
             pts%lat = pts%y 
