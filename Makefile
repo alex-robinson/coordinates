@@ -34,6 +34,7 @@ ifeq ($(ifort),1)
 	## IFORT OPTIONS ##
 	FLAGS        = -module $(objdir) -L$(objdir) -I$(netcdf_inc_ifort)
 	LFLAGS		 = -L$(netcdf_lib_ifort) -lnetcdf
+	SFLAGS       = -fPIC
 
 	ifeq ($(debug), 1)
 	    DFLAGS   = -C -traceback -ftrapuv -fpe0 -check all -vec-report0
@@ -45,6 +46,7 @@ else
 	## GFORTRAN OPTIONS ##
 	FLAGS        = -I$(objdir) -J$(objdir) -I$(netcdf_inc)
 	LFLAGS		 = -L$(netcdf_lib) -lnetcdff -lnetcdf
+	SFLAGS       = -fPIC
 
 	ifeq ($(debug), 1)
 	    DFLAGS   = -w -p -ggdb -ffpe-trap=invalid,zero,overflow,underflow \
@@ -56,41 +58,41 @@ endif
 
 ## Individual libraries or modules ##
 $(objdir)/ncio.o: ncio.f90
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/index.o: index.f90
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/interp1D.o: interp1D.f90
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/interp2D.o: interp2D.f90
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/interp_time.o: interp_time.f90
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/polygons.o: polygons.f90
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/planet.o: planet.f90
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/geodesic.o: geodesic.f90
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/projection_oblimap2.o: projection_oblimap2.f90
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/coordinates.o: coordinates.f90 $(objdir)/ncio.o $(objdir)/planet.o $(objdir)/geodesic.o \
 						 $(objdir)/projection_oblimap2.o
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/subset.o: subset.f90 $(objdir)/coordinates.o
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/subset2.o: subset2.f90 $(objdir)/coordinates.o
-	$(FC) $(DFLAGS) $(FLAGS) -c -o $@ $<
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 ## Complete programs
 
