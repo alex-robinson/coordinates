@@ -643,8 +643,8 @@ contains
 
                 do i = 1, pts%npts       
                     call oblique_sg_projection(pts%lon(i),pts%lat(i),pts%x(i),pts%y(i),pts%proj)
-                    pts%x(i) = pts%x(i)*pts%xy_conv
-                    pts%y(i) = pts%y(i)*pts%xy_conv
+                    pts%x(i) = pts%x(i)/pts%xy_conv
+                    pts%y(i) = pts%y(i)/pts%xy_conv
                 end do
 
             else 
