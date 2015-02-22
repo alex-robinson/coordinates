@@ -94,8 +94,25 @@ $(objdir)/subset2.o: subset2.f90 $(objdir)/coordinates.o
 
 ## Complete programs
 
+# coordinates shared library 
+coord: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
+	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
+	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
+	$(objdir)/subset2.o $(objdir)/coordinates.o
+	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates.so $^ $(LFLAGS)
+	@echo " "
+	@echo "    libcoordinates.so is ready."
+	@echo " "
+
+
 # Program to test interpolations of CCSM3 data
-ccsm3: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
+ccsm3: coord
+	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3.x test_ccsm3.f90 -L. -lcoordinates $(LFLAGS)
+	@echo " "
+	@echo "    test_ccsm3.x is ready."
+	@echo " "
+
+ccsm300: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
 	$(objdir)/interp2D.o $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3.x $^ test_ccsm3.f90 $(LFLAGS)
 	@echo " "
@@ -146,6 +163,6 @@ poly: $(objdir)/polygons.o $(objdir)/index.o
 	@echo " "
 
 clean:
-	rm -f test_ccsm3.x $(objdir)/*.o $(objdir)/*.mod
+	rm -f test_ccsm3.x $(objdir)/*.o $(objdir)/*.mod *.so 
 
 # cleanall: cleansico cleanrembo cleansicoX
