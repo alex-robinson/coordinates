@@ -544,15 +544,11 @@ contains
         integer :: i, nborder 
         integer, allocatable :: tmpi(:)
 
-        write(*,*) "pts_init: 0"
-
         ! Assign basic dataset info 
         pts%name  = trim(name)
         pts%mtype = trim(mtype)
         pts%units = trim(units)
         
-        write(*,*) "pts_init: 1"
-
         ! Define map characteristics
         select case(trim(pts%mtype))
             case("latlon")
@@ -570,8 +566,6 @@ contains
                 stop 
         end select 
 
-        write(*,*) "pts_init: 2"
-
         ! Make sure we can convert the units of the points as needed
         select case(trim(pts%units))
             case("kilometers","km")
@@ -580,13 +574,9 @@ contains
                 pts%xy_conv = 1.d0 
         end select
 
-        write(*,*) "pts_init: 3"
-
         ! Check latlon range (0=>360 or -180=>180)
         pts%is_lon180 = .FALSE.
         if (present(lon180)) pts%is_lon180 = lon180 
-
-        write(*,*) "pts_init: 4"
 
         ! Make sure x and y vectors have the same length
         if (size(x) .ne. size(y)) then
@@ -594,8 +584,6 @@ contains
                        "error: x and y points must have the same length."
             stop
         end if
-
-        write(*,*) "pts_init: 5"
 
         ! Check whether input points are xy values or latlon values (for projected grid)
         latlon_in = .FALSE.
@@ -606,8 +594,6 @@ contains
                        &be latlon values for projected grids or for latlon grids."
             stop 
         end if 
-
-        write(*,*) "pts_init: 6"
 
         ! Assign point information
         pts%npts = size(x)
@@ -624,16 +610,12 @@ contains
         allocate(pts%border(pts%npts))
         allocate(pts%area(pts%npts))
 
-        write(*,*) "pts_init: 7"
-        
         ! Careful here: if the argument x = pts%x, the reallocation
         ! causes a memory gap sometimes. Is there a check for this?
         ! (ajr, 2013-09-28)
         pts%x = x 
         pts%y = y 
 
-        write(*,*) "pts_init: 8"
-        
         ! For now set points cell areas to 1
         ! (if it is a grid, area will be calculated afterwards in grid_init)
         pts%area   = 1.0_dp
@@ -658,8 +640,6 @@ contains
             if (latlon_in) then 
                 ! Starting with latlon points 
 
-                write(*,*) "pts_init: 9a"
-        
                 pts%lon = pts%x 
                 pts%lat = pts%y 
 
@@ -669,8 +649,6 @@ contains
                     pts%y(i) = pts%y(i)/pts%xy_conv
                 end do
 
-                write(*,*) "pts_init: 9b"
-        
             else 
                 ! Starting with xy points 
 
