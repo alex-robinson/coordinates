@@ -595,6 +595,8 @@ contains
             stop 
         end if 
 
+        write(*,*) "pts_init: 1"
+
         ! Assign point information
         pts%npts = size(x)
 
@@ -610,12 +612,16 @@ contains
         allocate(pts%border(pts%npts))
         allocate(pts%area(pts%npts))
 
+        write(*,*) "pts_init: 2"
+        
         ! Careful here: if the argument x = pts%x, the reallocation
         ! causes a memory gap sometimes. Is there a check for this?
         ! (ajr, 2013-09-28)
         pts%x = x 
         pts%y = y 
 
+        write(*,*) "pts_init: 3"
+        
         ! For now set points cell areas to 1
         ! (if it is a grid, area will be calculated afterwards in grid_init)
         pts%area   = 1.0_dp
@@ -640,6 +646,8 @@ contains
             if (latlon_in) then 
                 ! Starting with latlon points 
 
+                write(*,*) "pts_init: 4a"
+        
                 pts%lon = pts%x 
                 pts%lat = pts%y 
 
@@ -649,9 +657,11 @@ contains
                     pts%y(i) = pts%y(i)/pts%xy_conv
                 end do
 
+                write(*,*) "pts_init: 5a"
+        
             else 
                 ! Starting with xy points 
-                
+
                 do i = 1, pts%npts       
                     call inverse_oblique_sg_projection(pts%x(i)*pts%xy_conv,pts%y(i)*pts%xy_conv, &
                                                        pts%lon(i),pts%lat(i),pts%proj)
