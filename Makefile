@@ -94,7 +94,7 @@ $(objdir)/subset2.o: subset2.f90 $(objdir)/coordinates.o
 
 ## Complete programs
 
-# coordinates shared library 
+# coordinates shared library - using subset2
 coord: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
 	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
 	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
@@ -104,6 +104,15 @@ coord: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
 	@echo "    libcoordinates.so is ready."
 	@echo " "
 
+# coordinates shared library - using subset
+coord0: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
+	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
+	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
+	$(objdir)/subset.o $(objdir)/coordinates.o
+	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates0.so $^ $(LFLAGS)
+	@echo " "
+	@echo "    libcoordinates0.so is ready."
+	@echo " "
 
 # Program to test interpolations of CCSM3 data
 ccsm3: coord
@@ -112,31 +121,20 @@ ccsm3: coord
 	@echo "    test_ccsm3.x is ready."
 	@echo " "
 
-ccsm300: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
-	$(objdir)/interp2D.o $(objdir)/coordinates.o
-	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3.x $^ test_ccsm3.f90 $(LFLAGS)
-	@echo " "
-	@echo "    test_ccsm3.x is ready."
-	@echo " "
-
-test_subset: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
-	$(objdir)/interp2D.o $(objdir)/coordinates.o $(objdir)/subset.o
-	$(FC) $(DFLAGS) $(FLAGS) -o test_subset.x $^ test_subset.f90 $(LFLAGS)
+test_subset: coord0
+	$(FC) $(DFLAGS) $(FLAGS) -o test_subset.x test_subset.f90 -L. -lcoordinates0 $(LFLAGS)
 	@echo " "
 	@echo "    test_subset.x is ready."
 	@echo " "
 
-test_subset2: $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
-	$(objdir)/interp2D.o $(objdir)/coordinates.o $(objdir)/subset2.o
-	$(FC) $(DFLAGS) $(FLAGS) -o test_subset2.x $^ test_subset2.f90 $(LFLAGS)
+test_subset2: coord
+	$(FC) $(DFLAGS) $(FLAGS) -o test_subset2.x test_subset2.f90 -L. -lcoordinates $(LFLAGS)
 	@echo " "
 	@echo "    test_subset2.x is ready."
 	@echo " "
 
-test_interp: $(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
-			 $(objdir)/ncio.o $(objdir)/geodesic.o $(objdir)/planet.o \
-			 $(objdir)/projection_oblimap2.o  $(objdir)/coordinates.o
-	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x $^ test_interp.f90 $(LFLAGS)
+test_interp: coord
+	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x $^ test_interp.f90 -L. -lcoordinates $(LFLAGS)
 	@echo " "
 	@echo "    test_interp.x is ready."
 	@echo " "
