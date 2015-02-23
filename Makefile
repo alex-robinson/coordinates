@@ -34,7 +34,7 @@ ifeq ($(ifort),1)
 	## IFORT OPTIONS ##
 	FLAGS        = -module $(objdir) -L$(objdir) -I$(netcdf_inc_ifort)
 	LFLAGS		 = -L$(netcdf_lib_ifort) -lnetcdf
-	SFLAGS       = -fpic
+	SFLAGS       = 
 
 	ifeq ($(debug), 1)
 	    DFLAGS   = -C -traceback -ftrapuv -fpe0 -check all -vec-report0
@@ -46,7 +46,7 @@ else
 	## GFORTRAN OPTIONS ##
 	FLAGS        = -I$(objdir) -J$(objdir) -I$(netcdf_inc)
 	LFLAGS		 = -L$(netcdf_lib) -lnetcdff -lnetcdf
-	SFLAGS       = -fPIC
+	SFLAGS       = 
 
 	ifeq ($(debug), 1)
 	    DFLAGS   = -w -p -ggdb -ffpe-trap=invalid,zero,overflow,underflow \
@@ -96,28 +96,45 @@ $(objdir)/subset2.o: subset2.f90 $(objdir)/coordinates.o
 
 ## Complete programs
 
-# coordinates shared library - using subset2
-coord: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
+# coordinates static library - using subset2
+coord-static: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
 	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
 	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
 	$(objdir)/subset2.o $(objdir)/coordinates.o
-	$(FC) $(DFLAGS) $(FLAGS) -shared $(SFLAGS) -o libcoordinates.so $^ $(LFLAGS)
+	ar rc libcoordinates.a $^
+	@echo " "
+	@echo "    libcoordinates.a is ready."
+	@echo " "
+
+# coordinates shared library - using subset2
+coord-shared: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
+	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
+	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
+	$(objdir)/subset2.o $(objdir)/coordinates.o
+	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates.so $^ $(LFLAGS)
 	@echo " "
 	@echo "    libcoordinates.so is ready."
 	@echo " "
 
 # coordinates shared library - using subset
-coord0: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
+coord0-shared: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
 	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
 	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
 	$(objdir)/subset.o $(objdir)/coordinates.o
-	$(FC) $(DFLAGS) $(FLAGS) -shared $(SFLAGS) -o libcoordinates0.so $^ $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates0.so $^ $(LFLAGS)
 	@echo " "
 	@echo "    libcoordinates0.so is ready."
 	@echo " "
 
 # Program to test interpolations of CCSM3 data
-ccsm3: coord
+ccsm3: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3.x test_ccsm3.f90 libcoordinates.a -L. $(LFLAGS)
+	@echo " "
+	@echo "    test_ccsm3.x is ready."
+	@echo " "
+
+# Program to test interpolations of CCSM3 data
+ccsm3-shared: coord
 	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3.x test_ccsm3.f90 -L. -lcoordinates $(LFLAGS)
 	@echo " "
 	@echo "    test_ccsm3.x is ready."
