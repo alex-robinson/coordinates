@@ -394,7 +394,7 @@ contains
         integer :: nr 
 
         integer :: q, nx, ny, i, j
-        integer, parameter :: qmax = 400 ! Iterations 
+        integer, parameter :: qmax = 500 ! Iterations 
         double precision, dimension (:,:), allocatable :: neighb, weight, weight0 
         double precision :: wtot, mval 
         double precision, dimension(:,:), allocatable :: filled
@@ -457,7 +457,8 @@ contains
 
         if (q .ge. qmax) then 
             write(*,*) "Too many iterations to fill array of size: ", nx, ny 
-            stop 
+            write(*,*) "Remaining missing values: ", count(z .eq. missing_value)
+!             stop 
         end if 
 
         ! Fill in boundaries too 
