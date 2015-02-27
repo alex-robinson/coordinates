@@ -20,6 +20,7 @@ module interp2D
 
     interface interp_nearest_fast
         module procedure interp_nearest_fast_dble
+        module procedure interp_nearest_fast_float
     end interface
 
     interface fill_weighted
@@ -384,6 +385,69 @@ contains
         return 
 
     end function interp_nearest_fast_dble
+
+    function interp_nearest_fast_float(x,y,z,xout,yout,max_dist_fac,missing_value,mask) result(zout)
+        ! Find closest x-indices and closest y-indices on original
+        ! grid (assume these and next indices will bracket our point)
+        ! Pick closest point 
+        ! Faster than other version that uses a bigger matrix
+        implicit none 
+
+        real(sp), dimension(:) :: x, y, xout, yout 
+        real(sp), dimension(:,:) :: z
+        real(sp) :: max_dist_fac
+        real(sp), optional :: missing_value
+        logical, dimension(:,:), optional :: mask 
+        real(sp), dimension(size(xout,1),size(yout,1)) :: zout 
+        logical,  dimension(size(xout,1),size(yout,1)) :: mask_interp 
+        real(sp) :: missing_val, max_dist  
+
+        integer :: i, j, i1, j1, ij(2), imin, jmin  
+        integer :: nx, ny, nx1, ny1   
+
+        nx = size(x,1)
+        ny = size(y,1)
+
+        nx1 = size(xout,1)
+        ny1 = size(yout,1)
+
+        ! Determine which points we are interested in interpolating
+        mask_interp = .TRUE. 
+        if (present(mask)) mask_interp = mask 
+
+        ! Determine missing value if present 
+        missing_val = MISSING_VALUE_DEFAULT
+        if (present(missing_value)) missing_val = missing_value
+
+        ! Maximum distance to be considered a nearest neighbor 
+        max_dist = sqrt( (x(2)-x(1))**2 + (y(2)-y(1))**2 ) * max_dist_fac
+
+        ! Now loop over output grid points and perform
+        ! nearest neighbor interpolation where desired 
+        zout = missing_val 
+
+        do i1 = 1, nx1 
+        do j1 = 1, ny1 
+
+            ! Only interpolate points of interest 
+            if (mask_interp(i1,j1)) then 
+
+                imin = minloc(abs(x-xout(i1)),dim=1)
+                jmin = minloc(abs(y-yout(j1)),dim=1)
+
+                if ( sqrt((x(imin)-xout(i1))**2+(y(jmin)-yout(j1))**2) .le. max_dist ) then 
+                    zout(i1,j1) = z(imin,jmin)
+                end if 
+
+            end if 
+
+        end do 
+        end do
+        
+
+        return 
+
+    end function interp_nearest_fast_float
 
     subroutine fill_nearest_dble(z,missing_value,fill_value,n)
         implicit none 
