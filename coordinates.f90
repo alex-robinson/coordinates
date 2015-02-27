@@ -2434,7 +2434,11 @@ contains
         
             ! Add grid axis variables to netcdf file
             call nc_write_dim(fnm,xnm,x=grid%G%x,units=grid%units)
+            call nc_write_attr(fnm,xnm,"_CoordinateAxisType","GeoX")
+
             call nc_write_dim(fnm,ynm,x=grid%G%y,units=grid%units)
+            call nc_write_attr(fnm,ynm,"_CoordinateAxisType","GeoY")
+
         end if 
 
         ! Add projection information if needed
@@ -2443,16 +2447,21 @@ contains
                               x_e=grid%proj%x_e,y_n=grid%proj%y_n)
 
         if (grid%is_projection .or. grid%is_cartesian) then 
-            call nc_write(fnm,"x2D",grid%x,dim1=xnm,dim2=ynm,grid_mapping=grid%name)
-            call nc_write(fnm,"y2D",grid%y,dim1=xnm,dim2=ynm,grid_mapping=grid%name)
-        end if 
-        if (.not. (grid%is_cartesian .and. .not. grid%is_projection)) then 
-            call nc_write(fnm,"lon2D",grid%lon,dim1=xnm,dim2=ynm,grid_mapping=grid%name)
-            call nc_write(fnm,"lat2D",grid%lat,dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+            call nc_write(fnm,"x2D",grid%x,dim1=xnm,dim2=ynm,grid_mapping=grid%mtype)
+            call nc_write(fnm,"y2D",grid%y,dim1=xnm,dim2=ynm,grid_mapping=grid%mtype)
         end if 
 
-        call nc_write(fnm,"area",  grid%area,  dim1=xnm,dim2=ynm,grid_mapping=grid%name)
-        call nc_write(fnm,"border",grid%border,dim1=xnm,dim2=ynm,grid_mapping=grid%name)
+        if (.not. (grid%is_cartesian .and. .not. grid%is_projection)) then 
+            call nc_write(fnm,"lon2D",grid%lon,dim1=xnm,dim2=ynm,grid_mapping=grid%mtype)
+            call nc_write_attr(fnm,"lon2D","_CoordinateAxisType","Lon")
+            call nc_write(fnm,"lat2D",grid%lat,dim1=xnm,dim2=ynm,grid_mapping=grid%mtype)
+            call nc_write_attr(fnm,"lat2D","_CoordinateAxisType","Lat")
+        end if 
+
+        call nc_write(fnm,"area",  grid%area,  dim1=xnm,dim2=ynm,grid_mapping=grid%mtype)
+        call nc_write_attr(fnm,"area","coordinates","lat2D lon2D")
+        call nc_write(fnm,"border",grid%border,dim1=xnm,dim2=ynm,grid_mapping=grid%mtype)
+        call nc_write_attr(fnm,"border","coordinates","lat2D lon2D")
 
         return
     end subroutine grid_write
@@ -2478,16 +2487,24 @@ contains
                               x_e=pts%proj%x_e,y_n=pts%proj%y_n)
 
         if (pts%is_projection .or. pts%is_cartesian) then 
-            call nc_write(fnm,xnm,pts%x,dim1="point",grid_mapping=pts%name)
-            call nc_write(fnm,ynm,pts%y,dim1="point",grid_mapping=pts%name)
+            call nc_write(fnm,xnm,pts%x,dim1="point",grid_mapping=pts%mtype)
+            call nc_write_attr(fnm,xnm,"_CoordinateAxisType","GeoX")
+
+            call nc_write(fnm,ynm,pts%y,dim1="point",grid_mapping=pts%mtype)
+            call nc_write_attr(fnm,ynm,"_CoordinateAxisType","GeoY")
+
         end if 
         if (.not. (pts%is_cartesian .and. .not. pts%is_projection)) then 
-            call nc_write(fnm,"lon",pts%lon,dim1="point",grid_mapping=pts%name)
-            call nc_write(fnm,"lat",pts%lat,dim1="point",grid_mapping=pts%name)
+            call nc_write(fnm,"lon",pts%lon,dim1="point",grid_mapping=pts%mtype)
+            call nc_write_attr(fnm,"lon","_CoordinateAxisType","Lon")
+
+            call nc_write(fnm,"lat",pts%lat,dim1="point",grid_mapping=pts%mtype)
+            call nc_write_attr(fnm,"lat","_CoordinateAxisType","Lat")
+
         end if 
 
-!         call nc_write(fnm,"area",  pts%area,  dim1="point",grid_mapping=pts%name)
-!         call nc_write(fnm,"border",pts%border,dim1="point",grid_mapping=pts%name)
+!         call nc_write(fnm,"area",  pts%area,  dim1="point",grid_mapping=pts%mtype)
+!         call nc_write(fnm,"border",pts%border,dim1="point",grid_mapping=pts%mtype)
 
         return
     end subroutine points_write
