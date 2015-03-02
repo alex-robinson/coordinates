@@ -49,6 +49,7 @@ contains
         yout1D = reshape(yout,[ndp])
 
         ! Make sure longitude values are in -180:180 
+        where( x1D    .gt. 180.0_dp ) x1D    = x1D    - 360.0_dp 
         where( xout1D .gt. 180.0_dp ) xout1D = xout1D - 360.0_dp 
 
         ! Call interpolation routine 
@@ -1211,7 +1212,7 @@ contains
     !
     !  Processing for a new set of data points.
     !
-!           if ( nit/=0) go to 80
+!           if ( nit/=0) go to 80      ! AJR: COMMENTED OUT FOR NOW
 
           nit = 1
     !
