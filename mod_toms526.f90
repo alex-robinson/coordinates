@@ -1211,7 +1211,7 @@ contains
     !
     !  Processing for a new set of data points.
     !
-          if ( nit/=0) go to 80
+!           if ( nit/=0) go to 80
 
           nit = 1
     !
@@ -1402,7 +1402,7 @@ contains
     !
     !  normal exit
     !
-      170 iti = it0
+      170 iti   = it0
           itipv = it0
 
           return
