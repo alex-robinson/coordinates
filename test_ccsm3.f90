@@ -8,6 +8,7 @@ program test_ccsm3
 
     use ncio 
     use coordinates
+    use mod_toms526 
 
     implicit none
 
@@ -84,19 +85,19 @@ program test_ccsm3
     !
     ! =======================================================================
 
-    REG%name = "ANT-20KM"
-    REG%nx   = 281
-    REG%ny   = 281 
-    REG%lambda =   0.d0 
-    REG%phi    = -90.d0
-    REG%alpha  =  19.d0 
+!     REG%name = "ANT-20KM"
+!     REG%nx   = 281
+!     REG%ny   = 281 
+!     REG%lambda =   0.d0 
+!     REG%phi    = -90.d0
+!     REG%alpha  =  19.d0 
 
-!     REG%name = "GRL-20KM"
-!     REG%nx   = 76
-!     REG%ny   = 151 
-!     REG%lambda = 320.d0 
-!     REG%phi    = 72.d0
-!     REG%alpha  = 7.5d0
+    REG%name = "GRL-20KM"
+    REG%nx   = 76
+    REG%ny   = 151 
+    REG%lambda = 320.d0 
+    REG%phi    = 72.d0
+    REG%alpha  = 7.5d0
 
 !     REG%name = "HIM-20KM"
 !     REG%nx   = 200
@@ -165,6 +166,31 @@ program test_ccsm3
     call grid_stats("MB",CCSM3a%MB,CCSM3b%MB,CCSM3b%mask)
     call grid_stats("Hs",CCSM3a%Hs,CCSM3b%Hs,CCSM3b%mask)
 
+
+
+    ! =======================================================================
+    !
+    ! Step 4: Testing Akima routines
+    !
+    ! =======================================================================
+    write(*,*) 
+    write(*,*) " === Akima === "
+    write(*,*) 
+
+!     gCCSM3
+!     gREG
+!     call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="quadrant")
+    
+    write(*,*) "in  x: ", minval(gCCSM3%x),   maxval(gCCSM3%x) 
+    write(*,*) "in  y: ", minval(gCCSM3%y),   maxval(gCCSM3%y) 
+    write(*,*) "in  z: ", minval(CCSM3a%Ts), maxval(CCSM3a%Ts) 
+    write(*,*) "out x: ", minval(gREG%lon),   maxval(gREG%lon) 
+    write(*,*) "out y: ", minval(gREG%lat),   maxval(gREG%lat) 
+    
+    call interp2D_akima(gCCSM3%x,gCCSM3%y,CCSM3a%Ts,xout=gREG%lon,yout=gREG%lat,zout=REG%Ts)
+
+    write(*,*) "out z: ", minval(REG%Ts), maxval(REG%Ts) 
+    
 contains
 
     subroutine grid_stats(name,var1,var2,mask2)

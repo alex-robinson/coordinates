@@ -69,6 +69,9 @@ $(objdir)/interp1D.o: interp1D.f90
 $(objdir)/interp2D.o: interp2D.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
+$(objdir)/mod_toms526.o: mod_toms526.f90
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
+
 $(objdir)/interp_time.o: interp_time.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
@@ -99,7 +102,7 @@ $(objdir)/subset2.o: subset2.f90 $(objdir)/coordinates.o
 # coordinates static library - using subset2
 coord-static: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
 	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
-	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
+	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/mod_toms526.o $(objdir)/interp_time.o \
 	$(objdir)/subset2.o $(objdir)/coordinates.o
 	ar rc libcoordinates.a $^
 	@echo " "
