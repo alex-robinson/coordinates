@@ -50,7 +50,7 @@ contains
 
         ! Make sure longitude values are in -180:180 
         where( xout1D .gt. 180.0_dp ) xout1D = xout1D - 360.0_dp 
-            
+
         ! Call interpolation routine 
         call idbvip (md=md,ncp=ncp,ndp=ndp,xd=x1D,yd=y1D,zd=z1D, &
                     nip=nip,xi=xout1D,yi=yout1D,zi=zout1D,iwk=iwk,wk=wk)
@@ -1205,6 +1205,9 @@ contains
           ntl = nt0 + nl0
           x0 = xii
           y0 = yii
+
+
+          itipv = 1
     !
     !  Processing for a new set of data points.
     !
