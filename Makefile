@@ -109,7 +109,7 @@ $(objdir)/subset2.o: subset2.f90 $(objdir)/coordinates.o
 coord-static: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
 	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
 	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/mod_toms526.o $(objdir)/gaussian_filter.o \
-	$(objdir)/interp_time.o \
+	$(objdir)/loess.o $(objdir)/interp_time.o \
 	$(objdir)/subset2.o $(objdir)/coordinates.o
 	ar rc libcoordinates.a $^
 	@echo " "
