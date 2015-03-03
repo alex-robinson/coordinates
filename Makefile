@@ -69,6 +69,12 @@ $(objdir)/interp1D.o: interp1D.f90
 $(objdir)/interp2D.o: interp2D.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
+$(objdir)/loess.o: loess.f90 $(objdir)/interp1D.o $(objdir)/index.o
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
+
+$(objdir)/gaussian_filter.o: gaussian_filter.f90
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
+
 $(objdir)/mod_toms526.o: mod_toms526.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
@@ -102,7 +108,8 @@ $(objdir)/subset2.o: subset2.f90 $(objdir)/coordinates.o
 # coordinates static library - using subset2
 coord-static: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
 	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
-	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/mod_toms526.o $(objdir)/interp_time.o \
+	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/mod_toms526.o $(objdir)/gaussian_filter.o \
+	$(objdir)/interp_time.o \
 	$(objdir)/subset2.o $(objdir)/coordinates.o
 	ar rc libcoordinates.a $^
 	@echo " "
@@ -159,6 +166,12 @@ test_interp: coord
 	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x $^ test_interp.f90 -L. -lcoordinates $(LFLAGS)
 	@echo " "
 	@echo "    test_interp.x is ready."
+	@echo " "
+
+test_loess: $(objdir)/ncio.o $(objdir)/interp1D.o $(objdir)/index.o $(objdir)/loess.o 
+	$(FC) $(DFLAGS) $(FLAGS) -o test_loess.x $^ test_loess.f90 $(LFLAGS)
+	@echo " "
+	@echo "    test_loess.x is ready."
 	@echo " "
 
 # Program to test distance calculations using the geographiclib library

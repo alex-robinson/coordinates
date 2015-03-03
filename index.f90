@@ -12,28 +12,40 @@ module index
 
 contains 
 
-    subroutine which(x,ind)
+    subroutine which(x,ind,stat)
         ! Analagous to R::which function
         ! Returns indices that match condition x==.TRUE.
 
         implicit none 
 
         logical :: x(:)
-        integer, allocatable :: ind(:) 
+        integer, allocatable :: tmp(:), ind(:)
+        integer, optional :: stat  
         integer :: n, i  
 
         n = count(x)
-        if (allocated(ind)) deallocate(ind)
-        allocate(ind(n))
+        allocate(tmp(n))
+        tmp = 0 
 
         n = 0
         do i = 1, size(x) 
             if (x(i)) then 
                 n = n+1
-                ind(n) = i 
+                tmp(n) = i 
             end if
         end do 
 
+        if (present(stat)) stat = n 
+
+        if (n .eq. 0) then 
+            allocate(ind(1))
+            ind = -1 
+        else
+            if (allocated(ind)) deallocate(ind)
+            allocate(ind(n))
+            ind = tmp(1:n)
+        end if 
+        
         return 
 
     end subroutine which 
