@@ -323,7 +323,7 @@ contains
         integer, optional  :: nx, ny 
         real(dp), optional :: x(:), y(:), x0, dx, y0, dy 
         real(dp), optional :: lambda, phi, alpha, x_e, y_n 
-        real(dp) :: tmp1, tmp2 
+        real(dp) :: tmp1, tmp2
         integer :: i, j 
 
         ! Initially deallocate grid arrays just in case 
@@ -455,10 +455,10 @@ contains
 
         ! Finally check that the proj%alpha used is reasonable 
         if ( grid%is_projection ) then 
-            alpha = optimal_alpha(grid%planet%R,grid%G%nx,grid%G%ny, &
+            tmp1 = optimal_alpha(grid%planet%R,grid%G%nx,grid%G%ny, &
                                   grid%G%dx*grid%xy_conv,grid%G%dy*grid%xy_conv)
 
-            write(*,"(a,f6.1)") "Optimal alpha (degrees) = ", alpha 
+            write(*,"(a,f6.1)") "Optimal alpha (degrees) = ", tmp1 
         end if 
 
         ! Output a summary of grid axis information
