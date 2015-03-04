@@ -92,8 +92,27 @@ MODULE oblimap_projection_module
     public :: pi, degrees_to_radians, radians_to_degrees
     public :: projection_class, projection_init, same_projection
     public :: oblique_sg_projection, inverse_oblique_sg_projection
+    public :: optimal_alpha
 
 CONTAINS
+  
+  function optimal_alpha(R,nx,ny,dx,dy) result(alpha)
+    ! Given the dimensions and resolution of a projected grid,
+    ! determine the optimal angle alpha (degrees) for the 
+    ! oblique projection 
+
+    implicit none 
+
+    real(dp) :: R, dx, dy, alpha 
+    integer  :: nx, ny 
+    real(dp) :: val 
+
+    val = 1.d0/R * sqrt( 1.d0/(2.d0*pi) * nx*ny*dx*dy )
+    alpha = asin(val) * radians_to_degrees
+
+    return
+
+  end function optimal_alpha
 
   SUBROUTINE projection_init(proj,name,planet,lambda,phi,alpha,x_e,y_n)
     
@@ -219,7 +238,7 @@ CONTAINS
 
     return 
 
-    end function same_projection
+  end function same_projection
 
   SUBROUTINE oblique_sg_projection(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj)
     ! This subroutine projects with an oblique stereographic projection the longitude-latitude

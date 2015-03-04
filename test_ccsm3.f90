@@ -191,6 +191,8 @@ program test_ccsm3
 
     write(*,*) "out z: ", minval(REG%Ts), maxval(REG%Ts) 
     
+    call nc_write(file_gREG,"Ts_akima",  REG%Ts,  dim1="xc",dim2="yc")
+
 contains
 
     subroutine grid_stats(name,var1,var2,mask2)

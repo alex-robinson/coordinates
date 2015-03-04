@@ -453,6 +453,14 @@ contains
 
         end if 
 
+        ! Finally check that the proj%alpha used is reasonable 
+        if ( grid%is_projection ) then 
+            alpha = optimal_alpha(grid%planet%R,grid%G%nx,grid%G%ny, &
+                                  grid%G%dx*grid%xy_conv,grid%G%dy*grid%xy_conv)
+
+            write(*,"(a,f6.1)") "Optimal alpha (degrees) = ", alpha 
+        end if 
+
         ! Output a summary of grid axis information
         call grid_print(grid)
 
