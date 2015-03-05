@@ -143,11 +143,10 @@ ccsm3: coord-static
 	@echo "    test_ccsm3.x is ready."
 	@echo " "
 
-# Program to test interpolations of CCSM3 data
-ccsm3-shared: coord
-	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3.x test_ccsm3.f90 -L. -lcoordinates $(LFLAGS)
+etopo: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o test_etopo.x test_etopo.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "
-	@echo "    test_ccsm3.x is ready."
+	@echo "    test_etopo.x is ready."
 	@echo " "
 
 test_subset: coord0

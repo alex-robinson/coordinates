@@ -167,32 +167,6 @@ program test_ccsm3
     call grid_stats("Hs",CCSM3a%Hs,CCSM3b%Hs,CCSM3b%mask)
 
 
-
-    ! =======================================================================
-    !
-    ! Step 4: Testing Akima routines
-    !
-    ! =======================================================================
-    write(*,*) 
-    write(*,*) " === Akima === "
-    write(*,*) 
-
-!     gCCSM3
-!     gREG
-!     call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="quadrant")
-    
-    write(*,*) "in  x: ", minval(gCCSM3%x),   maxval(gCCSM3%x) 
-    write(*,*) "in  y: ", minval(gCCSM3%y),   maxval(gCCSM3%y) 
-    write(*,*) "in  z: ", minval(CCSM3a%Ts), maxval(CCSM3a%Ts) 
-    write(*,*) "out x: ", minval(gREG%lon),   maxval(gREG%lon) 
-    write(*,*) "out y: ", minval(gREG%lat),   maxval(gREG%lat) 
-    
-    call interp2D_akima(gCCSM3%x,gCCSM3%y,CCSM3a%Ts,xout=gREG%lon,yout=gREG%lat,zout=REG%Ts)
-
-    write(*,*) "out z: ", minval(REG%Ts), maxval(REG%Ts) 
-    
-    call nc_write(file_gREG,"Ts_akima",  REG%Ts,  dim1="xc",dim2="yc")
-
 contains
 
     subroutine grid_stats(name,var1,var2,mask2)

@@ -37,10 +37,12 @@
 ! email: tjreerink@gmail.com
 !
 
-!! ########################################### !!
-!! NOW MODIFIED TO BE MORE ENCAPSULATED        !!
-!! ajr, 2013-09-17                             !!
-!! ########################################### !!
+!! ####################################################################
+!! MODIFICATIONS
+!! ajr, 2013-09-17: encapsulated funcionality further
+!! ajr, 2015-03-05: Added additional projection routines: LEA, etc.
+!! 
+!! ####################################################################
 
 MODULE oblimap_projection_module
 
@@ -285,8 +287,6 @@ CONTAINS
     return
 
   END SUBROUTINE oblique_sg_projection
-
-
 
   SUBROUTINE inverse_oblique_sg_projection(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj)
     ! This subroutine projects with an inverse oblique stereographic projection the 
