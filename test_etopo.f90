@@ -22,7 +22,7 @@ program test_etopo
 
     character(len=256) :: file0, file1, file0b 
 
-    double precision :: tmplon(721), tmplat(361)
+    double precision :: tmplon(720), tmplat(360)
     character(len=256) :: gridname1, gridname0, outfldr 
     
     write(*,*) 
@@ -50,15 +50,30 @@ program test_etopo
     ! =========================================================
 
     select case(trim(gridname1))
+        case("NH-320KM")
+            call grid_init(grid1,name="NH-320KM",mtype="stereographic",units="kilometers", &
+                           lon180=.TRUE.,dx=320.d0,nx=28,dy=320.d0,ny=26, &
+                           lambda=-53.d0,phi=78.d0,alpha=32.7d0)
+        
+        case("NH-160KM")
+            call grid_init(grid1,name="NH-160KM",mtype="stereographic",units="kilometers", &
+                           lon180=.TRUE.,dx=160.d0,nx=56,dy=160.d0,ny=52, &
+                           lambda=-53.d0,phi=78.d0,alpha=32.7d0)
+        
+        case("NH-80KM")
+            call grid_init(grid1,name="NH-80KM",mtype="stereographic",units="kilometers", &
+                           lon180=.TRUE.,dx=80.d0,nx=112,dy=80.d0,ny=104, &
+                           lambda=-53.d0,phi=78.d0,alpha=32.7d0)
+
         case("NH-40KM")
             call grid_init(grid1,name="NH-40KM",mtype="stereographic",units="kilometers", &
-                           lon180=.TRUE.,dx=40.d0,nx=281,dy=40.d0,ny=281, &
-                           lambda=0.d0,phi=90.d0,alpha=44.7d0)
+                           lon180=.TRUE.,dx=40.d0,nx=224,dy=40.d0,ny=208, &
+                           lambda=-53.d0,phi=78.d0,alpha=32.7d0)
 
         case("NH-20KM")
             call grid_init(grid1,name="NH-20KM",mtype="stereographic",units="kilometers", &
-                           lon180=.TRUE.,dx=20.d0,nx=561,dy=20.d0,ny=561, &
-                           lambda=0.d0,phi=90.d0,alpha=44.7d0)
+                           lon180=.TRUE.,dx=20.d0,nx=448,dy=20.d0,ny=416, &
+                           lambda=-53.d0,phi=78.d0,alpha=32.7d0)
 
         case DEFAULT
             write(*,*) "test_etopo:: error: grid name not recognized: "//trim(gridname1)
@@ -72,6 +87,8 @@ program test_etopo
 
     ! Write grid definition to output file
     call grid_write(grid1,file1,xnm="xc",ynm="yc",create=.TRUE.)
+
+!     stop 
 
     ! =======================================================================
     !
@@ -110,10 +127,11 @@ program test_etopo
     write(*,*) 
 
     ! Map each field to the regional domain using the quadrant method (no max_distance required here)
-    call map_init(map_g0g1,grid0,grid1,max_neighbors=4,lat_lim=2.0d0,fldr="maps",load=.TRUE.)
+    call map_init(map_g0g1,grid0,grid1,max_neighbors=4,lat_lim=2.0d0,fldr="maps",load=.FALSE.)
     call map_field(map_g0g1,"zs",vars0%zs,vars1%zs,vars1%mask,method="quadrant")
     call nc_write(file1,"zs",vars1%zs,dim1="xc",dim2="yc")
     call nc_write(file1,"mask",vars1%mask,dim1="xc",dim2="yc")
+    stop 
 
     ! Map each field back to the original domain using the radius method
     call map_init(map_g1g0,grid1,grid0,max_neighbors=6,lat_lim=2.0d0,fldr="maps",load=.TRUE.)
@@ -125,8 +143,6 @@ program test_etopo
     ! (as in Table 3 of Reerink et al, 2010)
     call grid_stats("zs",vars0%zs,vars0b%zs,vars0%mask)
 
-
-    stop 
 
     ! =======================================================================
     !
