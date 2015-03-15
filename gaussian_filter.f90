@@ -4,7 +4,8 @@
 !   https://github.com/nicjhan/gaussian-filter
 !
 ! ajr: 
-!    - Now sigma can be specified in the units of the grid 
+!    - sigma can be specified in the units of the grid
+!    - mask is logical instead of real
 !========================================================================
 module gaussian_filter
 
@@ -14,13 +15,7 @@ implicit none
 
 private
 
-! public gaussian_kernel
-! public convolve
-! public assert
-! public tile_and_reflect
-
 public :: filter_gaussian
-
 public :: gaussian_kernel
 public :: convolve 
 
@@ -55,22 +50,6 @@ subroutine filter_gaussian(input,output,sigma,dx,mask,truncate)
     endif
 
 end subroutine filter_gaussian
-
-subroutine run_tile_and_reflect(input, x, y, output)
-
-    integer, intent(in) :: x, y
-    real(kind=4), intent(in), dimension(x, y) :: input
-    real(kind=4), intent(out), dimension(3*x, 3*y) :: output
-
-    real(kind=4), allocatable, dimension(:, :) :: tmp
-
-    call tile_and_reflect(input, tmp)
-    call assert(all(shape(tmp) - shape(output) == 0), &
-                'Output shapes do not match')
-
-    output(:,:) = tmp(:,:)
-
-end subroutine run_tile_and_reflect
 
 ! This is a copy of code found in gaussian_filter.py. These two implementations
 ! must remain equivalent for tests to pass.
@@ -152,16 +131,14 @@ subroutine tile_and_reflect(input, output)
 end subroutine tile_and_reflect
 
 ! Convolution.
+! ajr: changed mask to be a logical array for easier usage
 subroutine convolve(input, weights, output, mask)
 
-    real, intent(in), dimension(:,:) :: input, weights
-    ! The mask is 0 on masked points and 1 on non-masked. All masked points are
-    ! left unchanged. 
-!     real, intent(in), dimension(:,:), optional :: mask
-    logical, intent(in), dimension(:,:), optional :: mask
-    real, intent(inout), dimension(:,:) :: output
+    real(4), intent(in), dimension(:,:) :: input, weights
+    logical, intent(in), dimension(:,:), optional :: mask  ! .FALSE. points remain unchanged.
+    real(4), intent(inout), dimension(:,:) :: output
 
-    real, dimension(:,:), allocatable :: mask_real 
+    real(4), dimension(:,:), allocatable :: mask_real   ! Local mask for use with tiling routine
 
     ! These are allocated within tile_and_reflect, we rely on automatic
     ! deallocation at the end of the subroutine. 

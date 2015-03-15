@@ -34,8 +34,15 @@ program test_climber
     if (.TRUE.) then 
 
         call nc_read(file_in,"t2m_ann",var_in)
-        call filter_gaussian(var_in,var_out,sigma=250.0,dx=dx)
+        call filter_gaussian(var_in,var_out,sigma=240.0,dx=dx,mask=var_in.lt.0.0)
         call nc_write(file_out,"t2m_ann_gaussb",var_out,dim1="xc",dim2="yc")
+
+        ! Equivalent to above
+        do k = 1, 16
+            call filter_gaussian(var_in,var_out,sigma=60.0,dx=dx,mask=var_in.lt.0.0)
+            var_in = var_out
+        end do 
+        call nc_write(file_out,"t2m_ann_gaussc",var_out,dim1="xc",dim2="yc")
 
     end if 
 
