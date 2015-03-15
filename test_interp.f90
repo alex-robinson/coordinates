@@ -8,6 +8,8 @@ program test
     use coordinates 
     use ncio 
 
+    use gaussian_filter 
+
     implicit none
 
     integer :: t
@@ -21,6 +23,9 @@ program test
     character(len=256) :: outfldr,file_input, file_inputhi
     character(len=256) :: file_outlo, file_outhi
     integer :: i, j 
+
+    real(4), dimension(:,:), allocatable :: vargauss
+    real, dimension(:, :), allocatable :: kernel
 
     outfldr = "output/interp/"
     file_input   = trim(outfldr)//"GRL-50KM_TOPO.nc"
@@ -100,5 +105,25 @@ program test
     maskhi = interp_nearest(grid%G%x,grid%G%y,mask,gridhi%G%x,gridhi%G%y,nint(missing_value))
     call fill_nearest(maskhi,nint(missing_value),n=4)
     call nc_write(file_outhi,"mask_filled",maskhi,dim1="xc",dim2="yc")
+
+
+
+    ! Test Gaussian smoothing
+
+    ! Test bilinear interpolation
+    varhi = interp_bilinear(grid%G%x,grid%G%y,var,gridhi%G%x,gridhi%G%y,missing_value)
+    
+    maskhi = 0
+    where(varhi.eq.missing_value) maskhi = 1
+
+!     call run_gaussian_filter(sigma=2.0, truncate=4.0, kx=5, ky=5, kernel, &
+!                              nx, ny, input, output, mask, has_mask)
+    
+    call grid_allocate(gridhi,vargauss)
+    
+    call gaussian_kernel(sigma=0.1,kernel=kernel)
+    call convolve(real(varhi), kernel, vargauss, mask=real(maskhi))
+
+    call nc_write(file_outhi,"zs_gauss",vargauss,dim1="xc",dim2="yc")
 
 end program test

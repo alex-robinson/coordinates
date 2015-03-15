@@ -1,4 +1,9 @@
-
+!========================================================================
+!
+! Initial module from: 
+!   https://github.com/nicjhan/gaussian-filter
+!
+!========================================================================
 module gaussian_filter
 
 use, intrinsic :: iso_fortran_env, only: error_unit
@@ -13,6 +18,9 @@ private
 ! public tile_and_reflect
 
 public :: run_gaussian_filter
+
+public :: gaussian_kernel
+public :: convolve 
 
 contains
 
@@ -97,6 +105,7 @@ subroutine gaussian_kernel(sigma, kernel, truncate)
     enddo
 
     ! Make kernel.
+    if (allocated(kernel)) deallocate(kernel)
     allocate(kernel(-radius:radius, -radius:radius))
     kernel = 2.0*exp(-0.5 * (x**2 + y**2) / s)
     kernel = kernel / sum(kernel)

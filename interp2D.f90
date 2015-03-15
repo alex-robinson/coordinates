@@ -35,6 +35,10 @@ module interp2D
         module procedure fill_nearest_dble, fill_nearest_int  
     end interface
 
+    interface fill_bilinear
+        module procedure fill_bilinear_dble !, fill_bilinear_float
+    end interface
+
     private
     public :: interp_bilinear, interp_nearest, interp_nearest_fast
     public :: fill_weighted, fill_nearest, fill_mean
@@ -549,6 +553,143 @@ contains
         return
     end subroutine fill_nearest_dble
 
+    subroutine fill_bilinear_dble(x,y,z,missing_value,fill_value,cont)
+        ! Fill the missing values of an array with a bilinear interpolation
+        ! Extrapolate when needed 
+
+        ! ajr: TO DO: NOT FINISHED !!!
+        
+        implicit none 
+        double precision :: x(:), y(:), z(:,:)
+        double precision :: missing_value 
+        double precision, optional :: fill_value
+        logical, optional :: cont 
+
+        integer :: nr 
+        integer :: q, nx, ny, i, j
+
+        double precision :: x1(3), x2(3), x3(3), x4(3)
+        double precision :: xout(2) 
+        integer :: i1, i2, i3, i4 
+        integer :: j1, j2, j3, j4 
+        integer :: ii(2)
+
+
+        nx = size(z,1)
+        ny = size(z,2) 
+
+        ! Loop over array and interpolate missing values 
+        do j = 1, ny 
+            do i = 1, nx
+
+                if (z(i,j) .eq. missing_value) then 
+                    ! Interpolation needed for this point
+
+                    ! Get horizontal bracketing indices
+                    ii = get_nn_indices_line(z(:,j),i,missing_value,cont)
+                    x1(1) = x(ii(1))
+                    x1(2) = y(j)
+                    x1(3) = z(ii(1),j)
+                    x2(1) = x(ii(2))
+                    x2(2) = y(j)
+                    x2(3) = z(ii(2),j)
+                    
+                    z(i,j) = calc_bilinear(x1,x2,x3,x4,xout)
+
+                end if
+
+            end do 
+        end do 
+
+
+        return
+
+    end subroutine fill_bilinear_dble
+
+    function get_nn_indices_line(z,i,missing_value,cont) result(ii)
+        ! Find the indices of the nearest bracketing neighbors
+        ! for point x(i) that are not missing.
+        ! cont = .TRUE. if x is continous such that x(1) and x(n) 
+        ! are neighbors
+        implicit none 
+
+        double precision  :: z(:) 
+        integer           :: i 
+        double precision  :: missing_value 
+        logical, optional :: cont 
+        logical           :: is_continuous
+        integer :: ii(2) 
+
+        ! Local variables 
+        double precision  :: x(size(z)), xtmp(size(z)), ztmp(size(z))
+        integer :: nx, n, j, iitmp(2)
+
+        ! Determine if x is continous
+        is_continuous = .FALSE.
+        if (present(cont)) is_continuous = cont 
+
+        ! Length of vector
+        nx = size(x)
+
+        ! Populate x-values 
+        do j = 1, nx 
+            x(j) = dble(j) 
+        end do 
+
+        ! First assume no neighbors without missing values are available
+        iitmp = -1 
+
+        ! === Get left index ===
+
+        ! Determine how many neighbors to the left of the point to check
+        n = i-1 
+        if (is_continuous) n = nx 
+
+        ! Shift vector so that point i is the last value in the vector
+        xtmp = cshift(x,shift=nx-i+1)
+        ztmp = cshift(z,shift=nx-i+1)
+
+        ! If point i is not the left-most point, then check left-neighbors
+        if (n .gt. 0) then
+            do j = 1, n 
+                if (ztmp(nx-j) .ne. missing_value) then 
+                    iitmp(1) = j 
+                    exit 
+                end if
+            end do  
+        end if 
+
+        ! === Get right index ===
+
+        ! Determine how many neighbors to the right of the point to check
+        n = nx-i 
+        if (is_continuous) n = nx 
+
+        ! Shift vector so that point i is the first value in the vector
+        xtmp = cshift(x,shift=-i+1)
+        ztmp = cshift(z,shift=-i+1)
+
+        ! If point i is not the right-most point, then check right-neighbors
+        if (n .gt. 0) then
+            do j = 1, n 
+                if (ztmp(1+j) .ne. missing_value) then 
+                    iitmp(2) = j 
+                    exit 
+                end if
+            end do  
+        end if 
+        
+        ! Indices correspond to the shifted vectors
+        ! Now find the indices of the actual vectors
+        ii = iitmp 
+        if (ii(1) .gt. 0) ii(1) = minloc(abs(x-xtmp(iitmp(1))),dim=1)
+        if (ii(2) .gt. 0) ii(2) = minloc(abs(x-xtmp(iitmp(2))),dim=1)
+        
+        return 
+
+    end function get_nn_indices_line 
+
+
     subroutine fill_weighted_dble(z,missing_value,fill_value,n)
         implicit none 
         double precision, dimension(:,:) :: z 
@@ -837,5 +978,31 @@ contains
 
     end subroutine diffuse
 
+
+    function calc_bilinear(x1,x2,x3,x4,xout) result(zout)
+        ! Given the points surrounding it, calculate the value at xout
+        ! x3  p2  x4
+        !    xout
+        ! x1  p1  x2
+
+        implicit none 
+
+        double precision :: x1(3), x2(3), x3(3), x4(3)   ! [x,y,z]
+        double precision :: xout(2)   ! [x,y]
+        double precision :: zout 
+
+        ! Local variables
+        double precision :: alpha1, alpha2, p1, p2 
+
+        alpha1 = (xout(1) - x1(1)) / (x2(1)-x1(1))  ! x-values
+        p1     = x1(3) + alpha1*(x2(3)-x1(3))
+        p2     = x3(3) + alpha1*(x4(3)-x3(3))
+
+        alpha2 = (xout(2)-x1(2))/(x3(2)-x1(2))      ! y-values
+        zout   = p1 + alpha2*(p2-p1)
+        
+        return
+
+    end function calc_bilinear 
 
 end module interp2D

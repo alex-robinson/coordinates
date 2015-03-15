@@ -161,10 +161,16 @@ test_subset2: coord
 	@echo "    test_subset2.x is ready."
 	@echo " "
 
-test_interp: coord
-	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x $^ test_interp.f90 -L. -lcoordinates $(LFLAGS)
+test_interp: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x test_interp.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "
 	@echo "    test_interp.x is ready."
+	@echo " "
+
+test_climber: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o test_climber.x test_climber.f90 libcoordinates.a -L. $(LFLAGS)
+	@echo " "
+	@echo "    test_climber.x is ready."
 	@echo " "
 
 test_loess: $(objdir)/ncio.o $(objdir)/interp1D.o $(objdir)/index.o $(objdir)/loess.o 
