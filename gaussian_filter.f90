@@ -3,6 +3,8 @@
 ! Initial module from: 
 !   https://github.com/nicjhan/gaussian-filter
 !
+! ajr: 
+!    - Now sigma can be specified in the units of the grid 
 !========================================================================
 module gaussian_filter
 
@@ -17,45 +19,42 @@ private
 ! public assert
 ! public tile_and_reflect
 
-public :: run_gaussian_filter
+public :: filter_gaussian
 
 public :: gaussian_kernel
 public :: convolve 
 
 contains
 
-subroutine run_gaussian_filter(sigma, truncate, kx, ky, kernel, &
-                               nx, ny, input, output, mask, has_mask)
+subroutine filter_gaussian(input,output,sigma,dx,mask,truncate)
 
-    real(kind=4), intent(in) :: sigma, truncate
-    ! Indices and output for kernel
-    integer, intent(in) :: kx, ky
-    real(kind=4), intent(out), dimension(kx, ky) :: kernel
+    real(kind=4), intent(in)  :: input(:,:)
+    real(kind=4), intent(out) :: output(:,:)
+    real(kind=4), intent(in) :: sigma
+    real(kind=4), intent(in), optional :: dx 
+    logical,      intent(in), optional :: mask(:,:) 
+    real(kind=4), intent(in), optional :: truncate
 
-    ! Indices and data input/output
-    integer, intent(in) :: nx, ny
-    real(kind=4), intent(in), dimension(nx, ny) :: input
-    real(kind=4), intent(out), dimension(nx, ny) :: output
-    real(kind=4), intent(in), dimension(nx, ny) :: mask
-    ! Since f2py does not support optional arguments.
-    logical, intent(in) :: has_mask
+    real(kind=4), allocatable :: kernel(:,:)
+    real(kind=4) :: sigmap 
+    integer :: nx, ny 
+
+    ! Get sigma in terms of points
+    sigmap = sigmap 
+    if (present(dx)) then 
+        sigmap = sigma / dx 
+    end if 
 
     ! Get the kernel first.
-    real, allocatable, dimension(:,:) :: k
+    call gaussian_kernel(sigmap, kernel, truncate)
 
-    call gaussian_kernel(sigma, k, truncate)
-    call assert(all(shape(k) - shape(kernel) == 0), &
-                'Kernel shapes do not match')
-
-    kernel(:, :) = k(:, :)
-
-    if (has_mask) then
+    if (present(mask)) then
         call convolve(input, kernel, output, mask)
     else
         call convolve(input, kernel, output)
     endif
 
-end subroutine run_gaussian_filter
+end subroutine filter_gaussian
 
 subroutine run_tile_and_reflect(input, x, y, output)
 
@@ -158,8 +157,11 @@ subroutine convolve(input, weights, output, mask)
     real, intent(in), dimension(:,:) :: input, weights
     ! The mask is 0 on masked points and 1 on non-masked. All masked points are
     ! left unchanged. 
-    real, intent(in), dimension(:,:), optional :: mask
+!     real, intent(in), dimension(:,:), optional :: mask
+    logical, intent(in), dimension(:,:), optional :: mask
     real, intent(inout), dimension(:,:) :: output
+
+    real, dimension(:,:), allocatable :: mask_real 
 
     ! These are allocated within tile_and_reflect, we rely on automatic
     ! deallocation at the end of the subroutine. 
@@ -186,9 +188,12 @@ subroutine convolve(input, weights, output, mask)
 
 
     if (present(mask)) then
+        allocate(mask_real(size(mask,1),size(mask,2)))
+        mask_real = 0.0
+        where(mask) mask_real = 1.0
         call assert(all(shape(mask) - shape(input) == 0), &
                     'Mask and input shapes do not match')
-        call tile_and_reflect(mask, tiled_mask)
+        call tile_and_reflect(mask_real, tiled_mask)
     endif 
 
     ! This ensures that in the masked case, all masked points remain unchanged.
