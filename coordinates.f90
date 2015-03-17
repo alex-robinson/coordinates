@@ -17,7 +17,8 @@ module coordinates
     use ncio
 
     use gaussian_filter  
-
+    use interp2D 
+    
     implicit none 
 
     !! real(dp) definition and some internal constants
@@ -1474,6 +1475,10 @@ contains
                 stop 
             end if 
 
+            if (present(fill)) then 
+                if (fill) call fill_nearest(var2,missing_value=missing_value)
+            end if 
+
             allocate(var2tmp(nx2,ny2))
             var2tmp = var2 
             call filter_gaussian(input=var2tmp,output=var2,sigma=sigma,dx=map%G%dx,&
@@ -1562,6 +1567,10 @@ contains
                 stop 
             end if 
 
+            if (present(fill)) then 
+                if (fill) call fill_nearest(var2,missing_value=missing_value)
+            end if 
+            
             allocate(var2tmp(nx2,ny2))
             var2tmp = var2 
             call filter_gaussian(input=var2tmp,output=var2,sigma=sigma,dx=map%G%dx,&
