@@ -30,13 +30,13 @@ public :: diffuse2D, diff2D_timestep
 contains
 
     subroutine filter_gaussian_dble(input,output,sigma,dx,mask,truncate)
-
+        ! Wrapper for input as doubles
         real(kind=8), intent(in)  :: input(:,:)
         real(kind=8), intent(out) :: output(:,:)
         real(kind=8), intent(in) :: sigma
         real(kind=8), intent(in), optional :: dx 
         logical,      intent(in), optional :: mask(:,:) 
-        real(kind=8), intent(in), optional :: truncate
+        real(kind=4), intent(in), optional :: truncate
 
         real(kind=4), allocatable :: kernel(:,:)
         real(kind=4) :: sigmap 
@@ -47,25 +47,9 @@ contains
         ! Allocate local output array 
         allocate(output4(size(output,1),size(output,2)))
 
-        ! Get sigma in terms of points
-        sigmap = sigmap 
-        if (present(dx)) then 
-            sigmap = real(sigma / dx)
-        end if 
-
-        ! Get the kernel first.
-        if (present(truncate)) then 
-            call gaussian_kernel(sigmap, kernel, real(truncate))
-        else 
-            call gaussian_kernel(sigmap, kernel)
-        end if 
-
-        if (present(mask)) then
-            call convolve(real(input), kernel, output4, mask)
-        else
-            call convolve(real(input), kernel, output4)
-        endif
-
+        call filter_gaussian_float(real(input),output4,real(sigma),real(dx), &
+                                   mask,truncate)
+        
         ! Return a double array
         output = dble(output4)
 
@@ -82,9 +66,9 @@ contains
         logical,      intent(in), optional :: mask(:,:) 
         real(kind=4), intent(in), optional :: truncate
 
-        real(kind=4), allocatable :: kernel(:,:)
+        real(kind=4), allocatable :: intmp(:,:), kernel(:,:)
         real(kind=4) :: sigmap 
-        integer :: nx, ny 
+        integer :: nx, ny, nloop, i 
 
         ! Get sigma in terms of points
         sigmap = sigmap 
@@ -92,14 +76,25 @@ contains
             sigmap = sigma / dx 
         end if 
 
-        ! Get the kernel first.
+        ! Get the kernel
         call gaussian_kernel(sigmap, kernel, truncate)
+        
+        nloop = 1
+        if (ubound(kernel,1) < ubound(input,1) .or. &
+            ubound(kernel,2) < ubound(input,2)) then 
+            nloop  = 4
+            sigmap = ceiling(sigmap/2.0)
+            call gaussian_kernel(sigmap, kernel, truncate)
+        end if 
 
-        if (present(mask)) then
-            call convolve(input, kernel, output, mask)
-        else
-            call convolve(input, kernel, output)
-        endif
+        ! Convolve as many times as necessary to acheive 
+        ! desired level of smoothing 
+        allocate(intmp(size(input,1),size(input,2)))
+        intmp = input 
+        do i = 1, nloop
+            call convolve(intmp, kernel, output, mask)
+            intmp = output 
+        end do 
 
         return 
 
@@ -114,16 +109,13 @@ contains
         real, intent(in), optional :: truncate
 
         real, dimension(:,:), allocatable :: x, y
-        integer :: radius, trunc, i, j
-        real :: s
+        integer :: radius, i, j
+        real :: trunc, s
 
-        if (present(truncate)) then
-            trunc = int(truncate)
-        else
-            trunc = 4.0
-        endif
+        trunc = 4.0
+        if (present(truncate)) trunc = truncate
 
-        radius = int(trunc * sigma + 0.5)
+        radius = ceiling(trunc * sigma + 0.5)
         s = sigma**2
 
         ! Set up meshgrid.
@@ -203,6 +195,8 @@ contains
         integer :: rows, cols, hw_row, hw_col, i, j, tj, ti
         real :: clobber_total, correction
 
+        character(len=512) :: errmsg 
+
         ! First step is to tile the input.
         rows = ubound(input, 1)
         cols = ubound(input, 2)
@@ -212,11 +206,12 @@ contains
 
         ! Only one reflection is done on each side so the weights array cannot be
         ! bigger than width/height of input +1.
-        call assert(ubound(weights, 1) < rows + 1, &
-                    'Input size too small for weights matrix')
-        call assert(ubound(weights, 2) < cols + 1, &
-                    'Input size too small for weights matrix')
-
+        errmsg = "convolve:: error: the chosen sigma is too large for the grid. &
+                 &Only one reflection is done on each side of the grid, so the &
+                 &size of the weights array (determined by sigma) cannot be &
+                 &bigger than the grid's nx+1 or ny+1."
+        call assert(ubound(weights, 1) < rows + 1,trim(errmsg))
+        call assert(ubound(weights, 2) < cols + 1,trim(errmsg))
 
         if (present(mask)) then
             allocate(mask_real(size(mask,1),size(mask,2)))
