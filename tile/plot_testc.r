@@ -7,7 +7,7 @@ library(myr)
 # Load data
 if (TRUE) {
 
-    dat = read.table("fort.13",header=FALSE,skip=2,
+    dat = read.table("../fort.13",header=FALSE,skip=2,
                 col.names=c("xc","yc","F","Z","ZX","ZY"))
     
     par(mfrow=c(1,3))
