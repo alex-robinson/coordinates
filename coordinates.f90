@@ -1476,8 +1476,8 @@ contains
 
             allocate(var2tmp(nx2,ny2))
             var2tmp = var2 
-            call filter_gaussian(input=var2tmp,output=var2,sigma=sigma,&
-                                 dx=map%G%dx,mask=reshape(mask_pack_vec,[nx2,ny2]))
+            call filter_gaussian(input=var2tmp,output=var2,sigma=sigma,dx=map%G%dx,&
+                        mask=reshape(mask_pack_vec,[nx2,ny2]) .and. var2tmp .ne. missing_value)
         
         end if 
 
@@ -1564,8 +1564,8 @@ contains
 
             allocate(var2tmp(nx2,ny2))
             var2tmp = var2 
-            call filter_gaussian(input=var2tmp,output=var2,sigma=sigma,&
-                                 dx=map%G%dx,mask=reshape(mask_pack_vec,[nx2,ny2]))
+            call filter_gaussian(input=var2tmp,output=var2,sigma=sigma,dx=map%G%dx,&
+                        mask=reshape(mask_pack_vec,[nx2,ny2]) .and. var2tmp .ne. missing_value)
         
         end if 
 
