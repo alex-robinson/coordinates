@@ -173,6 +173,12 @@ test_climber: coord-static
 	@echo "    test_climber.x is ready."
 	@echo " "
 
+ccsm3diff: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3_diffusion.x test_ccsm3_diffusion.f90 libcoordinates.a -L. $(LFLAGS)
+	@echo " "
+	@echo "    test_ccsm3_diffusion.x is ready."
+	@echo " "
+
 test_loess: $(objdir)/ncio.o $(objdir)/interp1D.o $(objdir)/index.o $(objdir)/loess.o 
 	$(FC) $(DFLAGS) $(FLAGS) -o test_loess.x $^ test_loess.f90 $(LFLAGS)
 	@echo " "

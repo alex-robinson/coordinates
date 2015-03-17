@@ -54,8 +54,8 @@ program test_ccsm3_diffusion
 
     ! Define file names for input and output of global grids
     file_input     = "data/ccsm_example_dec_feb_pd.nc"
-    file_gCCSM3a   = "output/ccsm3/grid_CCSM3-T42a.nc"
-    file_gCCSM3b   = "output/ccsm3/grid_CCSM3-T42b_nn.nc"
+    file_gCCSM3a   = "output/ccsm3diff/grid_CCSM3-T42a.nc"
+    file_gCCSM3b   = "output/ccsm3diff/grid_CCSM3-T42b_nn.nc"
     
     ! CCSM3 T42 latlon grid
     call nc_read(file_input,"lon",tmplon)
@@ -129,7 +129,7 @@ program test_ccsm3_diffusion
                      lambda=REG%lambda,phi=REG%phi,alpha=REG%alpha)
 
     ! Output grid to file
-    file_gREG = "output/ccsm3/grid_"//trim(REG%name)//"_nn.nc"
+    file_gREG = "output/ccsm3diff/grid_"//trim(REG%name)//"_nn.nc"
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.)
 
     ! Allocate arrays of the size of the regional grid
@@ -204,7 +204,7 @@ program test_ccsm3_diffusion
     write(*,*) "Timestep max = ", &
             diff2D_timestep(real(gREG%G%dx*gREG%xy_conv),real(gREG%G%dy*gREG%xy_conv),kappa)
 
-    file_new = "output/ccsm3/"//trim(REG%name)//"_diffuse.nc"
+    file_new = "output/ccsm3diff/"//trim(REG%name)//"_diffuse.nc"
     call grid_write(gREG,file_new,xnm="xc",ynm="yc",create=.TRUE.)
     call nc_write_dim(file_new,"time",x=0.0,dx=dt,nx=1,units="seconds",unlimited=.TRUE.)
 
