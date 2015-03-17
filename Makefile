@@ -207,6 +207,6 @@ poly: $(objdir)/polygons.o $(objdir)/index.o
 	@echo " "
 
 clean:
-	rm -f test_ccsm3.x $(objdir)/*.o $(objdir)/*.mod *.so 
+	rm -r -f *.x *.dSYM $(objdir)/*.o $(objdir)/*.mod *.so 
 
 # cleanall: cleansico cleanrembo cleansicoX
