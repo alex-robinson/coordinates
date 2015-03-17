@@ -94,7 +94,7 @@ $(objdir)/projection_oblimap2.o: projection_oblimap2.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/coordinates.o: coordinates.f90 $(objdir)/ncio.o $(objdir)/planet.o $(objdir)/geodesic.o \
-						 $(objdir)/projection_oblimap2.o
+						 $(objdir)/projection_oblimap2.o $(objdir)/gaussian_filter.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/subset.o: subset.f90 $(objdir)/coordinates.o

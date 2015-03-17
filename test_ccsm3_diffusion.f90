@@ -4,11 +4,13 @@
 !! or
 !! ifort -g -I/home/robinson/apps/netcdf/netcdf/include -o test_ccsm3.x ../ncio/ncio3.f90 geodesic.f90 planet.f90 projection_oblimap2.f90 coordinates.f90 test_ccsm3.f90 -L/home/robinson/apps/netcdf/netcdf/lib -lnetcdf
 
-program test_ccsm3
+program test_ccsm3_diffusion
 
     use ncio 
     use coordinates
     
+    use gaussian_filter 
+
     implicit none
 
     type(grid_class) :: gCCSM3, gREG
@@ -30,6 +32,20 @@ program test_ccsm3
 
     double precision :: tmplon(128), tmplat(64)
 
+    type gauss_type 
+        real(4), allocatable :: input(:,:), output(:,:), grad(:,:), kappa(:,:)
+        logical, allocatable :: mask(:,:)
+        real, dimension(:, :), allocatable :: kernel
+        integer :: ntot, nbin, nnow 
+        real(4) :: sigmak, sigma, grad_now 
+
+    end type 
+
+    type(gauss_type) :: gtest 
+    integer :: i 
+    integer :: nt 
+    real(4) :: dt, kappa, gradmax  
+
     ! =======================================================================
     !
     ! Step 1: Define global input grid and load data that will be used here
@@ -39,7 +55,7 @@ program test_ccsm3
     ! Define file names for input and output of global grids
     file_input     = "data/ccsm_example_dec_feb_pd.nc"
     file_gCCSM3a   = "output/ccsm3/grid_CCSM3-T42a.nc"
-    file_gCCSM3b   = "output/ccsm3/grid_CCSM3-T42b_quadrant.nc"
+    file_gCCSM3b   = "output/ccsm3/grid_CCSM3-T42b_nn.nc"
     
     ! CCSM3 T42 latlon grid
     call nc_read(file_input,"lon",tmplon)
@@ -113,7 +129,7 @@ program test_ccsm3
                      lambda=REG%lambda,phi=REG%phi,alpha=REG%alpha)
 
     ! Output grid to file
-    file_gREG = "output/ccsm3/grid_"//trim(REG%name)//"_quadrant.nc"
+    file_gREG = "output/ccsm3/grid_"//trim(REG%name)//"_nn.nc"
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.)
 
     ! Allocate arrays of the size of the regional grid
@@ -139,9 +155,9 @@ program test_ccsm3
     call map_init(mREG_CCSM3,gREG,gCCSM3,max_neighbors=10,lat_lim=2.0d0,fldr="maps",load=.TRUE.)
 
     ! Map each field to the regional domain using the quadrant method (no max_distance required here)
-    call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="quadrant")
-    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="quadrant")
-    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="quadrant")
+    call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="nn")
+    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="nn")
+    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="nn")
 !     call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="nng",sigma=80.d0)
 !     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="nng",sigma=80.d0)
 !     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="nng",sigma=80.d0)
@@ -151,6 +167,116 @@ program test_ccsm3
     call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
     call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
     call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
+
+    ! ======================================================================
+    ! ======================================================================
+
+    ! Testing variable sigmas for Gaussian filter 
+    call grid_allocate(gREG,gtest%input)
+    call grid_allocate(gREG,gtest%output)
+    call grid_allocate(gREG,gtest%mask)
+    call grid_allocate(gREG,gtest%grad)
+    call grid_allocate(gREG,gtest%kappa)
+            
+    ! Map field with nearest neighbor algorithm
+    call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="nn")
+    gtest%input = real(REG%Ts)
+    gtest%grad = hgrad(gtest%input,dx=real(gREG%G%dx),norm=.TRUE.)
+    call nc_write(file_gREG,"dTs",  gtest%grad,  dim1="xc",dim2="yc")
+
+    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="nn")
+    gtest%input = real(REG%MB)
+    gtest%grad = hgrad(gtest%input,dx=real(gREG%G%dx),norm=.TRUE.)
+    call nc_write(file_gREG,"dMB",  gtest%grad,  dim1="xc",dim2="yc")
+
+    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="nn")
+    gtest%input = real(REG%Hs)
+    gtest%grad = hgrad(gtest%input,dx=real(gREG%G%dx),norm=.TRUE.)
+!     call nc_write(file_gREG,"dHs",  gtest%grad,  dim1="xc",dim2="yc")
+
+
+    ! Output grid to file
+    dt = 1.0 
+    nt = 1000 
+    kappa = 30.0 
+
+    write(*,*) "Timestep = ", dt 
+    write(*,*) "Timestep max = ", &
+            diff2D_timestep(real(gREG%G%dx*gREG%xy_conv),real(gREG%G%dy*gREG%xy_conv),kappa)
+
+    file_new = "output/ccsm3/"//trim(REG%name)//"_diffuse.nc"
+    call grid_write(gREG,file_new,xnm="xc",ynm="yc",create=.TRUE.)
+    call nc_write_dim(file_new,"time",x=0.0,dx=dt,nx=1,units="seconds",unlimited=.TRUE.)
+
+    call diffuse2D(gtest%input,gtest%grad,dx=real(gREG%G%dx))
+    write(*,*) "stdev = ", stdev_2D(gtest%grad,mv=-9999.0)
+    gradmax = maxval(abs(gtest%grad))
+    write(*,*) "gradmax = ", gradmax 
+
+    do i = 1, nt 
+        call diffuse2D(gtest%input,gtest%grad,dx=real(gREG%G%dx))
+!         gtest%kappa = kappa*(abs(gtest%grad)/maxval(abs(gtest%grad)))
+        gtest%kappa = kappa 
+        gradmax     = maxval(abs(gtest%grad))
+
+        write(*,"(i6,3g15.3)") i, minval(gtest%grad), maxval(gtest%grad),stdev_2D(gtest%grad,mv=-9999.0)
+        gtest%output = gtest%input 
+
+        if ( i-1 .gt. 0) then 
+            where(abs(gtest%grad) .gt. gradmax*0.85) &
+                gtest%output = gtest%input + dt*gtest%kappa*gtest%grad 
+        end if 
+
+        call nc_write(file_new,"time",i*dt,dim1="time",start=[i],count=[1])
+        call nc_write(file_new,"dHs2",  gtest%grad,  dim1="xc",dim2="yc",dim3="time", &
+                      start=[1,1,i],count=[gREG%G%nx,gREG%G%ny,1])
+        call nc_write(file_new,"Hs2",  gtest%output,  dim1="xc",dim2="yc",dim3="time", &
+                      start=[1,1,i],count=[gREG%G%nx,gREG%G%ny,1])
+        call nc_write(file_new,"Hs2_Hs",  gtest%output-REG%Hs,  dim1="xc",dim2="yc",dim3="time", &
+                      start=[1,1,i],count=[gREG%G%nx,gREG%G%ny,1])
+        gtest%input = gtest%output 
+
+        if (gradmax .lt. 0.02) exit 
+    end do 
+
+    stop 
+
+    gtest%sigma  = 200.d0 
+    gtest%sigmak =  10.d0 
+    gtest%ntot   = (gtest%sigma / gtest%sigmak)**2
+    gtest%nbin   = gtest%ntot/10 
+
+    call gaussian_kernel(sigma=gtest%sigmak/real(gREG%G%dx),kernel=gtest%kernel)
+
+    gtest%nnow = 9
+    gtest%grad_now = maxval(gtest%grad)*gtest%nnow/gtest%nbin 
+
+    do i = 1, gtest%ntot 
+
+        if (mod(i,gtest%nbin) .eq. 0) then 
+            gtest%nnow = max(0,gtest%nnow-1)
+            gtest%grad_now = maxval(gtest%grad)* gtest%nnow / gtest%nbin 
+        end if
+        gtest%mask = .FALSE.
+        where(gtest%grad .ge. gtest%grad_now) gtest%mask = .TRUE. 
+
+        write(*,*) i, mod(i,gtest%nbin), gtest%nnow, gtest%grad_now, count(gtest%mask)
+
+        call convolve(gtest%input, gtest%kernel, gtest%output, mask=gtest%mask)
+        gtest%input = gtest%output 
+
+    end do 
+
+    call nc_write(file_gREG,"Hs_sigma100", gtest%output,  dim1="xc",dim2="yc")
+
+    gtest%grad = hgrad(gtest%output,dx=real(gREG%G%dx),norm=.TRUE.)
+    call nc_write(file_gREG,"dHs_sigma100", gtest%grad,  dim1="xc",dim2="yc")
+
+    stop 
+
+    ! ======================================================================
+    ! ======================================================================
+
 
     ! Map each field back to the CCSM3 domain using the radius method
     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
@@ -212,4 +338,50 @@ contains
 
     end subroutine grid_stats 
 
-end program test_ccsm3
+
+    function stdev_2D(x,mv) result(sdx)
+        
+        implicit none 
+
+        real(4) :: x(:,:), mv 
+        real(4) :: sdx 
+        real(4) :: ave, totsq 
+        integer :: ntot 
+
+        ntot = count(x.ne.mv)
+
+        sdx   = -1.0
+        if (ntot .gt.2) then 
+            ave   = sum(x,mask=x.ne.mv)/max(1,ntot)
+            totsq = sum( (x-ave)*(x-ave) )
+            sdx   = sqrt(totsq/(ntot-1))
+        end if 
+
+        return
+
+    end function stdev_2D 
+
+    function stdev_vec(x,mv) result(sdx)
+        
+        implicit none 
+
+        real(4) :: x(:), mv 
+        real(4) :: sdx 
+        real(4) :: ave, totsq 
+        integer :: ntot
+
+        ntot = count(x.ne.mv)
+
+        sdx   = -1.0
+        if (ntot .gt.2) then
+            ave   = sum(x,mask=x.ne.mv)/max(1,ntot)
+            totsq = sum( (x-ave)*(x-ave) )
+            sdx   = sqrt(totsq/(ntot-1))
+        end if 
+
+        return
+
+    end function stdev_vec 
+
+
+end program test_ccsm3_diffusion

@@ -14,7 +14,9 @@ module coordinates
 
     use oblimap_projection_module
     use planet 
-    use ncio 
+    use ncio
+
+    use gaussian_filter  
 
     implicit none 
 
@@ -1315,7 +1317,7 @@ contains
                                      method,radius,fill,border,missing_value, &
                                      mask_pack_vec)
         
-        var2  = reshape(int(var2_vec), [nx2,ny2])
+        var2  = reshape(nint(var2_vec), [nx2,ny2])
         if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
 
         return
@@ -1386,7 +1388,7 @@ contains
                                      method,radius,fill,border,missing_value, &
                                      mask_pack_vec)
         
-        var2  = reshape(int(var2_vec),[nx2,ny2])
+        var2  = reshape(nint(var2_vec),[nx2,ny2])
         if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
 
         return
@@ -1416,13 +1418,13 @@ contains
                                      method,radius,fill,border,missing_value, &
                                      mask_pack)
 
-        var2 = int(var2_vec)
+        var2 = nint(var2_vec)
 
         return
 
     end subroutine map_field_points_points_integer
 
-    subroutine map_field_grid_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack,grid0)
+    subroutine map_field_grid_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack,sigma)
 
         implicit none 
 
@@ -1431,7 +1433,7 @@ contains
         real(dp), dimension(:,:), intent(INOUT) :: var2
         integer, dimension(:,:),  intent(OUT), optional :: mask2
         logical,  dimension(:,:), intent(IN),  optional :: mask_pack 
-        type(grid_class), optional :: grid0 
+        real(dp), optional :: sigma 
 
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
@@ -1442,7 +1444,12 @@ contains
         integer,  dimension(:), allocatable   :: mask2_vec
         logical,  dimension(:), allocatable   :: mask_pack_vec 
         integer :: nx2, ny2, npts2, npts1 
+        character(len=24) :: method_local 
+        real(dp), dimension(:,:), allocatable :: var2tmp 
 
+        method_local = trim(method)
+        if (method .eq. "nng") method_local = "nn" 
+        
         nx2   = size(var2,1)
         ny2   = size(var2,2)
         npts2  = nx2*ny2 
@@ -1454,11 +1461,25 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2_vec,mask2_vec, &
-                                     method,radius,fill,border,missing_value, &
+                                     method_local,radius,fill,border,missing_value, &
                                      mask_pack_vec)
     
         var2  = reshape(var2_vec, [nx2,ny2])
         if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
+
+        if (method .eq. "nng") then 
+            if (.not. present(sigma)) then 
+                write(*,*) "map_field:: error: method 'nng' requires &
+                           &that the optional sigma argument be specified."
+                stop 
+            end if 
+
+            allocate(var2tmp(nx2,ny2))
+            var2tmp = var2 
+            call filter_gaussian(input=var2tmp,output=var2,sigma=sigma,&
+                                 dx=map%G%dx,mask=reshape(mask_pack_vec,[nx2,ny2]))
+        
+        end if 
 
         return
 
@@ -1491,7 +1512,8 @@ contains
 
     end subroutine map_field_grid_points_double
 
-    subroutine map_field_points_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
+    subroutine map_field_points_grid_double(map,name,var1,var2,mask2,method,radius,fill,border, &
+                                            missing_value,mask_pack,sigma)
 
         implicit none 
 
@@ -1500,7 +1522,8 @@ contains
         real(dp), dimension(:,:), intent(INOUT) :: var2
         integer,  dimension(:,:), intent(OUT), optional :: mask2
         logical,  dimension(:,:), intent(IN),  optional :: mask_pack 
-        
+        real(dp), optional :: sigma 
+
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
@@ -1510,7 +1533,12 @@ contains
         integer,  dimension(:), allocatable   :: mask2_vec
         logical,  dimension(:), allocatable :: mask_pack_vec 
         integer :: nx2, ny2, npts2
+        character(len=24) :: method_local 
+        real(dp), dimension(:,:), allocatable :: var2tmp 
 
+        method_local = trim(method)
+        if (method .eq. "nng") method_local = "nn" 
+        
         nx2   = size(var2,1)
         ny2   = size(var2,2)
         npts2  = nx2*ny2 
@@ -1521,11 +1549,25 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,var1,var2_vec,mask2_vec, &
-                                     method,radius,fill,border,missing_value, &
+                                     method_local,radius,fill,border,missing_value, &
                                      mask_pack_vec)
         
         var2  = reshape(var2_vec, [nx2,ny2])
         if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
+
+        if (method .eq. "nng") then 
+            if (.not. present(sigma)) then 
+                write(*,*) "map_field:: error: method 'nng' requires &
+                           &that the optional sigma argument be specified."
+                stop 
+            end if 
+
+            allocate(var2tmp(nx2,ny2))
+            var2tmp = var2 
+            call filter_gaussian(input=var2tmp,output=var2,sigma=sigma,&
+                                 dx=map%G%dx,mask=reshape(mask_pack_vec,[nx2,ny2]))
+        
+        end if 
 
         return
 
