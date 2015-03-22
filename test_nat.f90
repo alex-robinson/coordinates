@@ -140,6 +140,8 @@ END DO
 
 WRITE(nwrite,9002)
 STOP
+
+
 8000   FORMAT(3(i13,2X))
 8001   FORMAT(6(e13.6,2X))
 9000   FORMAT(///1H ,19(1H*)/1H ,16H error: iflag = ,i3/1H ,19(1H*)///)
@@ -158,7 +160,7 @@ contains
 
         !    This routine supplies the value of one of eight
         !    test functions at the point (X,Y).
-        
+
         IF(nfunc <= 0 .OR. nfunc > 8) STOP 616
 
         SELECT CASE ( nfunc )
@@ -171,39 +173,39 @@ contains
           CASE (    2)
             
             !    Function 2: V-shaped valley.
-            2   func = ABS(x-y)
+            func = ABS(x-y)
 
           CASE (    3)
             
             !    Function 3: Spherical quadratic (parabolic function).
-            3   func = (x-0.25)**2+(y-0.25)**2
+            func = (x-0.25)**2+(y-0.25)**2
 
           CASE (    4)
             
             !    Function 4: Non-spherical quadratic (hyperbolic paraboloid).
-            4   func = (x-0.5)**2-(y-0.5)**2
+            func = (x-0.5)**2-(y-0.5)**2
 
           CASE (    5)
             
             !    Function 5: Spherical bivariate normal density function.
-            5   func = EXP(-8.0*((x-0.75)**2+(y-0.75)**2))
+            func = EXP(-8.0*((x-0.75)**2+(y-0.75)**2))
 
           CASE (    6)
             
             !    Function 6: Sum of two normal densities to give a bimodal
             !                density function.
-            6   func = EXP(-16.0*((x-0.75)**2+(y-0.25)**2))
+            func = EXP(-16.0*((x-0.75)**2+(y-0.25)**2))
             func = func+EXP(-16.0*((x-0.25)**2+(y-0.75)**2))
 
           CASE (    7)
             
             !    Function 7: Fan of ripples.
-            7   func = SIN(6.283185*x*(y+1.0))
+            func = SIN(6.283185*x*(y+1.0))
 
           CASE (    8)
             
             !    Function 8: Concentric circular ripples.
-            8   func = COS(12.566371*SQRT((x-0.25)**2+(y-0.25)**2))
+            func = COS(12.566371*SQRT((x-0.25)**2+(y-0.25)**2))
 
         END SELECT
 
