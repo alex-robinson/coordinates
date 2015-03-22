@@ -99,7 +99,6 @@ STOP 613
   
 !    Call RECT1G to compute the C1 interpolant for the function
 !    at the nodes of the MM*NN grid on the smaller rectangle.
-  
   4   CALL rect1g(cn,jcns,jaddr,pt,npts,naddr,nfree,nstart,nptsin,  &
       l,ltop,lptr,lbase,epscn,epspt,iflag,igarb,sbarea,delsba,  &
       ptoff,knbmax,val,grad,z,zx,zy,mm,mm,nn,xmin2,xmax2,ymin2, ymax2,zlo,zhi)

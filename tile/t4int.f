@@ -461,7 +461,11 @@ C
      1    NPTSIN,L,LTOP,LPTR,LBASE,EPSCN,EPSPT,IFLAG,IGARB,XPT,YPT, 
      2    NINDEX,AREA,SBAREA,DELSBA,PTOFF,KNBMAX,KNB,ICASE, 
      3    VAL,Z0,ZX0,ZY0,ZH,ZXH,ZYH) 
-C 
+C
+C    Initial data values: PT, NPTS, VAL(NPTS),GRAD(2,NPTS)
+C    CN = 
+C    Working arrays: SBAREA(KNBMAX),DELSBA(2,KNBMAX),PTOFF(2,KNBMAX), 
+C    Working dimension: KNBMAX
 C    Calculates the C0 natural neighbour interpolant and its gradient, 
 C    and also the C1 natural neighbour interpolant and its gradient with 
 C    all data site gradients forced to zero, at the point (XPT,YPT). 

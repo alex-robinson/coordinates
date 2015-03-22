@@ -191,6 +191,12 @@ test_nat: tile/t4gen.f tile/t4man.f tile/t4int.f tile/t4que.f
 	@echo "    test_nat.x is ready."
 	@echo " "
 
+test_nat_new: tile/t4gen.f tile/t4man.f tile/t4int.f tile/t4que.f
+	$(FC) $(DFLAGS) $(FLAGS) -o test_nat_new.x $^ test_nat_new.f90
+	@echo " "
+	@echo "    test_nat_new.x is ready."
+	@echo " "
+
 # Program to test distance calculations using the geographiclib library
 geodinverse: $(objdir)/planet.o $(objdir)/geodesic.o
 	$(FC) $(DFLAGS) $(FLAGS) -o geodinverse.x $^ geodinverse.f90
