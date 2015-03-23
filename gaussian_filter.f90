@@ -137,9 +137,9 @@ contains
         deallocate(x)
         deallocate(y)
 
-        write(*,"(a,2f10.2,2i6)") "gaussian_kernel:: truncation, sigma, radius, nx, ny: ", &
+        write(*,"(a,2f10.2,3i6)") "gaussian_kernel:: truncation, sigma, radius, nx, ny: ", &
                                     trunc, sigma, radius, size(kernel,1), size(kernel,2) 
-        write(*,*) "    kernel range: ", minval(kernel), maxval(kernel)
+        write(*,"(a,2g12.3)") "    kernel weight range: ", minval(kernel), maxval(kernel)
 
         return 
 
