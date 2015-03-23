@@ -109,6 +109,8 @@ STOP 613
 !    Record the original function and its reconstruction on NSTORE
 !    if required and compute error statistics.
   
+  q = 0 
+
   5   rmse = 0.0
   abse = 0.0
   amxe = 0.0
@@ -125,6 +127,7 @@ STOP 613
       amxe = AMAX1(amxe,fzdif)
       IF(nstore <= 0) CYCLE
       WRITE(nstore,8001) xpt, ypt, f,z(m,n),zx(m,n),zy(m,n)
+
     END DO
   END DO
   

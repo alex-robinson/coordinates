@@ -185,13 +185,13 @@ test_loess: $(objdir)/ncio.o $(objdir)/interp1D.o $(objdir)/index.o $(objdir)/lo
 	@echo "    test_loess.x is ready."
 	@echo " "
 
-test_nat: tile/t4gen.f tile/t4man.f tile/t4int.f tile/t4que.f
+test_nat: tile/t4gen.f tile/t4man.f tile/t4int.f tile/t4que.f tile/t4int.f90
 	$(FC) $(DFLAGS) $(FLAGS) -o test_nat.x $^ test_nat.f90
 	@echo " "
 	@echo "    test_nat.x is ready."
 	@echo " "
 
-test_nat_new: tile/t4gen.f tile/t4man.f tile/t4int.f tile/t4que.f
+test_nat_new: tile/t4gen.f tile/t4man.f tile/t4int.f tile/t4que.f tile/t4int.f90
 	$(FC) $(DFLAGS) $(FLAGS) -o test_nat_new.x $^ test_nat_new.f90
 	@echo " "
 	@echo "    test_nat_new.x is ready."
