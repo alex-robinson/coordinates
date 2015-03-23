@@ -79,6 +79,10 @@ contains
         ! Get the kernel
         call gaussian_kernel(sigmap, kernel, truncate)
         
+        write(*,*) "Checking kernel bounds..."
+        write(*,*) ubound(kernel,1), ubound(input,1)
+        write(*,*) ubound(kernel,2), ubound(input,2)
+
         nloop = 1
 !         if (ubound(kernel,1) < ubound(input,1) .or. &
 !             ubound(kernel,2) < ubound(input,2)) then 
@@ -137,7 +141,7 @@ contains
         deallocate(x)
         deallocate(y)
 
-        write(*,"(a,2f10.2,i10)") "gaussian_kernel:: truncation, sigma, radius, nx, ny: ", &
+        write(*,"(a,2f10.2,2i6)") "gaussian_kernel:: truncation, sigma, radius, nx, ny: ", &
                                     trunc, sigma, radius, size(kernel,1), size(kernel,2) 
         write(*,*) "    kernel range: ", minval(kernel), maxval(kernel)
 
