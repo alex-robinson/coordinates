@@ -766,6 +766,10 @@ CONTAINS
     ! See equation (21-38) on page 162 Snyder (1987):
     angle_C = 2._dp * ATAN(rho * COS(proj%chi_M) / proj%akm)
     
+    write(*,*) "rho        = ", rho 
+    write(*,*) "angle_C    = ", angle_C 
+    write(*,*) "proj%chi_M = ", proj%chi_M 
+
     ! See equations (21-37) on page 161 in Snyder (1987):
     chi_P   = ASIN(COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho)
 
