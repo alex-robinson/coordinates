@@ -80,12 +80,12 @@ contains
         call gaussian_kernel(sigmap, kernel, truncate)
         
         nloop = 1
-        if (ubound(kernel,1) < ubound(input,1) .or. &
-            ubound(kernel,2) < ubound(input,2)) then 
-            nloop  = 4
-            sigmap = ceiling(sigmap/2.0)
-            call gaussian_kernel(sigmap, kernel, truncate)
-        end if 
+!         if (ubound(kernel,1) < ubound(input,1) .or. &
+!             ubound(kernel,2) < ubound(input,2)) then 
+!             nloop  = 4
+!             sigmap = ceiling(sigmap/2.0)
+!             call gaussian_kernel(sigmap, kernel, truncate)
+!         end if 
 
         ! Convolve as many times as necessary to acheive 
         ! desired level of smoothing 
@@ -137,8 +137,9 @@ contains
         deallocate(x)
         deallocate(y)
 
-        write(*,"(a,2f10.2,i10)") "gaussian_kernel:: truncation, sigma, radius: ", trunc, sigma, radius 
-        write(*,*) "    kernel nx, ny, range: ", size(kernel,1), size(kernel,2), minval(kernel), maxval(kernel)
+        write(*,"(a,2f10.2,i10)") "gaussian_kernel:: truncation, sigma, radius, nx, ny: ", &
+                                    trunc, sigma, radius, size(kernel,1), size(kernel,2) 
+        write(*,*) "    kernel range: ", minval(kernel), maxval(kernel)
 
         return 
 
