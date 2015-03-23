@@ -137,6 +137,11 @@ contains
         deallocate(x)
         deallocate(y)
 
+        write(*,"(a,2f10.2,i10)") "gaussian_kernel:: truncation, sigma, radius: ", trunc, sigma, radius 
+        write(*,*) "    kernel nx, ny, range: ", size(kernel,1), size(kernel,2), minval(kernel), maxval(kernel)
+
+        return 
+
     end subroutine gaussian_kernel
 
     ! Set up 3x3 tiles around the input.
