@@ -60,7 +60,7 @@ MODULE oblimap_projection_module
         
     type projection_class
 
-        character(len=256) :: name, default_method  
+        character(len=256) :: name, method  
 
         ! Projection parameters
         real(dp) :: lambda, lambda_M 
@@ -108,7 +108,7 @@ MODULE oblimap_projection_module
     
 CONTAINS
   
-  SUBROUTINE projection_init(proj,name,planet,lambda,phi,alpha,x_e,y_n)
+  SUBROUTINE projection_init(proj,name,planet,lambda,phi,alpha,x_e,y_n,method)
     
     IMPLICIT NONE
 
@@ -117,6 +117,8 @@ CONTAINS
     type(planet_class)     :: planet 
     real(dp), optional     :: lambda, phi, alpha 
     real(dp), optional     :: x_e, y_n 
+    character(len=*), optional :: method 
+    character(len=256) :: proj_method 
 
     proj%name = trim(name) 
 
@@ -131,9 +133,34 @@ CONTAINS
     proj%is_sphere   = planet%is_sphere 
 
     ! Determine best default project method based on planet information
-    proj%default_method = "oblimap_projection_inverse"
-    if (.not. proj%is_sphere) proj%default_method = "oblique_sg_projection_ellipsoid_snyder" 
+    ! and map type
 
+    if (trim(proj%name) .eq. "stereographic" .or. &
+        trim(proj%name) .eq. "polar stereographic") then 
+
+        if (proj%is_sphere) then 
+            proj%method = "oblique_sg_projection"
+        else 
+            proj%method = "oblique_sg_projection_ellipsoid_snyder" 
+        end if 
+
+    else if (trim(proj%name) .eq. "laea") then 
+        
+        if (proj%is_sphere) then 
+            proj%method = "oblique_laea_projection_snyder"
+        else 
+            proj%method = "oblique_laea_projection_ellipsoid_snyder" 
+        end if 
+        
+    else
+        proj%method = "undefined_default_method"
+
+    end if 
+
+    ! Determine actual method to use based on user input if given
+    if (present(method)) proj%method = trim(method)
+
+    
 !     proj%R            = 6.371221E6_dp ! Radius of the planet (for now it's Earth)
 !     proj%earth_radius = 6.371221E6_dp ! redundant def of Earth radius (why not use generic R?)
 
@@ -224,7 +251,8 @@ CONTAINS
 
     same_proj = .FALSE. 
 
-    if (proj1%lambda .eq. proj2%lambda    .and. &
+    if (trim(proj1%method) .eq. trim(proj2%method) .and. &
+        proj1%lambda .eq. proj2%lambda    .and. &
         proj1%phi    .eq. proj2%phi       .and. &
         proj1%alpha  .eq. proj2%alpha     .and. &
         proj1%x_e    .eq. proj2%x_e       .and. &
@@ -232,7 +260,7 @@ CONTAINS
         dabs(proj1%f-proj2%f) .le. eps    .and. &
         dabs(proj1%a-proj2%a) .le. eps    .and. &
         dabs(proj1%e-proj2%e) .le. eps    .and. &
-        dabs(proj1%R-proj2%R) .le. eps         ) then
+        dabs(proj1%R-proj2%R) .le. eps     ) then
 
             same_proj = .TRUE. 
 
@@ -260,13 +288,11 @@ CONTAINS
 
   end function optimal_alpha
 
-  subroutine oblimap_projection(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj, method)
+  subroutine oblimap_projection(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj)
 
     implicit none 
 
     type(projection_class), INTENT(IN) :: proj 
-    character(len=*), optional :: method 
-    character(len=256) :: proj_method 
 
     ! Input variables:
     REAL(dp), INTENT(IN)  :: lambda
@@ -276,10 +302,7 @@ CONTAINS
     REAL(dp), INTENT(OUT) :: x_IM_P_prime
     REAL(dp), INTENT(OUT) :: y_IM_P_prime
 
-    proj_method = trim(proj%default_method)
-    if (present(method)) proj_method = trim(method)
-
-    select case(trim(proj_method))
+    select case(trim(proj%method))
 
         case("oblique_sg_projection","oblique_sg_projection_snyder")
             ! These choices use the same forward projection routine 
@@ -300,7 +323,7 @@ CONTAINS
 
         case DEFAULT 
             write(*,*) "oblimap_projection:: error: projection method not recognized: "// &
-                       trim(proj_method)
+                       trim(proj%method)
             write(*,*) "Only the following options are possible: "
             write(*,*) "oblique_sg_projection"
             write(*,*) "oblique_sg_projection_snyder"
@@ -317,13 +340,11 @@ CONTAINS
 
   end subroutine oblimap_projection
 
-  subroutine oblimap_projection_inverse(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj, method)
+  subroutine oblimap_projection_inverse(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj)
 
     implicit none 
 
     type(projection_class), INTENT(IN) :: proj 
-    character(len=*), optional :: method 
-    character(len=256) :: proj_method 
 
     ! Input variables:
     REAL(dp), INTENT(IN)  :: x_IM_P_prime
@@ -333,10 +354,7 @@ CONTAINS
     REAL(dp), INTENT(OUT) :: lambda_P
     REAL(dp), INTENT(OUT) :: phi_P
 
-    proj_method = trim(proj%default_method)
-    if (present(method)) proj_method = trim(method)
-
-    select case(trim(proj_method))
+    select case(trim(proj%method))
 
         case("oblique_sg_projection")
 
@@ -360,7 +378,7 @@ CONTAINS
 
         case DEFAULT 
             write(*,*) "oblimap_projection:: error: projection method not recognized: "// &
-                       trim(proj_method)
+                       trim(proj%method)
             write(*,*) "Only the following options are possible: "
             write(*,*) "oblique_sg_projection"
             write(*,*) "oblique_sg_projection_snyder"

@@ -582,7 +582,7 @@ contains
             case("latlon")
                 pts%is_cartesian  = .FALSE. 
                 pts%is_projection = .FALSE. 
-            case("stereographic","polar stereographic")
+            case("stereographic","polar stereographic","laea")
                 pts%is_cartesian  = .TRUE. 
                 pts%is_projection = .TRUE. 
             case("cartesian")
@@ -662,7 +662,7 @@ contains
             ! Points are projected, find coordinates (latlon or xy)
             
             ! Initialize projection information
-            call projection_init(pts%proj,"stereographic",pts%planet, &
+            call projection_init(pts%proj,trim(pts%mtype),pts%planet, &
                                  lambda,phi,alpha,x_e,y_n)
 
             if (latlon_in) then 
@@ -2233,7 +2233,7 @@ contains
 
         if (map%is_projection) then 
             call nc_write(fnm,"proj_name",map%proj%name)
-            call nc_write_attr(fnm,"proj_name","default_method",map%proj%default_method)
+            call nc_write_attr(fnm,"proj_name","method",map%proj%method)
             call nc_write(fnm,"proj_info",[map%proj%lambda, map%proj%phi, map%proj%alpha, &
                                  map%proj%x_e, map%proj%y_n], dim1="projpar")    
         end if 
@@ -2629,6 +2629,7 @@ contains
 
         if (pts%is_projection) then 
             write(*,*) "Projection information"
+            write(*,"(a16,a)")         "proj method = ", trim(pts%proj%method)
             write(*,"(a16,g12.5)")     "a = ",     pts%proj%a
             write(*,"(a16,g12.5)")     "f = ",     pts%proj%f
             write(*,"(a16,g12.5)")     "lambda = ",pts%proj%lambda
