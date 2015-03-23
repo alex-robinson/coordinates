@@ -60,13 +60,17 @@ MODULE oblimap_projection_module
         
     type projection_class
 
-        character(len=256) :: name 
+        character(len=256) :: name, default_method  
 
         ! Projection parameters
         real(dp) :: lambda, lambda_M 
         real(dp) :: phi, phi_M 
         real(dp) :: alpha, alpha_stereographic
         real(dp) :: x_e, y_n 
+
+        ! Planet parameters 
+        character(len=256) :: planet_name 
+        logical            :: is_sphere 
 
         ! Error tolerance level
         real(dp)      :: ebs = 1.e-8_dp
@@ -93,29 +97,17 @@ MODULE oblimap_projection_module
     private
     public :: pi, degrees_to_radians, radians_to_degrees
     public :: projection_class, projection_init, same_projection
-    public :: oblique_sg_projection, inverse_oblique_sg_projection
     public :: optimal_alpha
+    public :: oblimap_projection, oblimap_projection_inverse
 
+!     public :: oblique_sg_projection, inverse_oblique_sg_projection
+!     public :: inverse_oblique_sg_projection_snyder
+!     public :: oblique_laea_projection_snyder, inverse_oblique_laea_projection_snyder
+!     public :: oblique_sg_projection_ellipsoid_snyder, inverse_oblique_sg_projection_ellipsoid_snyder
+!     public :: oblique_laea_projection_ellipsoid_snyder, inverse_oblique_laea_projection_ellipsoid_snyder
+    
 CONTAINS
   
-  function optimal_alpha(R,nx,ny,dx,dy) result(alpha)
-    ! Given the dimensions and resolution of a projected grid,
-    ! determine the optimal angle alpha (degrees) for the 
-    ! oblique projection 
-
-    implicit none 
-
-    real(dp) :: R, dx, dy, alpha 
-    integer  :: nx, ny 
-    real(dp) :: val 
-
-    val = 1.d0/R * sqrt( 1.d0/(2.d0*pi) * nx*ny*dx*dy )
-    alpha = asin(val) * radians_to_degrees
-
-    return
-
-  end function optimal_alpha
-
   SUBROUTINE projection_init(proj,name,planet,lambda,phi,alpha,x_e,y_n)
     
     IMPLICIT NONE
@@ -128,11 +120,19 @@ CONTAINS
 
     proj%name = trim(name) 
 
+    ! Save planet info locally for ease of use 
     proj%f   = planet%f 
     proj%a   = planet%a 
     proj%e   = planet%e 
     proj%R   = planet%R 
     proj%earth_radius = planet%R 
+
+    proj%planet_name = trim(planet%name)
+    proj%is_sphere   = planet%is_sphere 
+
+    ! Determine best default project method based on planet information
+    proj%default_method = "oblimap_projection_inverse"
+    if (.not. proj%is_sphere) proj%default_method = "oblique_sg_projection_ellipsoid_snyder" 
 
 !     proj%R            = 6.371221E6_dp ! Radius of the planet (for now it's Earth)
 !     proj%earth_radius = 6.371221E6_dp ! redundant def of Earth radius (why not use generic R?)
@@ -242,12 +242,147 @@ CONTAINS
 
   end function same_projection
 
+  function optimal_alpha(R,nx,ny,dx,dy) result(alpha)
+    ! Given the dimensions and resolution of a projected grid,
+    ! determine the optimal angle alpha (degrees) for the 
+    ! oblique projection 
+
+    implicit none 
+
+    real(dp) :: R, dx, dy, alpha 
+    integer  :: nx, ny 
+    real(dp) :: val 
+
+    val = 1.d0/R * sqrt( 1.d0/(2.d0*pi) * nx*ny*dx*dy )
+    alpha = asin(val) * radians_to_degrees
+
+    return
+
+  end function optimal_alpha
+
+  subroutine oblimap_projection(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj, method)
+
+    implicit none 
+
+    type(projection_class), INTENT(IN) :: proj 
+    character(len=*), optional :: method 
+    character(len=256) :: proj_method 
+
+    ! Input variables:
+    REAL(dp), INTENT(IN)  :: lambda
+    REAL(dp), INTENT(IN)  :: phi
+
+    ! Output variables:
+    REAL(dp), INTENT(OUT) :: x_IM_P_prime
+    REAL(dp), INTENT(OUT) :: y_IM_P_prime
+
+    proj_method = trim(proj%default_method)
+    if (present(method)) proj_method = trim(method)
+
+    select case(trim(proj_method))
+
+        case("oblique_sg_projection","oblique_sg_projection_snyder")
+            ! These choices use the same forward projection routine 
+
+            call oblique_sg_projection(lambda,phi,x_IM_P_prime,y_IM_P_prime,proj)
+
+        case("oblique_laea_projection_snyder")
+
+            call oblique_laea_projection_snyder(lambda,phi,x_IM_P_prime,y_IM_P_prime,proj)
+
+        case("oblique_sg_projection_ellipsoid_snyder")
+
+            call oblique_sg_projection_ellipsoid_snyder(lambda,phi,x_IM_P_prime,y_IM_P_prime,proj)
+
+        case("oblique_laea_projection_ellipsoid_snyder")
+
+            call oblique_laea_projection_ellipsoid_snyder(lambda,phi,x_IM_P_prime,y_IM_P_prime,proj)
+
+        case DEFAULT 
+            write(*,*) "oblimap_projection:: error: projection method not recognized: "// &
+                       trim(proj_method)
+            write(*,*) "Only the following options are possible: "
+            write(*,*) "oblique_sg_projection"
+            write(*,*) "oblique_sg_projection_snyder"
+            write(*,*) "oblique_laea_projection_snyder"
+            write(*,*) "oblique_sg_projection_ellipsoid_snyder"
+            write(*,*) "oblique_laea_projection_ellipsoid_snyder"
+            write(*,*) 
+
+            stop 
+
+    end select 
+
+    return 
+
+  end subroutine oblimap_projection
+
+  subroutine oblimap_projection_inverse(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj, method)
+
+    implicit none 
+
+    type(projection_class), INTENT(IN) :: proj 
+    character(len=*), optional :: method 
+    character(len=256) :: proj_method 
+
+    ! Input variables:
+    REAL(dp), INTENT(IN)  :: x_IM_P_prime
+    REAL(dp), INTENT(IN)  :: y_IM_P_prime
+
+    ! Output variables:
+    REAL(dp), INTENT(OUT) :: lambda_P
+    REAL(dp), INTENT(OUT) :: phi_P
+
+    proj_method = trim(proj%default_method)
+    if (present(method)) proj_method = trim(method)
+
+    select case(trim(proj_method))
+
+        case("oblique_sg_projection")
+
+            call inverse_oblique_sg_projection(x_IM_P_prime,y_IM_P_prime,lambda_P,phi_P,proj)
+
+        case("oblique_sg_projection_snyder")
+
+            call inverse_oblique_sg_projection_snyder(x_IM_P_prime,y_IM_P_prime,lambda_P,phi_P,proj)
+
+        case("oblique_laea_projection_snyder")
+
+            call inverse_oblique_laea_projection_snyder(x_IM_P_prime,y_IM_P_prime,lambda_P,phi_P,proj)
+
+        case("oblique_sg_projection_ellipsoid_snyder")
+
+            call inverse_oblique_sg_projection_ellipsoid_snyder(x_IM_P_prime,y_IM_P_prime,lambda_P,phi_P,proj)
+
+        case("oblique_laea_projection_ellipsoid_snyder")
+
+            call inverse_oblique_laea_projection_ellipsoid_snyder(x_IM_P_prime,y_IM_P_prime,lambda_P,phi_P,proj)
+
+        case DEFAULT 
+            write(*,*) "oblimap_projection:: error: projection method not recognized: "// &
+                       trim(proj_method)
+            write(*,*) "Only the following options are possible: "
+            write(*,*) "oblique_sg_projection"
+            write(*,*) "oblique_sg_projection_snyder"
+            write(*,*) "oblique_laea_projection_snyder"
+            write(*,*) "oblique_sg_projection_ellipsoid_snyder"
+            write(*,*) "oblique_laea_projection_ellipsoid_snyder"
+            write(*,*) 
+
+            stop 
+
+    end select 
+
+    return 
+
+  end subroutine oblimap_projection_inverse
+
   SUBROUTINE oblique_sg_projection(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj)
     ! This subroutine projects with an oblique stereographic projection the longitude-latitude
     ! coordinates which coincide with the GCM grid points to the rectangular IM coordinate 
     ! system, with coordinates (x,y).
     ! 
-    ! For more information about M, C%alpha_stereographic, the center of projection and the used 
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used 
     ! projection method see:
     !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
 
@@ -293,7 +428,7 @@ CONTAINS
     ! (x,y) coordinates which coincide with the IM grid points to the longitude-latitude 
     ! coordinate system, with coordinates (lambda, phi) in degrees.
     ! 
-    ! For more information about M, C%alpha_stereographic, the center of projection and the used 
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used 
     ! projection method see:
     !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
 
@@ -371,6 +506,389 @@ CONTAINS
 
   END SUBROUTINE inverse_oblique_sg_projection
 
+    SUBROUTINE inverse_oblique_sg_projection_snyder(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj)
+    ! This subroutine projects with Snyder's inverse oblique stereographic projection the 
+    ! (x,y) coordinates which coincide with the IM grid points to the longitude-latitude 
+    ! coordinate system, with coordinates (lambda, phi) in degrees.
+    ! 
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used 
+    ! projection method see:
+    !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
+    ! and
+    !  Snyder (1987), map projections: A working manual, http://pubs.er.usgs.gov/usgspubs/pp/pp1395
+
+    IMPLICIT NONE
+
+    type(projection_class), INTENT(IN) :: proj 
+
+    ! Input variables:
+    REAL(dp), INTENT(IN)  :: x_IM_P_prime
+    REAL(dp), INTENT(IN)  :: y_IM_P_prime
+
+    ! Output variables:
+    REAL(dp), INTENT(OUT) :: lambda_P
+    REAL(dp), INTENT(OUT) :: phi_P
+
+    ! Local variables:
+    REAL(dp)              :: rho
+    REAL(dp)              :: angle_C     ! In radians
+    REAL(dp)              :: numerator
+    REAL(dp)              :: denumerator
+    
+    ! See equation (20-18) on page 159 Snyder (1987):
+    rho      = SQRT(x_IM_P_prime**2 + y_IM_P_prime**2)
+    ! See equation (21-15) on page 159 Snyder (1987), because the denumerator is always positive this ATAN doesn't 
+    ! need a correction like note 2 on page ix in Snyder (1987):
+    angle_C  = 2._dp * ATAN(rho / ((1._dp + COS(proj%alpha_stereographic)) * proj%earth_radius))
+    
+    ! See equation (20-14) on page 158 Snyder (1987):
+    phi_P    = radians_to_degrees * &
+    ( ASIN(COS(angle_C)*SIN(proj%phi_M) + ((y_IM_P_prime*SIN(angle_C)*COS(proj%phi_M)) / rho)) )
+    
+    ! See equation (20-15) on page 159 Snyder (1987):
+    numerator   = x_IM_P_prime * SIN(angle_C)
+    denumerator = rho * COS(proj%phi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%phi_M) * SIN(angle_C)
+    lambda_P    = radians_to_degrees * (proj%lambda_M + arctanges_quotient(numerator, denumerator))
+    
+    ! Our choice is to return lambda in the 0-360 degree range:
+    IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
+    
+    ! In case point P coincides with M (see condition at the first line of page  159 Snyder (1987):
+    IF(rho == 0._dp) THEN
+     lambda_P = radians_to_degrees * proj%lambda_M
+     phi_P    = radians_to_degrees * proj%phi_M
+    END IF
+  END SUBROUTINE inverse_oblique_sg_projection_snyder
+
+
+
+  SUBROUTINE oblique_laea_projection_snyder(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj)
+    ! This subroutine projects with Snyder's oblique Lambert azimuthal equal-area projection the 
+    ! longitude-latitude coordinates which coincide with the GCM grid points to the rectangular IM 
+    ! coordinate system, with coordinates (x,y).
+    ! 
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used 
+    ! projection method see:
+    !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
+    ! and
+    !  Snyder (1987), map projections: A working manual, http://pubs.er.usgs.gov/usgspubs/pp/pp1395
+
+    IMPLICIT NONE
+
+    type(projection_class), INTENT(IN) :: proj 
+
+    ! Input variables:
+    REAL(dp), INTENT(IN)  :: lambda
+    REAL(dp), INTENT(IN)  :: phi
+
+    ! Output variables:
+    REAL(dp), INTENT(OUT) :: x_IM_P_prime
+    REAL(dp), INTENT(OUT) :: y_IM_P_prime
+
+    ! Local variables:
+    REAL(dp)              :: phi_P
+    REAL(dp)              :: lambda_P
+    REAL(dp)              :: t_P_prime
+    
+    ! For North and South Pole: proj%lambda_M = 0._dp, to generate the correct IM coordinate 
+    ! system, see the oblimap_configuration_module and see equation (2.3) or equation (A.53) in Reerink et al. (2010).
+
+    ! Convert longitude-latitude coordinates to radians:
+    phi_P    = degrees_to_radians * phi       
+    lambda_P = degrees_to_radians * lambda
+
+    ! See equation (21-4) on page 185 of Snyder (1987):
+    t_P_prime = SQRT(2._dp / (1._dp + COS(phi_P) * COS(proj%phi_M) * COS(lambda_P - proj%lambda_M) + &
+                            SIN(phi_P) * SIN(proj%phi_M)))
+
+    ! See equations (2.4-2.5) or equations (A.54-A.55) in Reerink et al. (2010), page 185 of Snyder (1987):
+    x_IM_P_prime =  proj%earth_radius * (COS(phi_P)*SIN(lambda_P - proj%lambda_M)) * t_P_prime
+    y_IM_P_prime =  proj%earth_radius *  &
+        (SIN(phi_P)*COS(proj%phi_M) - (COS(phi_P)*SIN(proj%phi_M)) * COS(lambda_P-proj%lambda_M))*t_P_prime
+  END SUBROUTINE oblique_laea_projection_snyder
+
+
+  SUBROUTINE inverse_oblique_laea_projection_snyder(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj)
+    ! This subroutine projects with Snyder's inverse oblique Lambert azimuthal equal-area projection 
+    ! the (x,y) coordinates which coincide with the IM grid points to the longitude-latitude 
+    ! coordinate system, with coordinates (lambda, phi) in degrees.
+    ! 
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used 
+    ! projection method see:
+    !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
+    ! and
+    !  Snyder (1987), map projections: A working manual, http://pubs.er.usgs.gov/usgspubs/pp/pp1395
+
+    IMPLICIT NONE
+
+    type(projection_class), INTENT(IN) :: proj 
+
+    ! Input variables:
+    REAL(dp), INTENT(IN)  :: x_IM_P_prime
+    REAL(dp), INTENT(IN)  :: y_IM_P_prime
+
+    ! Output variables:
+    REAL(dp), INTENT(OUT) :: lambda_P
+    REAL(dp), INTENT(OUT) :: phi_P
+
+    ! Local variables:
+    REAL(dp)              :: rho
+    REAL(dp)              :: angle_C              ! In radians
+    REAL(dp)              :: numerator
+    REAL(dp)              :: denumerator
+    
+    ! See equation (20-18) on page 187 Snyder (1987):
+    rho      = SQRT(x_IM_P_prime**2 + y_IM_P_prime**2)
+    ! See equation (24-16) on page 187 Snyder (1987):
+    angle_C  = 2._dp * ASIN(rho / (2._dp * proj%earth_radius))
+    
+    ! See equation (20-14) on page 186 Snyder (1987):
+    phi_P    = radians_to_degrees* &
+        ( ASIN(COS(angle_C)*SIN(proj%phi_M) + ((y_IM_P_prime * SIN(angle_C) * COS(proj%phi_M)) / rho)) )
+    
+    ! See equation (20-15) on page 186 Snyder (1987):
+    numerator   = x_IM_P_prime * SIN(angle_C)
+    denumerator = rho * COS(proj%phi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%phi_M) * SIN(angle_C)
+    lambda_P    = radians_to_degrees * (proj%lambda_M + arctanges_quotient(numerator, denumerator))
+    
+    ! Our choice is to return lambda in the 0-360 degree range:
+    IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
+    
+    ! In case point P coincides with M (see the condition down equation (20-14) on page 186 Snyder (1987):
+    IF(rho == 0._dp) THEN
+     lambda_P = radians_to_degrees * proj%lambda_M
+     phi_P    = radians_to_degrees * proj%phi_M
+    END IF
+  END SUBROUTINE inverse_oblique_laea_projection_snyder
+
+
+
+  SUBROUTINE oblique_sg_projection_ellipsoid_snyder(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj)
+    ! This subroutine projects with Snyder's oblique stereographic projection for the ellipsoid
+    ! the the longitude-latitude coordinates which coincide with the GCM grid points to 
+    ! the rectangular IM coordinate system, with coordinates (x,y).
+    ! 
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used 
+    ! projection method see:
+    !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
+    ! and
+    !  Snyder (1987), map projections: A working manual, http://pubs.er.usgs.gov/usgspubs/pp/pp1395
+    
+    IMPLICIT NONE
+
+    type(projection_class), INTENT(IN) :: proj 
+
+    ! Input variables:
+    REAL(dp), INTENT(IN)  :: lambda
+    REAL(dp), INTENT(IN)  :: phi
+
+    ! Output variables:
+    REAL(dp), INTENT(OUT) :: x_IM_P_prime
+    REAL(dp), INTENT(OUT) :: y_IM_P_prime
+
+    ! Local variables:
+    REAL(dp)              :: phi_P    ! phi    in Snyder (1987)
+    REAL(dp)              :: lambda_P ! lambda in Snyder (1987)
+    REAL(dp)              :: chi_P    ! chi    in Snyder (1987)
+    REAL(dp)              :: A
+    
+    ! For North and South Pole: proj%lambda_M = 0._dp, to generate the correct IM coordinate 
+    ! system, see the oblimap_configuration_module and see equation (2.3) or equation (A.53) in Reerink et al. (2010).
+
+    ! Convert longitude-latitude coordinates to radians:
+    phi_P    = degrees_to_radians * phi       
+    lambda_P = degrees_to_radians * lambda
+
+    ! See equations (3-1a) and (21-27) on page 160 in Snyder (1987):
+    chi_P = 2._dp * ATAN(SQRT(((1._dp +       SIN(phi_P)) / (1._dp -       SIN(phi_P))) * &
+            ((1._dp - proj%e * SIN(phi_P)) / (1._dp + proj%e * SIN(phi_P)))**(proj%e))) - 0.5_dp*pi
+    A     = proj%akm / (COS(proj%chi_M) * (1._dp + SIN(proj%chi_M) * SIN(chi_P) + &
+                          COS(proj%chi_M) * COS(chi_P) * COS(lambda_P - proj%lambda_M)))
+
+
+    ! See equations (21-24) and (21-25) on page 160 in Snyder (1987):
+    x_IM_P_prime =  A * COS(chi_P) * SIN(lambda_P - proj%lambda_M)
+    y_IM_P_prime =  A * (COS(proj%chi_M)*SIN(chi_P) - SIN(proj%chi_M)*COS(chi_P)*COS(lambda_P-proj%lambda_M))
+  END SUBROUTINE oblique_sg_projection_ellipsoid_snyder
+
+
+
+  SUBROUTINE inverse_oblique_sg_projection_ellipsoid_snyder(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj)
+    ! This subroutine projects with Snyder's inverse oblique stereographic projection for the ellipsoid 
+    ! the (x,y) coordinates which coincide with the IM grid points to the longitude-latitude 
+    ! coordinate system, with coordinates (lambda, phi) in degrees.
+    ! 
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used 
+    ! projection method see:
+    !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
+    ! and
+    !  Snyder (1987), map projections: A working manual, http://pubs.er.usgs.gov/usgspubs/pp/pp1395
+    
+    IMPLICIT NONE
+
+    type(projection_class), INTENT(IN) :: proj 
+
+    ! Input variables:
+    REAL(dp), INTENT(IN)  :: x_IM_P_prime
+    REAL(dp), INTENT(IN)  :: y_IM_P_prime
+
+    ! Output variables:
+    REAL(dp), INTENT(OUT) :: lambda_P
+    REAL(dp), INTENT(OUT) :: phi_P
+
+    ! Local variables:
+    REAL(dp)              :: rho
+    REAL(dp)              :: angle_C     ! In radians
+    REAL(dp)              :: chi_P       ! chi in Snyder (1987)
+    REAL(dp)              :: numerator
+    REAL(dp)              :: denumerator
+    
+    ! See equation (20-18) on page 162 Snyder (1987):
+    rho     = SQRT(x_IM_P_prime**2 + y_IM_P_prime**2)
+    ! See equation (21-38) on page 162 Snyder (1987):
+    angle_C = 2._dp * ATAN(rho * COS(proj%chi_M) / proj%akm)
+    
+    ! See equations (21-37) on page 161 in Snyder (1987):
+    chi_P   = ASIN(COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho)
+
+    ! See equation (3-5) on page 162 instead of equation (3-4) on page 161 Snyder (1987):
+    phi_P = radians_to_degrees * (chi_P + &
+        (proj%e**2 / 2._dp + 5._dp * proj%e**4 / 24._dp + &
+                     proj%e**6 /  12._dp  +  13._dp * proj%e**8 /    360._dp) * SIN(2._dp*chi_P) + &
+        (                    7._dp * proj%e**4 / 48._dp + &
+            29._dp * proj%e**6 / 240._dp +  811._dp * proj%e**8 /  11520._dp) * SIN(4._dp*chi_P) + &
+        (    7._dp * proj%e**6 / 120._dp +   81._dp * proj%e**8 /   1120._dp) * SIN(6._dp*chi_P) + &
+        (                                  4279._dp * proj%e**8 / 161280._dp) * SIN(8._dp*chi_P)) 
+    
+    ! See equation (21-36) on page 161 Snyder (1987):
+    numerator   = x_IM_P_prime * SIN(angle_C)
+    denumerator = rho * COS(proj%chi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%chi_M) * SIN(angle_C)
+    lambda_P    = radians_to_degrees * (proj%lambda_M + arctanges_quotient(numerator, denumerator))
+    
+    ! Our choice is to return lambda in the 0-360 degree range:
+    IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
+    
+    ! In case point P coincides with M (see condition at the first line of page  159 Snyder (1987):
+    IF(rho == 0._dp) THEN
+     lambda_P = radians_to_degrees * proj%lambda_M
+     phi_P    = radians_to_degrees * proj%phi_M
+    END IF
+  END SUBROUTINE inverse_oblique_sg_projection_ellipsoid_snyder
+
+
+
+  SUBROUTINE oblique_laea_projection_ellipsoid_snyder(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj)
+    ! This subroutine projects with Snyder's oblique Lambert azimuthal equal-area projection for 
+    ! the ellipsoid the longitude-latitude coordinates which coincide with the GCM grid points to 
+    ! the rectangular IM coordinate system, with coordinates (x,y).
+    ! 
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used 
+    ! projection method see:
+    !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
+    ! and
+    !  Snyder (1987), map projections: A working manual, http://pubs.er.usgs.gov/usgspubs/pp/pp1395
+    
+    IMPLICIT NONE
+
+    type(projection_class), INTENT(IN) :: proj 
+
+    ! Input variables:
+    REAL(dp), INTENT(IN)  :: lambda
+    REAL(dp), INTENT(IN)  :: phi
+
+    ! Output variables:
+    REAL(dp), INTENT(OUT) :: x_IM_P_prime
+    REAL(dp), INTENT(OUT) :: y_IM_P_prime
+
+    ! Local variables:
+    REAL(dp)              :: phi_P
+    REAL(dp)              :: lambda_P
+    REAL(dp)              :: q_P      ! q in Snyder (1987)
+    REAL(dp)              :: beta
+    REAL(dp)              :: B
+    
+    ! For North and South Pole: proj%lambda_M = 0._dp, to generate the correct IM coordinate 
+    ! system, see the oblimap_configuration_module and see equation (2.3) or equation (A.53) in Reerink et al. (2010).
+
+    ! Convert longitude-latitude coordinates to radians:
+    phi_P    = degrees_to_radians * phi       
+    lambda_P = degrees_to_radians * lambda
+    
+    ! See equation (3-12) on page 187 in Snyder (1987):
+    q_P = (1._dp - proj%e**2) * ((SIN(phi_P) / (1._dp - (proj%e * SIN(phi_P))**2)) - &
+        (1._dp / (2._dp*proj%e)) * LOG((1._dp - proj%e*SIN(phi_P)) / (1._dp + proj%e * SIN(phi_P)))) 
+    ! See equation (3-11) on page 187 in Snyder (1987):
+    beta = ASIN(q_P / proj%q_polar)
+    ! See equation (24-19) on page 187 in Snyder (1987):
+    B = proj%R_q_polar* &
+        SQRT(2._dp / (1._dp + SIN(proj%beta_M)*SIN(beta) + COS(proj%beta_M)*COS(beta) * COS(lambda_P-proj%lambda_M)))
+
+    ! See equation (24-17) and (24-18) on page 187 in Snyder (1987):
+    x_IM_P_prime = B * proj%D * COS(beta) * SIN(lambda_P - proj%lambda_M)
+    y_IM_P_prime = (B / proj%D) * &
+        (COS(proj%beta_M)*SIN(beta) - SIN(proj%beta_M)*COS(beta) * COS(lambda_P-proj%lambda_M))
+  END SUBROUTINE oblique_laea_projection_ellipsoid_snyder
+
+
+
+  SUBROUTINE inverse_oblique_laea_projection_ellipsoid_snyder(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj)
+    ! This subroutine projects with Snyder's inverse oblique Lambert azimuthal equal-area projection for 
+    ! the ellipsoid the (x,y) coordinates which coincide with the IM grid points to the longitude-latitude 
+    ! coordinate system, with coordinates (lambda, phi) in degrees.
+    ! 
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used 
+    ! projection method see:
+    !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
+    ! and
+    !  Snyder (1987), map projections: A working manual, http://pubs.er.usgs.gov/usgspubs/pp/pp1395
+    
+    IMPLICIT NONE
+
+    type(projection_class), INTENT(IN) :: proj 
+
+    ! Input variables:
+    REAL(dp), INTENT(IN)  :: x_IM_P_prime
+    REAL(dp), INTENT(IN)  :: y_IM_P_prime
+
+    ! Output variables:
+    REAL(dp), INTENT(OUT) :: lambda_P
+    REAL(dp), INTENT(OUT) :: phi_P
+
+    ! Local variables:
+    REAL(dp)              :: rho
+    REAL(dp)              :: angle_C           ! In radians
+    REAL(dp)              :: beta              ! In radians
+    REAL(dp)              :: numerator
+    REAL(dp)              :: denumerator
+    
+    ! See equation (24-28) on page 189 Snyder (1987):
+    rho      = SQRT((x_IM_P_prime / proj%D)**2 + (y_IM_P_prime / proj%D)**2)
+    ! See equation (24-29) on page 189 Snyder (1987):
+    angle_C  = 2._dp * ASIN(rho / (2._dp * proj%R_q_polar))
+    
+    ! See equation (24-30) on page 189 Snyder (1987):
+    beta = ASIN(COS(angle_C) * SIN(proj%beta_M) + (proj%D * y_IM_P_prime * SIN(angle_C) * COS(proj%beta_M) / rho))
+    
+    ! See equation (3-18) on page 189 instead of equation (3-16) on page 188 Snyder (1987):
+    phi_P = radians_to_degrees * (beta + &
+            (proj%e**2 / 3._dp + 31._dp * proj%e**4 / 180._dp + 517._dp * proj%e**6 /  5040._dp) * SIN(2._dp * beta) + &
+            (                 23._dp * proj%e**4 / 360._dp + 251._dp * proj%e**6 /  3780._dp) * SIN(4._dp * beta) + &
+            (                                             761._dp * proj%e**6 / 45360._dp) * SIN(6._dp * beta)) 
+    
+    ! See equation (20-26) on page 188 Snyder (1987):
+    numerator   = x_IM_P_prime * SIN(angle_C)
+    denumerator = proj%D * rho * COS(proj%beta_M) * COS(angle_C) - proj%D**2 * y_IM_P_prime * SIN(proj%beta_M) * SIN(angle_C)
+    lambda_P    = radians_to_degrees * (proj%lambda_M + arctanges_quotient(numerator, denumerator))
+    
+    ! Our choice is to return lambda in the 0-360 degree range:
+    IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
+    
+    ! In case point P coincides with M (see the condition down equation (20-14) on page 186 Snyder (1987):
+    IF(rho == 0._dp) THEN
+     lambda_P = radians_to_degrees * proj%lambda_M
+     phi_P    = radians_to_degrees * proj%phi_M
+    END IF
+  END SUBROUTINE inverse_oblique_laea_projection_ellipsoid_snyder
 
   FUNCTION arctanges_quotient(numerator, denumerator) RESULT(angle)
 

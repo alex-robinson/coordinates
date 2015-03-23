@@ -237,8 +237,10 @@ contains
                     ! Calculate projected area 
 
                     do q = 1, 4
-                        call inverse_oblique_sg_projection(vertx(q),verty(q), &
-                                                           vertlon(q),vertlat(q),grid%proj)
+!                         call inverse_oblique_sg_projection(vertx(q),verty(q), &
+!                                                            vertlon(q),vertlat(q),grid%proj)
+                        call oblimap_projection_inverse(vertx(q),verty(q), &
+                                                        vertlon(q),vertlat(q),grid%proj)
                     end do 
 
                     ! Calculate latlon area 
@@ -670,7 +672,8 @@ contains
                 pts%lat = pts%y 
 
                 do i = 1, pts%npts       
-                    call oblique_sg_projection(pts%lon(i),pts%lat(i),pts%x(i),pts%y(i),pts%proj)
+!                     call oblique_sg_projection(pts%lon(i),pts%lat(i),pts%x(i),pts%y(i),pts%proj)
+                    call oblimap_projection(pts%lon(i),pts%lat(i),pts%x(i),pts%y(i),pts%proj)
                     pts%x(i) = pts%x(i)/pts%xy_conv
                     pts%y(i) = pts%y(i)/pts%xy_conv
                 end do
@@ -679,8 +682,10 @@ contains
                 ! Starting with xy points 
 
                 do i = 1, pts%npts       
-                    call inverse_oblique_sg_projection(pts%x(i)*pts%xy_conv,pts%y(i)*pts%xy_conv, &
-                                                       pts%lon(i),pts%lat(i),pts%proj)
+!                     call inverse_oblique_sg_projection(pts%x(i)*pts%xy_conv,pts%y(i)*pts%xy_conv, &
+!                                                        pts%lon(i),pts%lat(i),pts%proj)
+                    call oblimap_projection_inverse(pts%x(i)*pts%xy_conv,pts%y(i)*pts%xy_conv, &
+                                                    pts%lon(i),pts%lat(i),pts%proj)
                 end do
 
             end if 
@@ -2228,6 +2233,7 @@ contains
 
         if (map%is_projection) then 
             call nc_write(fnm,"proj_name",map%proj%name)
+            call nc_write_attr(fnm,"proj_name","default_method",map%proj%default_method)
             call nc_write(fnm,"proj_info",[map%proj%lambda, map%proj%phi, map%proj%alpha, &
                                  map%proj%x_e, map%proj%y_n], dim1="projpar")    
         end if 
