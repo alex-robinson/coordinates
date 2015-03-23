@@ -186,6 +186,7 @@ contains
 
         call area(a, f, lats, lons, size(lons), AA, PP)
 
+        ! Return the area of the lon/lat region
         planet_area = dabs(AA) 
 
         return 

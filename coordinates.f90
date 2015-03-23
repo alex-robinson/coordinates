@@ -196,8 +196,8 @@ contains
 
         type(grid_class) :: grid 
         real(dp) :: x1, x2, y1, y2 
-        real(dp) :: vertx(4), verty(4) 
-        integer  :: i, j 
+        real(dp) :: vertx(4), verty(4), vertlon(4), vertlat(4)
+        integer  :: i, j, q 
         
         do j = 1, grid%G%ny 
             do i = 1, grid%G%nx 
@@ -226,13 +226,28 @@ contains
                 end if 
 
                 ! Convert grid points to meters as necessary
-                vertx = (/x1,x1,x2,x2/) * grid%xy_conv 
-                verty = (/y1,y2,y2,y1/) * grid%xy_conv 
+                vertx = [x1,x1,x2,x2] * grid%xy_conv 
+                verty = [y1,y2,y2,y1] * grid%xy_conv 
                 
-                if (grid%is_cartesian) then 
+                if (.not. grid%is_projection .and. grid%is_cartesian) then 
+                    ! Calculate cartesian area
                     grid%area(i,j) = cartesian_area(vertx,verty)
-                else
+
+                else if (grid%is_projection) then 
+                    ! Calculate projected area 
+
+                    do q = 1, 4
+                        call inverse_oblique_sg_projection(vertx(q),verty(q), &
+                                                           vertlon(q),vertlat(q),grid%proj)
+                    end do 
+
+                    ! Calculate latlon area 
+                    grid%area(i,j) = planet_area(grid%planet%a,grid%planet%f,vertlon,vertlat)
+
+                else 
+                    ! Calculate latlon area 
                     grid%area(i,j) = planet_area(grid%planet%a,grid%planet%f,vertx,verty)
+
                 end if 
 
             end do 
