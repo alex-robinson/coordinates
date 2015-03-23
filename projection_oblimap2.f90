@@ -560,9 +560,13 @@ CONTAINS
     angle_C  = 2._dp * ATAN(rho / ((1._dp + COS(proj%alpha_stereographic)) * proj%earth_radius))
     
     ! See equation (20-14) on page 158 Snyder (1987):
-    phi_P    = radians_to_degrees * &
-    ( ASIN(COS(angle_C)*SIN(proj%phi_M) + ((y_IM_P_prime*SIN(angle_C)*COS(proj%phi_M)) / rho)) )
-    
+    if (rho /= 0._dp) then 
+        phi_P    = radians_to_degrees * &
+        ( ASIN(COS(angle_C)*SIN(proj%phi_M) + ((y_IM_P_prime*SIN(angle_C)*COS(proj%phi_M)) / rho)) )
+    else 
+        phi_P    = 1._dp
+    end if 
+
     ! See equation (20-15) on page 159 Snyder (1987):
     numerator   = x_IM_P_prime * SIN(angle_C)
     denumerator = rho * COS(proj%phi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%phi_M) * SIN(angle_C)
@@ -661,8 +665,12 @@ CONTAINS
     angle_C  = 2._dp * ASIN(rho / (2._dp * proj%earth_radius))
     
     ! See equation (20-14) on page 186 Snyder (1987):
-    phi_P    = radians_to_degrees* &
-        ( ASIN(COS(angle_C)*SIN(proj%phi_M) + ((y_IM_P_prime * SIN(angle_C) * COS(proj%phi_M)) / rho)) )
+    if (rho /= 0._dp) then 
+        phi_P    = radians_to_degrees* &
+         ( ASIN(COS(angle_C)*SIN(proj%phi_M) + ((y_IM_P_prime * SIN(angle_C) * COS(proj%phi_M)) / rho)) )
+    else 
+        phi_P    = 1._dp
+    end if 
     
     ! See equation (20-15) on page 186 Snyder (1987):
     numerator   = x_IM_P_prime * SIN(angle_C)
@@ -771,8 +779,12 @@ CONTAINS
     write(*,*) "proj%chi_M = ", proj%chi_M 
 
     ! See equations (21-37) on page 161 in Snyder (1987):
-    chi_P   = ASIN(COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho)
-
+    if (rho /= 0._dp) then 
+        chi_P   = ASIN(COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho)
+    else 
+        chi_P    = 1._dp
+    end if 
+    
     ! See equation (3-5) on page 162 instead of equation (3-4) on page 161 Snyder (1987):
     phi_P = radians_to_degrees * (chi_P + &
         (proj%e**2 / 2._dp + 5._dp * proj%e**4 / 24._dp + &
@@ -889,8 +901,12 @@ CONTAINS
     angle_C  = 2._dp * ASIN(rho / (2._dp * proj%R_q_polar))
     
     ! See equation (24-30) on page 189 Snyder (1987):
-    beta = ASIN(COS(angle_C) * SIN(proj%beta_M) + (proj%D * y_IM_P_prime * SIN(angle_C) * COS(proj%beta_M) / rho))
-    
+    if (rho /= 0._dp) then 
+        beta = ASIN(COS(angle_C)*SIN(proj%beta_M) + (proj%D*y_IM_P_prime*SIN(angle_C)*COS(proj%beta_M) / rho))
+    else
+        beta = 1._dp 
+    end if 
+
     ! See equation (3-18) on page 189 instead of equation (3-16) on page 188 Snyder (1987):
     phi_P = radians_to_degrees * (beta + &
             (proj%e**2 / 3._dp + 31._dp * proj%e**4 / 180._dp + 517._dp * proj%e**6 /  5040._dp) * SIN(2._dp * beta) + &
