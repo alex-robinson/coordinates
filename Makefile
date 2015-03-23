@@ -37,7 +37,7 @@ ifeq ($(ifort),1)
 	SFLAGS       = 
 
 	ifeq ($(debug), 1)
-	    DFLAGS   = -C -traceback -ftrapuv -fpe0 -check all -vec-report0
+	    DFLAGS   = -C -g -traceback -ftrapuv -fpe0 -check all -vec-report0
 	    # -w 
 	else
 	    DFLAGS   = -vec-report0 -O3
@@ -49,7 +49,7 @@ else
 	SFLAGS       = 
 
 	ifeq ($(debug), 1)
-	    DFLAGS   = -w -p -ggdb -ffpe-trap=invalid,zero,overflow,underflow \
+	    DFLAGS   = -w -p -g -ggdb -ffpe-trap=invalid,zero,overflow,underflow \
 	               -fbacktrace -fcheck=all -fbackslash
 	else
 	    DFLAGS   = -O3 -fbackslash

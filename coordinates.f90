@@ -415,8 +415,8 @@ contains
         end do 
 
         ! Initialize data as points, then convert back to grid using axis info
-        call points_init_from_opts(pts,name,mtype,units,planet,lon180,reshape(grid%x,(/grid%npts/)),&
-                         reshape(grid%y,(/grid%npts/)),lambda,phi,alpha,x_e,y_n)
+        call points_init_from_opts(pts,name,mtype,units,planet,lon180,reshape(grid%x,[grid%npts]),&
+                         reshape(grid%y,[grid%npts]),lambda,phi,alpha,x_e,y_n)
         call points_to_grid(pts,grid)
 
         ! Calculate grid cell areas 
