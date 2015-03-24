@@ -219,10 +219,14 @@ CONTAINS
     proj%am     = proj%a * (COS(proj%phi_M) / DSQRT(1._dp - (proj%e * SIN(proj%phi_M))**2))
     proj%akm    = (1._dp + COS(proj%alpha_stereographic)) * proj%am
     ! See equations (3-1a) on page 160 in Snyder (1987),  chi_M corresponds with chi_1 in Snyder:
-    proj%chi_M  = 0.0_dp 
-    if (dabs(proj%phi) .lt. 90.0_dp) &
+    if (dabs(proj%phi) .lt. 90.0_dp) then 
       proj%chi_M  = 2._dp * ATAN(DSQRT(((1._dp +       SIN(proj%phi_M)) / (1._dp -       SIN(proj%phi_M))) * &
                            ((1._dp - proj%e * SIN(proj%phi_M)) / (1._dp + proj%e * SIN(proj%phi_M)))**(proj%e))) - 0.5_dp * pi
+    else if (proj%phi .eq. 90.0_dp) then 
+      proj%chi_M = pi/2.0_dp 
+    else
+      proj%chi_M = -pi/2.0_dp 
+    end if
 
     ! See equation (3-12) on page 187 in Snyder (1987):
     proj%q_M   = (1._dp - proj%e**2) * ((SIN(proj%phi_M) / &
@@ -238,9 +242,63 @@ CONTAINS
     ! See equation (24-20) on page 187 in Snyder (1987):
     proj%D         = proj%am / (proj%R_q_polar * COS(proj%phi_M))
 
+!     call projection_print(proj)
+
     return
 
   END SUBROUTINE projection_init 
+
+  subroutine projection_print(proj)
+
+    implicit none 
+
+    type(projection_class) :: proj 
+
+
+character(len=256) :: name, method  
+
+
+        ! Planet parameters 
+        character(len=256) :: planet_name 
+        logical            :: is_sphere 
+
+        ! Error tolerance level
+        real(dp)      :: ebs = 1.e-8_dp
+
+        ! Geometric constants (spherical planet)
+        real(dp)      :: R, earth_radius
+    
+    write(*,*) "== Projection summary ========================="
+    write(*,"(a20,a)")     "name = ", trim(proj%name)
+    write(*,"(a20,a)") "method = ", trim(proj%method)
+    write(*,"(a20,a)") "planet = ", trim(proj%planet_name)
+    write(*,"(a20,l2)") "is sphere? = ", proj%is_sphere
+    write(*,"(a20,g15.3)") "lambda = ", proj%lambda
+    write(*,"(a20,g15.3)") "lambda_M = ", proj%lambda_M
+    write(*,"(a20,g15.3)") "phi = ", proj%phi
+    write(*,"(a20,g15.3)") "phi_M = ", proj%phi_M
+    write(*,"(a20,g15.3)") "alpha = ", proj%alpha
+    write(*,"(a20,g15.3)") "alpha_ster = ", proj%alpha_stereographic
+    write(*,"(a20,g15.3)") "x_e = ", proj%x_e
+    write(*,"(a20,g15.3)") "y_n = ", proj%y_n
+    write(*,*)
+    write(*,"(a20,g15.3)") "R = ", proj%R 
+    write(*,"(a20,g15.3)") "earth_radius = ", proj%earth_radius 
+    write(*,"(a20,g15.3)") "a = ", proj%a 
+    write(*,"(a20,g15.3)") "e = ", proj%e 
+    write(*,"(a20,g15.3)") "f = ", proj%f 
+    write(*,"(a20,g15.3)") "am = ", proj%am
+    write(*,"(a20,g15.3)") "akm = ", proj%akm 
+    write(*,"(a20,g15.3)") "chi_M = ", proj%chi_M 
+    write(*,"(a20,g15.3)") "q_M = ", proj%q_M 
+    write(*,"(a20,g15.3)") "q_polar = ", proj%q_polar 
+    write(*,"(a20,g15.3)") "beta_M = ", proj%beta_M 
+    write(*,"(a20,g15.3)") "R_q_polar = ", proj%R_q_polar 
+    write(*,"(a20,g15.3)") "D = ", proj%D 
+    
+    return 
+
+  end subroutine projection_print
 
   function same_projection(proj1,proj2) result(same_proj)
 
@@ -731,7 +789,6 @@ CONTAINS
     A     = proj%akm / (COS(proj%chi_M) * (1._dp + SIN(proj%chi_M) * SIN(chi_P) + &
                           COS(proj%chi_M) * COS(chi_P) * COS(lambda_P - proj%lambda_M)))
 
-
     ! See equations (21-24) and (21-25) on page 160 in Snyder (1987):
     x_IM_P_prime =  A * COS(chi_P) * SIN(lambda_P - proj%lambda_M)
     y_IM_P_prime =  A * (COS(proj%chi_M)*SIN(chi_P) - SIN(proj%chi_M)*COS(chi_P)*COS(lambda_P-proj%lambda_M))
@@ -768,7 +825,7 @@ CONTAINS
     REAL(dp)              :: chi_P       ! chi in Snyder (1987)
     REAL(dp)              :: numerator
     REAL(dp)              :: denumerator
-    
+
     ! See equation (20-18) on page 162 Snyder (1987):
     rho     = SQRT(x_IM_P_prime**2 + y_IM_P_prime**2)
     ! See equation (21-38) on page 162 Snyder (1987):
