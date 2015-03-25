@@ -80,8 +80,8 @@ contains
         call gaussian_kernel(sigmap, kernel, truncate)
         
         nloop = 1
-        if (ubound(kernel,1) > ubound(input,1)+1 .or. &
-            ubound(kernel,2) > ubound(input,2)+1 ) then 
+        if (size(kernel,1) > size(input,1)+1 .or. &
+            size(kernel,2) > size(input,2)+1 ) then 
             nloop  = 4
             sigmap = sigmap/2.0
             call gaussian_kernel(sigmap, kernel, truncate)
