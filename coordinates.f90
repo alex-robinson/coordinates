@@ -617,7 +617,7 @@ contains
         latlon_in = .FALSE.
         if (present(latlon)) latlon_in = latlon
 
-        if (latlon_in .and. (.not. pts%is_projection .or. pts%is_cartesian)) then 
+        if (latlon_in .and. (pts%is_cartesian .and. .not. pts%is_projection)) then 
             write(*,*) "points_init:: error: x/y input values can only &
                        &be latlon values for projected grids or for latlon grids."
             stop 
