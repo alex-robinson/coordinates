@@ -582,7 +582,7 @@ contains
             case("latlon")
                 pts%is_cartesian  = .FALSE. 
                 pts%is_projection = .FALSE. 
-            case("stereographic","polar stereographic","laea")
+            case("stereographic","polar_stereographic","laea")
                 pts%is_cartesian  = .TRUE. 
                 pts%is_projection = .TRUE. 
             case("cartesian")
@@ -2508,6 +2508,8 @@ contains
         character(len=*) :: fnm,xnm,ynm
         logical :: create  
 
+        character(len=512) :: mtype 
+
         ! Create the netcdf file if desired
         if (create) then 
             call nc_create(fnm)
@@ -2522,9 +2524,11 @@ contains
         end if 
 
         ! Add projection information if needed
+        mtype = grid%mtype 
+        if (trim(mtype) .eq. "laea") mtype = "lambert_azimuthal_equal_area"
         if (grid%is_projection) &
-            call nc_write_map(fnm,grid%mtype,grid%proj%lambda,phi=grid%proj%phi, &
-                              x_e=grid%proj%x_e,y_n=grid%proj%y_n)
+            call nc_write_map(fnm,mtype,grid%proj%lambda,phi=grid%proj%phi, &
+                              alpha=grid%proj%alpha,x_e=grid%proj%x_e,y_n=grid%proj%y_n)
 
         if (grid%is_projection .or. grid%is_cartesian) then 
             call nc_write(fnm,"x2D",grid%x,dim1=xnm,dim2=ynm,grid_mapping=grid%mtype)
@@ -2553,6 +2557,8 @@ contains
         character(len=*) :: fnm,xnm,ynm
         logical :: create  
 
+        character(len=512) :: mtype 
+
         ! Create the netcdf file if desired
         if (create) then 
             call nc_create(fnm)
@@ -2562,9 +2568,11 @@ contains
         end if 
 
         ! Add projection information if needed
+        mtype = pts%mtype 
+        if (trim(mtype) .eq. "laea") mtype = "lambert_azimuthal_equal_area"
         if (pts%is_projection) &
-            call nc_write_map(fnm,pts%mtype,pts%proj%lambda,phi=pts%proj%phi,&
-                              x_e=pts%proj%x_e,y_n=pts%proj%y_n)
+            call nc_write_map(fnm,mtype,pts%proj%lambda,phi=pts%proj%phi,&
+                              alpha=pts%proj%alpha,x_e=pts%proj%x_e,y_n=pts%proj%y_n)
 
         if (pts%is_projection .or. pts%is_cartesian) then 
             call nc_write(fnm,xnm,pts%x,dim1="point",grid_mapping=pts%mtype)
