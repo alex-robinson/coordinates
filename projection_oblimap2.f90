@@ -153,15 +153,7 @@ CONTAINS
         end if 
         
     else
-        proj%method = "undefined_default_method"
-        write(*,*) "projection_init:: projection name not recognized: "//trim(proj%name)
-        write(*,*) "    projection must be one of the following: "
-        write(*,*) "        stereographic"
-        write(*,*) "        polar_stereographic"
-        write(*,*) "        lambert_azimuthal_equal_area"
-        write(*,*) 
-        stop 
-        
+        proj%method = "No projection method for: "//trim(proj%name)
     end if 
 
     ! Determine actual method to use based on user input if given
