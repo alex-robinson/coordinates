@@ -136,7 +136,7 @@ CONTAINS
     ! and map type
 
     if (trim(proj%name) .eq. "stereographic" .or. &
-        trim(proj%name) .eq. "polar stereographic") then 
+        trim(proj%name) .eq. "polar_stereographic") then 
 
         if (proj%is_sphere) then 
             proj%method = "oblique_sg_projection"
@@ -144,7 +144,7 @@ CONTAINS
             proj%method = "oblique_sg_projection_ellipsoid_snyder" 
         end if 
 
-    else if (trim(proj%name) .eq. "laea") then 
+    else if (trim(proj%name) .eq. "lambert_azimuthal_equal_area") then 
         
         if (proj%is_sphere) then 
             proj%method = "oblique_laea_projection_snyder"
@@ -154,7 +154,14 @@ CONTAINS
         
     else
         proj%method = "undefined_default_method"
-
+        write(*,*) "projection_init:: projection name not recognized: "//trim(proj%name)
+        write(*,*) "    projection must be one of the following: "
+        write(*,*) "        stereographic"
+        write(*,*) "        polar_stereographic"
+        write(*,*) "        lambert_azimuthal_equal_area"
+        write(*,*) 
+        stop 
+        
     end if 
 
     ! Determine actual method to use based on user input if given

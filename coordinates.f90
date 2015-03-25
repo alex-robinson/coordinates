@@ -31,7 +31,7 @@ module coordinates
     type points_class 
 
         character (len=128) :: name     ! name of this domain (world, GRL, etc)
-        character (len=128) :: mtype    ! map type: latlon, cartesian, stereographic, etc
+        character (len=128) :: mtype    ! map type: latlon, cartesian, stereographic, etc (following cf conventions)
         character (len=128) :: units    ! units of the axes
         type(planet_class)  :: planet   ! which planet are we on?
 
@@ -577,12 +577,12 @@ contains
         pts%mtype = trim(mtype)
         pts%units = trim(units)
         
-        ! Define map characteristics
+        ! Also define the standard cf name
         select case(trim(pts%mtype))
             case("latlon")
                 pts%is_cartesian  = .FALSE. 
                 pts%is_projection = .FALSE. 
-            case("stereographic","polar_stereographic","laea")
+            case("stereographic","polar_stereographic","lambert_azimuthal_equal_area")
                 pts%is_cartesian  = .TRUE. 
                 pts%is_projection = .TRUE. 
             case("cartesian")
@@ -591,6 +591,13 @@ contains
             case DEFAULT 
                 write(*,"(a7,a20,a)")  &
                     "coord::","points_init: ","error: map type not allowed:"//trim(pts%mtype)
+                write(*,*) "    map type must be one of the following: "
+                write(*,*) "        latlon"
+                write(*,*) "        cartesian"
+                write(*,*) "        stereographic"
+                write(*,*) "        polar_stereographic"
+                write(*,*) "        lambert_azimuthal_equal_area"
+                write(*,*) 
                 stop 
         end select 
 
@@ -2508,8 +2515,6 @@ contains
         character(len=*) :: fnm,xnm,ynm
         logical :: create  
 
-        character(len=512) :: mtype 
-
         ! Create the netcdf file if desired
         if (create) then 
             call nc_create(fnm)
@@ -2524,10 +2529,8 @@ contains
         end if 
 
         ! Add projection information if needed
-        mtype = grid%mtype 
-        if (trim(mtype) .eq. "laea") mtype = "lambert_azimuthal_equal_area"
         if (grid%is_projection) &
-            call nc_write_map(fnm,mtype,grid%proj%lambda,phi=grid%proj%phi, &
+            call nc_write_map(fnm,grid%mtype,grid%proj%lambda,phi=grid%proj%phi, &
                               alpha=grid%proj%alpha,x_e=grid%proj%x_e,y_n=grid%proj%y_n)
 
         if (grid%is_projection .or. grid%is_cartesian) then 
@@ -2557,8 +2560,6 @@ contains
         character(len=*) :: fnm,xnm,ynm
         logical :: create  
 
-        character(len=512) :: mtype 
-
         ! Create the netcdf file if desired
         if (create) then 
             call nc_create(fnm)
@@ -2568,10 +2569,8 @@ contains
         end if 
 
         ! Add projection information if needed
-        mtype = pts%mtype 
-        if (trim(mtype) .eq. "laea") mtype = "lambert_azimuthal_equal_area"
         if (pts%is_projection) &
-            call nc_write_map(fnm,mtype,pts%proj%lambda,phi=pts%proj%phi,&
+            call nc_write_map(fnm,pts%mtype,pts%proj%lambda,phi=pts%proj%phi,&
                               alpha=pts%proj%alpha,x_e=pts%proj%x_e,y_n=pts%proj%y_n)
 
         if (pts%is_projection .or. pts%is_cartesian) then 
