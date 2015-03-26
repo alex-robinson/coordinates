@@ -158,6 +158,8 @@ module coordinates
     public :: compare_map
     public :: map_class, map_init, map_field, map_print
 
+    public :: pts_which_nearest 
+
 contains
 
     subroutine axis_init(x,x0,dx)
@@ -2679,6 +2681,53 @@ contains
 
         return
     end subroutine map_print
+
+    function pts_which_nearest(pts,x,y,latlon) result(idx)
+
+        implicit none 
+
+        type(points_class), intent(IN) :: pts 
+        double precision,   intent(IN) :: x, y 
+        logical, optional  :: latlon 
+        integer            :: idx 
+
+        ! Local variables
+        logical               :: is_latlon
+        real(dp), allocatable :: dist(:)
+        integer :: i 
+
+        ! Determine if input location is in units of latlon or xy
+        is_latlon = .FALSE.
+        if (present(latlon)) is_latlon = latlon 
+
+        if (is_latlon .and. (pts%is_cartesian .and. .not. pts%is_projection)) then 
+            write(*,*) "pts_which_nearest:: error: "// &
+                       "x and y cannot by latlon values unless coordinates have latlon defined."
+            stop
+        end if 
+
+        allocate(dist(pts%npts))
+
+        if (is_latlon) then 
+            ! Calculate distances using planet distances (in meters)
+            do i = 1, pts%npts
+                dist(i) = planet_distance(pts%planet%a,x,y,pts%planet%f,pts%lon(i),pts%lat(i))
+            end do 
+
+        else
+            ! Calculate distances using cartesian distances (in meters)
+            do i = 1, pts%npts
+                dist(i) = cartesian_distance(x,y,pts%x(i)*pts%xy_conv,pts%y(i)*pts%xy_conv)
+            end do 
+
+        end if 
+
+        ! Find the index of the nearest point
+        idx = minloc(dist,dim=1)
+
+        return 
+
+    end function pts_which_nearest
 
     subroutine progress(j,ntot)
         ! Progress bar, thanks to:
