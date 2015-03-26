@@ -2711,7 +2711,7 @@ contains
         if (is_latlon) then 
             ! Calculate distances using planet distances (in meters)
             do i = 1, pts%npts
-                dist(i) = planet_distance(pts%planet%a,x,y,pts%planet%f,pts%lon(i),pts%lat(i))
+                dist(i) = planet_distance(pts%planet%a,pts%planet%f,x,y,pts%lon(i),pts%lat(i))
             end do 
 
         else
