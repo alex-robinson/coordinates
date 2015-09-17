@@ -1941,12 +1941,7 @@ contains
         ! If fill is desired, initialize output points to missing values
         if (fill_pts) var2 = missing_val 
 
-!         ! Check to make sure map is the right size
-!         if (maxval(map%i(1,:)) .gt. size(var1,1)) then
-!             write(*,*) "Problem! Indices get too big."
-!             write(*,*) maxval(map%i(1,:)), size(var1,1)
-!         end if 
-
+        ! Loop over the new grid points and perform mapping
         do i = 1, map%npts 
 
             if (maskp(i)) then ! Only perform calculations for packing mask points

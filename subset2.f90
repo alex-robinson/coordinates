@@ -214,7 +214,7 @@ contains
     end subroutine subset_redefine 
 
     subroutine subset_to_grid_double(sub,var1D,var2D,mask_pack,map, &
-                                     method,radius,fill,border,missing_value)
+                                     method,radius,sigma,fill,border,missing_value)
         ! This subroutine maps a subset of points (var1D) onto
         ! a 2D array (var2D) of resolution grid. 
         ! The subset should already be initialized. 
@@ -232,6 +232,7 @@ contains
         character(len=*)           :: method
         double precision, optional :: radius, missing_value 
         double precision :: missing_val
+        double precision, optional :: sigma 
         logical, optional :: fill, border
 
         type(map_class), pointer :: map_local 
@@ -266,7 +267,8 @@ contains
             allocate(mask2D(map_local%G%nx,map_local%G%ny))
 
             call map_field(map_local,"Mapped variable",var1D,var2D,mask2D,method=method, &
-                           radius=radius,fill=fill,border=border,missing_value=missing_val)
+                           radius=radius,fill=fill,border=border,missing_value=missing_val, &
+                           sigma=sigma)
 
         else if (sub%subset) then 
 
@@ -291,7 +293,7 @@ contains
     end subroutine subset_to_grid_double
 
     subroutine subset_to_grid_integer(sub,var1D,var2D,mask_pack,map, &
-                                      radius,fill,border,missing_value)
+                                      radius,sigma,fill,border,missing_value)
         ! This subroutine maps a subset of points (var1D) onto
         ! a 2D array (var2D) of resolution grid. 
         ! The subset should already be initialized.
@@ -308,12 +310,13 @@ contains
 
         double precision, optional :: radius, missing_value 
         double precision :: missing_val
+        double precision, optional :: sigma
         logical, optional :: fill, border
 
         allocate(var2Dtmp(size(var2D,1),size(var2D,2)))
 
         call subset_to_grid_double(sub,dble(var1D),var2Dtmp,mask_pack,map, &
-                                   "nn",radius,fill,border,missing_value)
+                                   "nn",radius,sigma,fill,border,missing_value)
         var2D = nint(var2Dtmp)
 
         return 

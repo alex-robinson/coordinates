@@ -338,7 +338,7 @@ character(len=256) :: name, method
     integer  :: nx, ny 
     real(dp) :: val 
 
-    val = 1.d0/R * sqrt( 1.d0/(2.d0*pi) * nx*ny*dx*dy )
+    val = 1.d0/R * sqrt( 1.d0/(2.d0*pi) * nx*ny*abs(dx*dy) )
     alpha = asin(val) * radians_to_degrees
 
     return
