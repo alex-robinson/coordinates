@@ -22,7 +22,7 @@ module coordinates
     implicit none 
 
     !! real(dp) definition and some internal constants
-    integer,  parameter :: dp  = kind(1.0d0)
+    integer,  parameter :: dp  = kind(1.d0)
     integer,  parameter :: sp  = kind(1.0)
     real(dp), parameter :: ERR_DIST = 1E8_dp 
     integer,  parameter :: ERR_IND  = -1 
