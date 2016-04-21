@@ -399,9 +399,6 @@ contains
             grid%G%dy = sum(grid%G%y(2:grid%G%ny)-grid%G%y(1:grid%G%ny-1))/(grid%G%ny-1)
         end if 
         
-        ! Output some diagnostics 
-        write(*,*) "Grid size: ", grid%npts, grid%G%nx, grid%G%ny 
-
         ! Allocate and generate 2D point sets (x,y)
         ! Note x,y represent cartesian values or latlon 
         ! depending on mtype
@@ -410,8 +407,6 @@ contains
         allocate(grid%y(grid%G%nx,grid%G%ny))
         allocate(grid%lon(grid%G%nx,grid%G%ny))
         allocate(grid%lat(grid%G%nx,grid%G%ny))
-
-        write(*,*) "Allocated basics."
 
         ! Store axis values in 2D arrays too
         do i = 1, grid%G%nx 
@@ -422,16 +417,9 @@ contains
             grid%x(:,j) = grid%G%x 
         end do 
 
-        allocate(tmpvec1(grid%npts),tmpvec2(grid%npts))
-        tmpvec1 = reshape(grid%x,[grid%npts])
-        tmpvec2 = reshape(grid%y,[grid%npts])
-        write(*,*) "reshaping x... ", grid%npts*8*1e-6   ! Mb memory 
-        write(*,*) size(tmpvec1)
-        write(*,*) "success!"
-
         ! Initialize data as points, then convert back to grid using axis info
-        call points_init_from_opts(pts,name,mtype,units,planet,lon180,tmpvec1,&
-                         tmpvec2,lambda,phi,alpha,x_e,y_n)
+        call points_init_from_opts(pts,name,mtype,units,planet,lon180,reshape(grid%x,[grid%npts]),&
+                         reshape(grid%y,[grid%npts]),lambda,phi,alpha,x_e,y_n)
         call points_to_grid(pts,grid)
 
         ! Calculate grid cell areas 
