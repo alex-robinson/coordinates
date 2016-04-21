@@ -20,6 +20,9 @@ netcdf_lib = /opt/local/lib
 netcdf_inc_ifort = /home/robinson/apps/netcdf/netcdf/include
 netcdf_lib_ifort = /home/robinson/apps/netcdf/netcdf/lib
 
+INC_NC  = -I${NETCDF_FORTRANROOT}/include
+LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff -L${NETCDF_CROOT}/lib -lnetcdf 
+
 # Command-line options at make call
 ifort ?= 0
 debug ?= 0 
@@ -32,15 +35,15 @@ endif
 
 ifeq ($(ifort),1)
 	## IFORT OPTIONS ##
-	FLAGS        = -module $(objdir) -L$(objdir) -I$(netcdf_inc_ifort)
-	LFLAGS		 = -L$(netcdf_lib_ifort) -lnetcdf
+	FLAGS        = -module $(objdir) -L$(objdir) $(INC_NC) 
+	LFLAGS		   = $(LIB_NC) 
 	SFLAGS       = 
 
 	ifeq ($(debug), 1)
-	    DFLAGS   = -C -g -traceback -ftrapuv -fpe0 -check all -vec-report0
+	    DFLAGS   = -C -g -traceback -ftrapuv -fpe0 -check all 
 	    # -w 
 	else
-	    DFLAGS   = -vec-report0 -O3
+	    DFLAGS   = -O3
 	endif
 else
 	## GFORTRAN OPTIONS ##

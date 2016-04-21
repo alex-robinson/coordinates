@@ -397,6 +397,9 @@ contains
         else
             grid%G%dy = sum(grid%G%y(2:grid%G%ny)-grid%G%y(1:grid%G%ny-1))/(grid%G%ny-1)
         end if 
+        
+        ! Output some diagnostics 
+        write(*,*) "Grid size: ", grid%npts, grid%G%nx, grid%G%ny 
 
         ! Allocate and generate 2D point sets (x,y)
         ! Note x,y represent cartesian values or latlon 
@@ -407,6 +410,8 @@ contains
         allocate(grid%lon(grid%G%nx,grid%G%ny))
         allocate(grid%lat(grid%G%nx,grid%G%ny))
 
+        write(*,*) "Allocated basics."
+
         ! Store axis values in 2D arrays too
         do i = 1, grid%G%nx 
             grid%y(i,:) = grid%G%y 
@@ -415,6 +420,10 @@ contains
         do j = 1, grid%G%ny 
             grid%x(:,j) = grid%G%x 
         end do 
+
+        write(*,*) "reshaping x... ", grid%npts*8*1e-6   ! Mb memory 
+        write(*,*) size(reshape(grid%x,[grid%npts]))
+        write(*,*) "success!"
 
         ! Initialize data as points, then convert back to grid using axis info
         call points_init_from_opts(pts,name,mtype,units,planet,lon180,reshape(grid%x,[grid%npts]),&
