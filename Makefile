@@ -35,7 +35,7 @@ endif
 
 ifeq ($(ifort),1)
 	## IFORT OPTIONS ##
-	FLAGS        = -module $(objdir) -L$(objdir) $(INC_NC) 
+	FLAGS        = -heap-arrays -module $(objdir) -L$(objdir) $(INC_NC) 
 	LFLAGS		   = $(LIB_NC) 
 	SFLAGS       = 
 
