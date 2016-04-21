@@ -347,6 +347,7 @@ contains
         real(dp), optional :: lambda, phi, alpha, x_e, y_n 
         real(dp) :: tmp1, tmp2
         integer :: i, j 
+        real(dp), allocatable :: tmpvec1(:), tmpvec2(:) 
 
         ! Initially deallocate grid arrays just in case 
         if (allocated(grid%G%x))     deallocate(grid%G%x)
@@ -421,13 +422,16 @@ contains
             grid%x(:,j) = grid%G%x 
         end do 
 
+        allocate(tmpvec1(grid%npts),tmpvec2(grid%npts))
+        tmpvec1 = reshape(grid%x,[grid%npts])
+        tmpvec2 = reshape(grid%y,[grid%npts])
         write(*,*) "reshaping x... ", grid%npts*8*1e-6   ! Mb memory 
-        write(*,*) size(reshape(grid%x,[grid%npts]))
+        write(*,*) size(tmpvec1)
         write(*,*) "success!"
 
         ! Initialize data as points, then convert back to grid using axis info
-        call points_init_from_opts(pts,name,mtype,units,planet,lon180,reshape(grid%x,[grid%npts]),&
-                         reshape(grid%y,[grid%npts]),lambda,phi,alpha,x_e,y_n)
+        call points_init_from_opts(pts,name,mtype,units,planet,lon180,tmpvec1,&
+                         tmpvec2,lambda,phi,alpha,x_e,y_n)
         call points_to_grid(pts,grid)
 
         ! Calculate grid cell areas 
