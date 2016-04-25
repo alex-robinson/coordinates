@@ -2039,7 +2039,8 @@ contains
                 ! Fill missing points with nearest neighbor if desired
                 ! Note, will not necessarily fill ALL points, if 
                 ! no neighbor within nmax can be found without a missing value
-                if ( fill_pts .and. var2(i) .eq. missing_val) then
+!                 if ( fill_pts .and. (var2(i) .eq. missing_val)) then
+                if ( fill_pts .and. dabs(var2(i)-missing_val).lt.1d-12 ) then
                     do k = 1, map%nmax  
                         if (var1(map%i(i,k)) .ne. missing_val) then
                             var2(i)  = var1(map%i(i,k))
