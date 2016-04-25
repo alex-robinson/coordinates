@@ -2039,8 +2039,7 @@ contains
                 ! Fill missing points with nearest neighbor if desired
                 ! Note, will not necessarily fill ALL points, if 
                 ! no neighbor within nmax can be found without a missing value
-!                 if ( fill_pts .and. (var2(i) .eq. missing_val)) then
-                if ( fill_pts .and. dabs(var2(i)-missing_val).lt.1d-12 ) then
+                if ( fill_pts .and. (var2(i) .eq. missing_val)) then
                     do k = 1, map%nmax  
                         if (var1(map%i(i,k)) .ne. missing_val) then
                             var2(i)  = var1(map%i(i,k))
@@ -2057,9 +2056,10 @@ contains
 
         where (dabs(var2) .lt. 1d-12) var2 = 0.d0 
 
-        write(*,*) "Mapped field: "//trim(name)
-        if (count(var2 .eq. missing_val) .gt. 0) &
-            write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
+!         write(*,*) "Mapped field: "//trim(name)
+
+!         if (count(var2 .eq. missing_val) .gt. 0) &
+!             write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
 
 !         if (count(mask2_local .eq. 0) .gt. 0 .and. .not. fill_pts) then 
 !             write(*,*) "Warning, array contains non-interpolated points."
