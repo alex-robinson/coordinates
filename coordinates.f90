@@ -2056,7 +2056,7 @@ contains
 
         where (dabs(var2) .lt. 1d-20) var2 = 0.d0 
 
-        !write(*,*) "Mapped field: "//trim(name)
+        write(*,*) "Mapped field: "//trim(name)
         if (count(var2 .eq. missing_val) .gt. 0) &
             write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
 
