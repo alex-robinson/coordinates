@@ -2040,14 +2040,13 @@ contains
                 ! Note, will not necessarily fill ALL points, if 
                 ! no neighbor within nmax can be found without a missing value
                 if ( fill_pts .and. var2(i) .eq. missing_val) then
-                    var2(i) =  -missing_val 
-!                     do k = 1, map%nmax  
-!                         if (var1(map%i(i,k)) .ne. missing_val) then
-!                             var2(i)  = var1(map%i(i,k))
-!                             mask2_local(i) = 2 
-!                             exit 
-!                         end if
-!                     end do 
+                    do k = 1, map%nmax  
+                        if (var1(map%i(i,k)) .ne. missing_val) then
+                            var2(i)  = var1(map%i(i,k))
+                            mask2_local(i) = 2 
+                            exit 
+                        end if
+                    end do 
                 end if 
 
             end if ! End of neighbor checking if-statement 
