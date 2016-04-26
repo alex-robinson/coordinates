@@ -43,7 +43,7 @@ module interp2D
     private
     public :: interp_bilinear, interp_nearest, interp_nearest_fast
     public :: fill_weighted, fill_nearest, fill_mean
-    public :: diffuse  
+    public :: diffuse, limit_gradient 
 
 contains
 
@@ -1090,6 +1090,85 @@ contains
 
     end subroutine diffuse
 
+    subroutine limit_gradient(z,dx,dy,grad_lim,mask)
+        ! Limit the gradient to below a threshold 
+
+        implicit none 
+
+        real(8), intent(INOUT) :: z(:,:)
+        real(8), intent(IN)    :: dx, dy 
+        real(8), intent(IN)    :: grad_lim 
+        logical, optional      :: mask(:,:)
+
+        ! Local variables 
+        real(8), allocatable :: z0(:,:), dz(:,:)
+        integer :: i, j, nx, ny, k  
+        real(8) :: hgrad(4)
+        integer :: q 
+
+        ! Get dimensions of z
+        nx = size(z,1)
+        ny = size(z,2)
+
+        ! Allocate new z and store old z initially
+        allocate(z0(nx,ny))
+        allocate(dz(nx,ny))
+        dz = 0.d0 
+
+        ! Iterate until now gradient limits exceeded 
+        do q = 1, 10 
+
+            write(*,*) "Gradient iteration: ", q 
+
+            ! Store current array in old array 
+            z0 = z 
+
+            ! Loop over z, limit gradient as desired 
+            do i = 2, nx-1 
+                do j = 2, ny-1 
+
+                    if (mask(i,j)) then 
+                        ! Perform check on points of interest only 
+
+                        ! Find neighbor of maximum gradient
+                        ! (height change rel. to current point, not actual gradient)
+                        hgrad(1) = (z0(i-1,j)-z0(i,j))/dx
+                        hgrad(2) = (z0(i+1,j)-z0(i,j))/dx
+                        hgrad(3) = (z0(i,j-1)-z0(i,j))/dy
+                        hgrad(4) = (z0(i,j+1)-z0(i,j))/dy
+
+                        k = maxloc(abs(hgrad),dim=1)
+                        dz(i,j) = hgrad(k) 
+
+                        if (abs(hgrad(k)) .gt. grad_lim) then 
+                            ! Apply gradient limit to point 
+
+                            select case(k)
+                                case(1) 
+                                    z(i,j) = z0(i-1,j)-sign(grad_lim,hgrad(k))*dx
+                                case(2) 
+                                    z(i,j) = z0(i+1,j)-sign(grad_lim,hgrad(k))*dx
+                                case(3) 
+                                    z(i,j) = z0(i,j-1)-sign(grad_lim,hgrad(k))*dy
+                                case(4) 
+                                    z(i,j) = z0(i,j+1)-sign(grad_lim,hgrad(k))*dy
+                            end select 
+
+                        end if
+
+                    end if 
+
+                end do 
+            end do 
+
+            ! If hgrad is below limit, exit iterative loop 
+            if (maxval(dz) .le. grad_lim) exit 
+
+        end do 
+
+        return 
+
+    end subroutine limit_gradient 
 
     function calc_bilinear(x1,x2,x3,x4,xout) result(zout)
         ! Given the points surrounding it, calculate the value at xout
