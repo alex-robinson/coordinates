@@ -1140,6 +1140,8 @@ contains
                         k = maxloc(abs(hgrad),dim=1)
                         dz(i,j) = hgrad(k) 
 
+                        write(*,*) k, dz(i,j) 
+
                         if (abs(hgrad(k)) .gt. grad_lim) then 
                             ! Apply gradient limit to point 
 
@@ -1156,13 +1158,15 @@ contains
 
                         end if
 
+                        write(*,*) z0(i,j), z(i,j), hgrad(k) 
+                        
                     end if 
 
                 end do 
             end do 
 
             ! If hgrad is below limit, exit iterative loop 
-            if (maxval(dz) .le. grad_lim) exit 
+            if (maxval(abs(dz)) .le. grad_lim) exit 
 
         end do 
 
