@@ -1102,6 +1102,8 @@ contains
 
         ! Local variables 
         real(8), allocatable :: z0(:,:), dz(:,:)
+        logical, allocatable :: mask_local(:,:) 
+
         integer :: i, j, nx, ny, k  
         real(8) :: hgrad(4)
         integer :: q 
@@ -1115,6 +1117,11 @@ contains
         allocate(dz(nx,ny))
         dz = 0.d0 
 
+        ! Allocate mask and populate it 
+        allocate(mask_local(nx,ny))
+        mask_local = .TRUE. 
+        if (present(mask)) mask_local = mask 
+
         ! Iterate until now gradient limits exceeded 
         do q = 1, 10 
 
@@ -1123,14 +1130,11 @@ contains
             ! Store current array in old array 
             z0 = z 
 
-            write(*,*) "range z:  ", minval(z),  maxval(z) 
-            write(*,*) "range z0: ", minval(z0), maxval(z0) 
-            
             ! Loop over z, limit gradient as desired 
             do i = 2, nx-1 
                 do j = 2, ny-1 
 
-                    if (mask(i,j)) then 
+                    if (mask_local(i,j)) then 
                         ! Perform check on points of interest only 
 
                         ! Find neighbor of maximum gradient
@@ -1143,7 +1147,7 @@ contains
                         k = maxloc(abs(hgrad),dim=1)
                         dz(i,j) = hgrad(k) 
 
-                        write(*,*) k, dz(i,j) 
+!                         write(*,*) k, dz(i,j) 
 
                         if (abs(hgrad(k)) .gt. grad_lim) then 
                             ! Apply gradient limit to point 
@@ -1161,7 +1165,7 @@ contains
 
                         end if
 
-                        write(*,*) z0(i,j), z(i,j), hgrad(k) 
+!                         write(*,*) z0(i,j), z(i,j), hgrad(k) 
 
                     end if 
 
@@ -1171,6 +1175,8 @@ contains
             ! If hgrad is below limit, exit iterative loop 
             if (maxval(abs(dz)) .le. grad_lim) exit 
 
+            write(*,*) "range dz: ", minval(dz), maxval(dz)
+            
         end do 
 
         return 
