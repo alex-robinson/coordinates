@@ -1090,7 +1090,7 @@ contains
 
     end subroutine diffuse
 
-    subroutine limit_gradient(z,dx,dy,grad_lim,mask)
+    subroutine limit_gradient(z,dx,dy,grad_lim,iter_max,mask)
         ! Limit the gradient to below a threshold 
 
         implicit none 
@@ -1098,7 +1098,8 @@ contains
         real(8), intent(INOUT) :: z(:,:)
         real(8), intent(IN)    :: dx, dy 
         real(8), intent(IN)    :: grad_lim 
-        logical, optional      :: mask(:,:)
+        integer, intent(IN)    :: iter_max 
+        logical, intent(IN), optional :: mask(:,:)
 
         ! Local variables 
         real(8), allocatable :: z0(:,:), dz(:,:)
@@ -1123,7 +1124,7 @@ contains
         if (present(mask)) mask_local = mask 
 
         ! Iterate until now gradient limits exceeded 
-        do q = 1, 10 
+        do q = 1, iter_max 
 
             write(*,*) "Gradient iteration: ", q 
 
@@ -1153,7 +1154,7 @@ contains
                             ! Apply gradient limit to point 
                             ! note: only correct by half of gradient limit to avoid overshooting,
                             !       since correction will likely be applied in both directions
-                            
+
                             select case(k)
                                 case(1) 
                                     z(i,j) = z0(i-1,j)-sign(grad_lim*0.5d0,hgrad(k))*dx
