@@ -1123,6 +1123,9 @@ contains
             ! Store current array in old array 
             z0 = z 
 
+            write(*,*) "range z:  ", minval(z),  maxval(z) 
+            write(*,*) "range z0: ", minval(z0), maxval(z0) 
+            
             ! Loop over z, limit gradient as desired 
             do i = 2, nx-1 
                 do j = 2, ny-1 
@@ -1159,7 +1162,7 @@ contains
                         end if
 
                         write(*,*) z0(i,j), z(i,j), hgrad(k) 
-                        
+
                     end if 
 
                 end do 
