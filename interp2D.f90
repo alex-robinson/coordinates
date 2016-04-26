@@ -1151,16 +1151,18 @@ contains
 
                         if (abs(hgrad(k)) .gt. grad_lim) then 
                             ! Apply gradient limit to point 
-
+                            ! note: only correct by half of gradient limit to avoid overshooting,
+                            !       since correction will likely be applied in both directions
+                            
                             select case(k)
                                 case(1) 
-                                    z(i,j) = z0(i-1,j)-sign(grad_lim,hgrad(k))*dx
+                                    z(i,j) = z0(i-1,j)-sign(grad_lim*0.5d0,hgrad(k))*dx
                                 case(2) 
-                                    z(i,j) = z0(i+1,j)-sign(grad_lim,hgrad(k))*dx
+                                    z(i,j) = z0(i+1,j)-sign(grad_lim*0.5d0,hgrad(k))*dx
                                 case(3) 
-                                    z(i,j) = z0(i,j-1)-sign(grad_lim,hgrad(k))*dy
+                                    z(i,j) = z0(i,j-1)-sign(grad_lim*0.5d0,hgrad(k))*dy
                                 case(4) 
-                                    z(i,j) = z0(i,j+1)-sign(grad_lim,hgrad(k))*dy
+                                    z(i,j) = z0(i,j+1)-sign(grad_lim*0.5d0,hgrad(k))*dy
                             end select 
 
                         end if
@@ -1176,7 +1178,7 @@ contains
             if (maxval(abs(dz)) .le. grad_lim) exit 
 
             write(*,*) "range dz: ", minval(dz), maxval(dz)
-            
+
         end do 
 
         return 
