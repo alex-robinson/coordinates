@@ -1126,8 +1126,6 @@ contains
         ! Iterate until now gradient limits exceeded 
         do q = 1, iter_max 
 
-            write(*,*) "Gradient iteration: ", q 
-
             ! Store current array in old array 
             z0 = z 
 
@@ -1148,8 +1146,6 @@ contains
                         k = maxloc(abs(hgrad),dim=1)
                         dz(i,j) = hgrad(k) 
 
-!                         write(*,*) k, dz(i,j) 
-
                         if (abs(hgrad(k)) .gt. grad_lim) then 
                             ! Apply gradient limit to point 
                             ! note: only correct by half of gradient limit to avoid overshooting,
@@ -1168,18 +1164,18 @@ contains
 
                         end if
 
-!                         write(*,*) z0(i,j), z(i,j), hgrad(k) 
-
                     end if 
 
                 end do 
             end do 
 
+            ! Output diagnostics 
+            write(*,"(a,i3,2g10.3)") "Gradient iteration, range dz: ", q, minval(dz), maxval(dz)
+
             ! If hgrad is below limit, exit iterative loop 
             if (maxval(abs(dz)) .le. grad_lim) exit 
 
-            write(*,*) "range dz: ", minval(dz), maxval(dz)
-
+            
         end do 
 
         return 
