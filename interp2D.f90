@@ -1157,13 +1157,13 @@ contains
 
                             select case(k)
                                 case(1) 
-                                    z(i,j) = z0(i-1,j)-sign(grad_lim*0.5d0,hgrad(k))*dx
+                                    z(i,j) = z0(i-1,j)-sign(grad_lim*0.8d0,hgrad(k))*dx
                                 case(2) 
-                                    z(i,j) = z0(i+1,j)-sign(grad_lim*0.5d0,hgrad(k))*dx
+                                    z(i,j) = z0(i+1,j)-sign(grad_lim*0.8d0,hgrad(k))*dx
                                 case(3) 
-                                    z(i,j) = z0(i,j-1)-sign(grad_lim*0.5d0,hgrad(k))*dy
+                                    z(i,j) = z0(i,j-1)-sign(grad_lim*0.8d0,hgrad(k))*dy
                                 case(4) 
-                                    z(i,j) = z0(i,j+1)-sign(grad_lim*0.5d0,hgrad(k))*dy
+                                    z(i,j) = z0(i,j+1)-sign(grad_lim*0.8d0,hgrad(k))*dy
                             end select 
 
                         end if
