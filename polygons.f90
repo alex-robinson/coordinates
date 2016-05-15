@@ -34,6 +34,8 @@ module polygons
     interface point_in_polygon 
         module procedure point_is_inside_poly
         module procedure point_is_inside_points
+        module procedure points_1D_is_inside_points
+        module procedure points_2D_is_inside_points   
     end interface 
 
     private 
@@ -201,7 +203,7 @@ contains
     ! ## Functions to test individual points inside of polygons ##
     function point_is_inside_poly(p, pol) result(inside)
         logical :: inside
-        type(point), intent(in) :: p
+        type(point),   intent(in) :: p
         type(polygon), intent(in) :: pol
 
         integer :: i, cnt, pa, pb
@@ -248,6 +250,39 @@ contains
         if ( mod(cnt, 2) == 0 ) inside = .false.
 
     end function point_is_inside_points
+ 
+
+    function points_1D_is_inside_points(x, y, xx, yy) result(inside)
+        real(4) :: x(:), y(:)
+        real(4) :: xx(:), yy(:) 
+        logical :: inside(size(x))
+
+        integer :: i 
+
+        do i = 1, size(x) 
+            inside(i) = point_is_inside_points(x(i),y(i),xx,yy)
+        end do 
+
+        return 
+
+    end function points_1D_is_inside_points
+ 
+    function points_2D_is_inside_points(x, y, xx, yy) result(inside)
+        real(4) :: x(:,:), y(:,:)
+        real(4) :: xx(:), yy(:) 
+        logical :: inside(size(x,1),size(x,2))
+
+        integer :: i, j 
+
+        do i = 1, size(x,1)
+        do j = 1, size(x,2) 
+            inside(i,j) = point_is_inside_points(x(i,j),y(i,j),xx,yy)
+        end do 
+        end do 
+        
+        return 
+
+    end function points_2D_is_inside_points
  
 
 
