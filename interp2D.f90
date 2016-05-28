@@ -574,7 +574,7 @@ contains
         integer :: nr 
 
         integer :: q, nx, ny, i, j
-        integer, parameter :: qmax = 500 ! Iterations 
+        integer, parameter :: qmax = 100 ! Iterations 
         double precision, dimension (:,:), allocatable :: neighb, weight, weight0 
         double precision :: wtot, mval 
         double precision, dimension(:,:), allocatable :: filled
