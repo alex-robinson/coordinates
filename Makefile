@@ -170,6 +170,11 @@ test_proj: coord-static
 	@echo "    test_proj.x is ready."
 	@echo " "
 
+proj_etopo1: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o proj_etopo1.x proj_etopo1.f90 libcoordinates.a -L. $(LFLAGS)
+	@echo " "
+	@echo "    proj_etopo1.x is ready."
+	@echo " "
 
 test_interp: coord-static
 	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x test_interp.f90 libcoordinates.a -L. $(LFLAGS)
