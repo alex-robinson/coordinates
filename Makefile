@@ -164,6 +164,13 @@ test_subset2: coord
 	@echo "    test_subset2.x is ready."
 	@echo " "
 
+test_proj: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o test_proj.x test_proj.f90 libcoordinates.a -L. $(LFLAGS)
+	@echo " "
+	@echo "    test_proj.x is ready."
+	@echo " "
+
+
 test_interp: coord-static
 	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x test_interp.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "

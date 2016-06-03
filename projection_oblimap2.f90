@@ -144,7 +144,8 @@ CONTAINS
             proj%method = "oblique_sg_projection_ellipsoid_snyder" 
         end if 
 
-    else if (trim(proj%name) .eq. "lambert_azimuthal_equal_area") then 
+    else if (trim(proj%name) .eq. "lambert_azimuthal_equal_area" .or. &
+             trim(proj%name) .eq. "lambert_azimuthal_equal_area") then 
         
         if (proj%is_sphere) then 
             proj%method = "oblique_laea_projection_snyder"
@@ -234,6 +235,7 @@ CONTAINS
     ! See equation (3-12) on page 187 in Snyder (1987):
     proj%q_polar   = (1._dp - proj%e**2) * ((1._dp / (1._dp - proj%e**2)) - (1._dp / (2._dp * proj%e)) * &
                       LOG((1._dp - proj%e) / (1._dp + proj%e)))
+    
     ! See equation (3-11) on page 187 in Snyder (1987):
     proj%beta_M    = ASIN(proj%q_M / proj%q_polar)
     ! See equation (3-13) on page 187 in Snyder (1987):
@@ -241,7 +243,7 @@ CONTAINS
     ! See equation (24-20) on page 187 in Snyder (1987):
     proj%D         = proj%am / (proj%R_q_polar * COS(proj%phi_M))
 
-!     call projection_print(proj)
+    call projection_print(proj)
 
     return
 
@@ -254,7 +256,7 @@ CONTAINS
     type(projection_class) :: proj 
 
 
-character(len=256) :: name, method  
+        character(len=256) :: name, method  
 
 
         ! Planet parameters 
@@ -627,7 +629,7 @@ character(len=256) :: name, method
     ! See equation (20-15) on page 159 Snyder (1987):
     numerator   = x_IM_P_prime * SIN(angle_C)
     denumerator = rho * COS(proj%phi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%phi_M) * SIN(angle_C)
-    lambda_P    = radians_to_degrees * (proj%lambda_M + arctanges_quotient(numerator, denumerator))
+    lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
     
     ! Our choice is to return lambda in the 0-360 degree range:
     IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
@@ -732,7 +734,7 @@ character(len=256) :: name, method
     ! See equation (20-15) on page 186 Snyder (1987):
     numerator   = x_IM_P_prime * SIN(angle_C)
     denumerator = rho * COS(proj%phi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%phi_M) * SIN(angle_C)
-    lambda_P    = radians_to_degrees * (proj%lambda_M + arctanges_quotient(numerator, denumerator))
+    lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
     
     ! Our choice is to return lambda in the 0-360 degree range:
     IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
@@ -745,62 +747,77 @@ character(len=256) :: name, method
   END SUBROUTINE inverse_oblique_laea_projection_snyder
 
 
+! ===== NEW ========
+! obtained from source published in: http://www.geosci-model-dev-discuss.net/gmd-2016-124/
 
   SUBROUTINE oblique_sg_projection_ellipsoid_snyder(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj)
     ! This subroutine projects with Snyder's oblique stereographic projection for the ellipsoid
-    ! the the longitude-latitude coordinates which coincide with the GCM grid points to 
+    ! the the longitude-latitude coordinates which coincide with the GCM grid points to
     ! the rectangular IM coordinate system, with coordinates (x,y).
-    ! 
-    ! For more information about M, proj%alpha_stereographic, the center of projection and the used 
+    !
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used
     ! projection method see:
     !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
     ! and
     !  Snyder (1987), map projections: A working manual, http://pubs.er.usgs.gov/usgspubs/pp/pp1395
-    
+
     IMPLICIT NONE
 
     type(projection_class), INTENT(IN) :: proj 
 
     ! Input variables:
-    REAL(dp), INTENT(IN)  :: lambda
-    REAL(dp), INTENT(IN)  :: phi
+    REAL(dp), INTENT(IN)  :: lambda        ! in degrees
+    REAL(dp), INTENT(IN)  :: phi           ! in degrees
 
     ! Output variables:
-    REAL(dp), INTENT(OUT) :: x_IM_P_prime
-    REAL(dp), INTENT(OUT) :: y_IM_P_prime
+    REAL(dp), INTENT(OUT) :: x_IM_P_prime  ! in meter
+    REAL(dp), INTENT(OUT) :: y_IM_P_prime  ! in meter
 
     ! Local variables:
-    REAL(dp)              :: phi_P    ! phi    in Snyder (1987)
-    REAL(dp)              :: lambda_P ! lambda in Snyder (1987)
-    REAL(dp)              :: chi_P    ! chi    in Snyder (1987)
+    REAL(dp)              :: phi_P         ! in radians,  phi    in Snyder (1987)
+    REAL(dp)              :: lambda_P      ! in radians,  lambda in Snyder (1987)
+    REAL(dp)              :: chi_P         ! in radians,  chi    in Snyder (1987)
     REAL(dp)              :: A
-    
-    ! For North and South Pole: proj%lambda_M = 0._dp, to generate the correct IM coordinate 
-    ! system, see the oblimap_configuration_module and see equation (2.3) or equation (A.53) in Reerink et al. (2010).
 
-    ! Convert longitude-latitude coordinates to radians:
-    phi_P    = degrees_to_radians * phi       
-    lambda_P = degrees_to_radians * lambda
+    ! For North and South Pole: proj%lambda_M = 0._dp, to generate the correct IM coordinate
+    ! system, see equation (2.3) or equation (A.53) in Reerink et al. (2010).
 
-    ! See equations (3-1a) and (21-27) on page 160 in Snyder (1987):
-    chi_P = 2._dp * ATAN(SQRT(((1._dp +       SIN(phi_P)) / (1._dp -       SIN(phi_P))) * &
-            ((1._dp - proj%e * SIN(phi_P)) / (1._dp + proj%e * SIN(phi_P)))**(proj%e))) - 0.5_dp*pi
-    A     = proj%akm / (COS(proj%chi_M) * (1._dp + SIN(proj%chi_M) * SIN(chi_P) + &
-                          COS(proj%chi_M) * COS(chi_P) * COS(lambda_P - proj%lambda_M)))
+    IF(proj%name .eq. "polar_stereographic") THEN
+     ! The polar case is excepted from the oblique formula's, see page 161 Snyder (1987)
 
-    ! See equations (21-24) and (21-25) on page 160 in Snyder (1987):
-    x_IM_P_prime =  A * COS(chi_P) * SIN(lambda_P - proj%lambda_M)
-    y_IM_P_prime =  A * (COS(proj%chi_M)*SIN(chi_P) - SIN(proj%chi_M)*COS(chi_P)*COS(lambda_P-proj%lambda_M))
+     ! Output: x_IM_P_prime, y_IM_P_prime
+     CALL polar_sg_projection_ellipsoid_snyder(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj)
+    ELSE
+     ! The oblique case, see page 160 Snyder (1987)
+
+     ! Convert longitude-latitude coordinates to radians:
+     phi_P    = degrees_to_radians * phi
+     lambda_P = degrees_to_radians * lambda
+
+     ! See equations (3-1a) and (21-27) on page 160 in Snyder (1987):
+     chi_P = 2._dp * ATAN(SQRT(((1._dp +       SIN(phi_P)) / (1._dp -       SIN(phi_P))) * &
+                    ((1._dp - proj%e * SIN(phi_P)) / (1._dp + proj%e * SIN(phi_P)))**(proj%e))) - 0.5_dp * pi
+     A     = proj%akm / (COS(proj%chi_M) * (1._dp + SIN(proj%chi_M) * SIN(chi_P) +  &
+                         COS(proj%chi_M) * COS(chi_P) * COS(lambda_P - proj%lambda_M)))
+
+
+     ! See equations (21-24) and (21-25) on page 160 in Snyder (1987):
+     x_IM_P_prime =  A * COS(chi_P) * SIN(lambda_P - proj%lambda_M)
+     y_IM_P_prime =  A * (COS(proj%chi_M) * SIN(chi_P) - SIN(proj%chi_M) * COS(chi_P) * COS(lambda_P - proj%lambda_M))
+    END IF
   END SUBROUTINE oblique_sg_projection_ellipsoid_snyder
 
 
 
-  SUBROUTINE inverse_oblique_sg_projection_ellipsoid_snyder(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj)
-    ! This subroutine projects with Snyder's inverse oblique stereographic projection for the ellipsoid 
-    ! the (x,y) coordinates which coincide with the IM grid points to the longitude-latitude 
-    ! coordinate system, with coordinates (lambda, phi) in degrees.
-    ! 
-    ! For more information about M, proj%alpha_stereographic, the center of projection and the used 
+  SUBROUTINE polar_sg_projection_ellipsoid_snyder(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj)
+    ! This subroutine projects with Snyder's polar stereographic projection for the ellipsoid
+    ! the the longitude-latitude coordinates which coincide with the GCM grid points to
+    ! the rectangular IM coordinate system, with coordinates (x,y). See Snyder (1987) p. 161.
+    !
+    ! The examples of Snyder (1987) at p. 314-315 with the international ellipsoid are used to
+    ! validate this forward SG projection on the ellipsoid for the polar aspect.
+    !
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used
     ! projection method see:
     !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
     ! and
@@ -811,57 +828,214 @@ character(len=256) :: name, method
     type(projection_class), INTENT(IN) :: proj 
 
     ! Input variables:
-    REAL(dp), INTENT(IN)  :: x_IM_P_prime
-    REAL(dp), INTENT(IN)  :: y_IM_P_prime
+    REAL(dp), INTENT(IN)  :: lambda        ! in degrees
+    REAL(dp), INTENT(IN)  :: phi           ! in degrees
 
     ! Output variables:
-    REAL(dp), INTENT(OUT) :: lambda_P
-    REAL(dp), INTENT(OUT) :: phi_P
+    REAL(dp), INTENT(OUT) :: x_IM_P_prime  ! in meter
+    REAL(dp), INTENT(OUT) :: y_IM_P_prime  ! in meter
+
+    ! Local variables:
+    REAL(dp)              :: phi_P         ! in radians
+    REAL(dp)              :: lambda_P      ! in radians
+    REAL(dp)              :: phi_C         ! in radians,  phi_c  in Snyder (1987), the standard parallel
+    REAL(dp)              :: t_P           ! 
+    REAL(dp)              :: t_C           ! 
+    REAL(dp)              :: m_C           ! 
+    REAL(dp)              :: rho           ! 
+    REAL(dp)              :: pf            ! polar factor: -1.0 for SP and +1.0 for NP
+    REAL(dp)              :: k0            ! 
+
+    IF(proj%phi_M == - 90.0_dp * degrees_to_radians) THEN
+     pf = -1.0_dp                                       ! The polar factor for the SP
+    ELSE
+     pf =  1.0_dp                                       ! The polar factor for the NP
+    END IF
+
+    phi_C    = (degrees_to_radians * 90.0_dp - proj%alpha_stereographic) * pf
+
+    ! Convert longitude-latitude coordinates to radians:
+    phi_P    = degrees_to_radians * phi
+    lambda_P = degrees_to_radians * lambda
+
+    IF(proj%alpha_stereographic == 0.0_dp) THEN
+     ! This variant is only considered for the case that proj%alpha_stereographic = 0, i.e. k0 = 1, for which the else-option does not work).
+     ! The POLAR ASPECT WITH KNOWN k0 case:
+    !t_P = TAN(pi / 4.0_dp - phi_P * pf / 2.0_dp) / ( (1.0_dp - proj%e * SIN(phi_P * pf)) / (1.0_dp + proj%e * SIN(phi_P * pf)) )**(proj%e / 2.0_dp)                      ! (15-9)  on page 161 in Snyder (1987)
+     t_P = ( ((1.0_dp - SIN(phi_P * pf)) / (1.0_dp + SIN(phi_P * pf))) *  &
+             ((1.0_dp + proj%e * SIN(phi_P * pf)) / (1.0_dp - proj%e * SIN(phi_P * pf)))**proj%e )**0.5_dp    ! (15-9a) on page 161 in Snyder (1987)
+     k0  = 0.5_dp * (1.0_dp + COS(proj%alpha_stereographic))                                                                                                        ! in fact it will be always 1 because it is only used for proj%alpha_stereographic = 0
+     rho = 2.0_dp * proj%a * k0 * t_P / ( (1.0_dp + proj%e)**(1.0_dp + proj%e) * (1.0_dp - proj%e)**(1.0_dp - proj%e) )**0.5_dp                                                 ! (21-33) on page 161 in Snyder (1987)
+    ELSE
+     ! The POLAR ASPECT WITH KNOWN STANDARD PARALLEL NOT AT POLE case:
+    !t_P   = TAN(pi / 4.0_dp - phi_P * pf / 2.0_dp) / ( (1.0_dp - proj%e * SIN(phi_P * pf)) / (1.0_dp + proj%e * SIN(phi_P * pf)) )**(proj%e / 2.0_dp)                    ! (15-9)  on page 161 in Snyder (1987)
+     t_P   = ( ((1.0_dp - SIN(phi_P * pf)) / (1.0_dp + SIN(phi_P * pf))) * &
+               ((1.0_dp + proj%e * SIN(phi_P * pf)) / (1.0_dp - proj%e * SIN(phi_P * pf)))**proj%e )**0.5_dp  ! (15-9a) on page 161 in Snyder (1987)
+    !t_C   = TAN(pi / 4.0_dp - phi_C * pf / 2.0_dp) / ( (1.0_dp - proj%e * SIN(phi_C * pf)) / (1.0_dp + proj%e * SIN(phi_C * pf)) )**(proj%e / 2.0_dp)                    ! (15-9)  on page 161 in Snyder (1987)
+     t_C   = ( ((1.0_dp - SIN(phi_C * pf)) / (1.0_dp + SIN(phi_C * pf))) * &
+               ((1.0_dp + proj%e * SIN(phi_C * pf)) / (1.0_dp - proj%e * SIN(phi_C * pf)))**proj%e )**0.5_dp  ! (15-9a) on page 161 in Snyder (1987)
+     m_C   = COS(phi_C * pf) / (1.0_dp - proj%e**2 * SIN(phi_C * pf)**2)**0.5_dp                                                                                    ! (14-15) on page 160 in Snyder (1987)
+     rho   = proj%a * m_C * t_P / t_C                                                                                                                               ! (21-34) on page 161 in Snyder (1987)
+    END IF
+
+    x_IM_P_prime   =   rho * SIN(lambda_P * pf - proj%lambda_M * pf) * pf                                                                                           ! (21-30) on page 161 in Snyder (1987)
+    y_IM_P_prime   = - rho * COS(lambda_P * pf - proj%lambda_M * pf) * pf                                                                                           ! (21-31) on page 161 in Snyder (1987)
+  END SUBROUTINE polar_sg_projection_ellipsoid_snyder
+
+           
+  SUBROUTINE inverse_oblique_sg_projection_ellipsoid_snyder(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj)
+    ! This subroutine projects with Snyder's inverse oblique stereographic projection for the ellipsoid
+    ! the (x,y) coordinates which coincide with the IM grid points to the longitude-latitude
+    ! coordinate system, with coordinates (lambda, phi) in degrees.
+    !
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used
+    ! projection method see:
+    !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
+    ! and
+    !  Snyder (1987), map projections: A working manual, http://pubs.er.usgs.gov/usgspubs/pp/pp1395
+    
+    IMPLICIT NONE
+
+    type(projection_class), INTENT(IN) :: proj 
+
+    ! Input variables:
+    REAL(dp), INTENT(IN)  :: x_IM_P_prime  ! in meter
+    REAL(dp), INTENT(IN)  :: y_IM_P_prime  ! in meter
+
+    ! Output variables:
+    REAL(dp), INTENT(OUT) :: lambda_P      ! in degrees
+    REAL(dp), INTENT(OUT) :: phi_P         ! in degrees
 
     ! Local variables:
     REAL(dp)              :: rho
-    REAL(dp)              :: angle_C     ! In radians
-    REAL(dp)              :: chi_P       ! chi in Snyder (1987)
+    REAL(dp)              :: angle_C       ! in radians
+    REAL(dp)              :: chi_P         ! in radians,  chi in Snyder (1987)
     REAL(dp)              :: numerator
     REAL(dp)              :: denumerator
 
-    ! See equation (20-18) on page 162 Snyder (1987):
-    rho     = SQRT(x_IM_P_prime**2 + y_IM_P_prime**2)
-    ! See equation (21-38) on page 162 Snyder (1987):
-    angle_C = 2._dp * ATAN(rho * COS(proj%chi_M) / proj%akm)
+    IF(proj%name .eq. "polar_stereographic") THEN
+     ! The inverse polar case is excepted from the inverse oblique formula's, see page 161 Snyder (1987)
 
-    ! See equations (21-37) on page 161 in Snyder (1987):
-    if (rho /= 0._dp) then 
-        chi_P   = ASIN(COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho)
-    else 
-        chi_P    = 1._dp
-    end if 
-    
-    ! See equation (3-5) on page 162 instead of equation (3-4) on page 161 Snyder (1987):
-    phi_P = radians_to_degrees * (chi_P + &
-        (proj%e**2 / 2._dp + 5._dp * proj%e**4 / 24._dp + &
-                     proj%e**6 /  12._dp  +  13._dp * proj%e**8 /    360._dp) * SIN(2._dp*chi_P) + &
-        (                    7._dp * proj%e**4 / 48._dp + &
-            29._dp * proj%e**6 / 240._dp +  811._dp * proj%e**8 /  11520._dp) * SIN(4._dp*chi_P) + &
-        (    7._dp * proj%e**6 / 120._dp +   81._dp * proj%e**8 /   1120._dp) * SIN(6._dp*chi_P) + &
-        (                                  4279._dp * proj%e**8 / 161280._dp) * SIN(8._dp*chi_P)) 
-    
-    ! See equation (21-36) on page 161 Snyder (1987):
-    numerator   = x_IM_P_prime * SIN(angle_C)
-    denumerator = rho * COS(proj%chi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%chi_M) * SIN(angle_C)
-    lambda_P    = radians_to_degrees * (proj%lambda_M + arctanges_quotient(numerator, denumerator))
-    
-    ! Our choice is to return lambda in the 0-360 degree range:
-    IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
-    
-    ! In case point P coincides with M (see condition at the first line of page  159 Snyder (1987):
-    IF(rho == 0._dp) THEN
-     lambda_P = radians_to_degrees * proj%lambda_M
-     phi_P    = radians_to_degrees * proj%phi_M
+     ! Output: lambda_P, phi_P
+     call inverse_polar_sg_projection_ellipsoid_snyder(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj)
+    ELSE
+     ! The inverse oblique case, see page 160 Snyder (1987)
+
+     ! See equation (20-18) on page 162 Snyder (1987):
+     rho     = SQRT(x_IM_P_prime**2 + y_IM_P_prime**2)
+     ! See equation (21-38) on page 162 Snyder (1987):
+     angle_C = 2._dp * ATAN(rho * COS(proj%chi_M) / proj%akm)
+
+     ! See equations (21-37) on page 161 in Snyder (1987):
+     chi_P   = ASIN(COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho)
+
+     ! See equation (3-5) on page 162 instead of equation (3-4) on page 161 Snyder (1987):
+     phi_P = radians_to_degrees * (chi_P + &
+             (proj%e**2 / 2._dp + 5._dp * proj%e**4 / 24._dp +          &
+                proj%e**6 / 12._dp  +   13._dp * proj%e**8 /    360._dp) * SIN(2._dp * chi_P) + &
+             (                 7._dp * proj%e**4 / 48._dp +             &
+                29._dp * proj%e**6 / 240._dp +  811._dp * proj%e**8 /  11520._dp) * SIN(4._dp * chi_P) + &
+             (   7._dp * proj%e**6 / 120._dp +   81._dp * proj%e**8 /   1120._dp) * SIN(6._dp * chi_P) + &
+             (        4279._dp * proj%e**8 / 161280._dp) * SIN(8._dp * chi_P))
+
+     ! See equation (21-36) on page 161 Snyder (1987):
+     numerator   = x_IM_P_prime * SIN(angle_C)
+     denumerator = rho * COS(proj%chi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%chi_M) * SIN(angle_C)
+     lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
+
+     ! Our choice is to return lambda in the 0-360 degree range:
+     IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
+
+     ! In case point P coincides with M (see condition at the first line of page  162 Snyder (1987):
+     IF(rho == 0._dp) THEN
+      lambda_P = radians_to_degrees * proj%lambda_M
+      phi_P    = radians_to_degrees * proj%phi_M
+     END IF
+
     END IF
   END SUBROUTINE inverse_oblique_sg_projection_ellipsoid_snyder
 
 
+  SUBROUTINE inverse_polar_sg_projection_ellipsoid_snyder(x_IM_P_prime, y_IM_P_prime, lambda_P, phi_P, proj)
+    ! This subroutine projects with Snyder's inverse polar stereographic projection for the ellipsoid
+    ! the (x,y) coordinates which coincide with the IM grid points to the longitude-latitude
+    ! coordinate system, with coordinates (lambda, phi) in degrees. See Snyder (1987) p. 162.
+    !
+    ! The examples of Snyder (1987) at p. 317-318 with the international ellipsoid are used to
+    ! validate this inverse SG projection on the ellipsoid for the polar aspect.
+    !
+    ! For more information about M, proj%alpha_stereographic, the center of projection and the used
+    ! projection method see:
+    !  Reerink et al. (2010), Mapping technique of climate fields between GCM's and ice models, GMD
+    ! and
+    !  Snyder (1987), map projections: A working manual, http://pubs.er.usgs.gov/usgspubs/pp/pp1395
+    
+    IMPLICIT NONE
+
+    type(projection_class), INTENT(IN) :: proj 
+
+    ! Input variables:
+    REAL(dp), INTENT(IN)  :: x_IM_P_prime  ! in meter
+    REAL(dp), INTENT(IN)  :: y_IM_P_prime  ! in meter
+
+    ! Output variables:
+    REAL(dp), INTENT(OUT) :: lambda_P      ! in degrees,  lambda in Snyder (1987)
+    REAL(dp), INTENT(OUT) :: phi_P         ! in degrees,  phi    in Snyder (1987)
+
+    ! Local variables:
+    REAL(dp)              :: chi_P         ! in radians,  chi    in Snyder (1987)
+    REAL(dp)              :: phi_C         ! in radians,  phi_c  in Snyder (1987), the standard parallel
+    REAL(dp)              :: t_P
+    REAL(dp)              :: t_C
+    REAL(dp)              :: m_C
+    REAL(dp)              :: rho
+    REAL(dp)              :: pf            ! polar factor: -1.0 for SP and +1.0 for NP
+    REAL(dp)              :: k0
+
+    IF(proj%phi_M == - 90.0_dp * degrees_to_radians) THEN
+     pf = -1.0_dp                                       ! The polar factor for the SP
+    ELSE
+     pf =  1.0_dp                                       ! The polar factor for the NP
+    END IF
+
+    phi_C = (degrees_to_radians * 90.0_dp - proj%alpha_stereographic) * pf
+
+    rho   = SQRT(x_IM_P_prime**2 + y_IM_P_prime**2)                                                                                                           ! (20-18) on page 162 in Snyder (1987)
+
+    IF(proj%alpha_stereographic == 0.0_dp) THEN
+     ! This variant is only considered for the case that proj%alpha_stereographic = 0, i.e. k0 = 1, for which the else-option does not work).
+     ! The POLAR ASPECT WITH KNOWN k0 case:
+     k0  = 0.5_dp * (1.0_dp + COS(proj%alpha_stereographic))                                                                                                     ! in fact it will be always 1 because it is only used for proj%alpha_stereographic = 0
+     t_P = rho * ( (1.0_dp + proj%e)**(1.0_dp + proj%e) * (1.0_dp - proj%e)**(1.0_dp - proj%e) )**0.5_dp / (2.0_dp * proj%a * k0)                                            ! (21-39) on page 162 in Snyder (1987)
+    ELSE
+     ! The POLAR ASPECT WITH KNOWN STANDARD PARALLEL NOT AT POLE case:
+    !t_C = TAN(pi / 4.0_dp - phi_C * pf / 2.0_dp) / ( (1.0_dp - proj%e * SIN(phi_C * pf)) / (1.0_dp + proj%e * SIN(phi_C * pf)) )**(proj%e / 2.0_dp)                   ! (15-9)  on page 161 in Snyder (1987)
+     t_C = ( ((1.0_dp - SIN(phi_C * pf)) / (1.0_dp + SIN(phi_C * pf))) *  &
+                ((1.0_dp + proj%e * SIN(phi_C * pf)) / (1.0_dp - proj%e * SIN(phi_C * pf)))**proj%e )**0.5_dp ! (15-9a) on page 161 in Snyder (1987)
+     m_C = COS(phi_C * pf) / (1.0_dp - proj%e**2 * SIN(phi_C * pf)**2)**0.5_dp                                                                                   ! (14-15) on page 160 in Snyder (1987)
+     t_P = rho * t_C / (proj%a * m_C)                                                                                                                            ! (21-40) on page 162 in Snyder (1987)
+    END IF
+
+    ! Note: Eventually replace ATAN with arctangens_quotient(numerator = rho * t_C, denumerator = proj%a * m_C) :
+    chi_P = pi / 2.0_dp - 2.0_dp * ATAN(t_P)                                                                                                                ! (7-13)  on page 162 in Snyder (1987)
+
+    ! See equation (3-5) on page 162 instead of equation (7-9) on page 162 Snyder (1987):
+    phi_P = radians_to_degrees * (chi_P + &
+            (proj%e**2 / 2._dp + 5._dp * proj%e**4 / 24._dp +      &
+                proj%e**6 / 12._dp  +   13._dp * proj%e**8 /    360._dp) * SIN(2._dp * chi_P) + &
+            (                 7._dp * proj%e**4 / 48._dp +         & 
+                29._dp * proj%e**6 / 240._dp +  811._dp * proj%e**8 /  11520._dp) * SIN(4._dp * chi_P) + &
+            (        7._dp * proj%e**6 / 120._dp +   81._dp * proj%e**8 /   1120._dp) * SIN(6._dp * chi_P) + &
+            (          4279._dp * proj%e**8 / 161280._dp) * SIN(8._dp * chi_P)) *pf                 ! (3-5)   on page 162 in Snyder (1987)
+    lambda_P = radians_to_degrees * (proj%lambda_M * pf + arctangens_quotient(x_IM_P_prime * pf, - y_IM_P_prime * pf)) *pf                                     ! (20-16) on page 162 in Snyder (1987)
+
+    ! Our choice is to return lambda in the 0-360 degree range:
+    IF(lambda_P < 0._dp)    lambda_P = lambda_P + 360._dp
+
+  END SUBROUTINE inverse_polar_sg_projection_ellipsoid_snyder
+
+
+! ===== END NEW ========
 
   SUBROUTINE oblique_laea_projection_ellipsoid_snyder(lambda, phi, x_IM_P_prime, y_IM_P_prime, proj)
     ! This subroutine projects with Snyder's oblique Lambert azimuthal equal-area projection for 
@@ -968,7 +1142,7 @@ character(len=256) :: name, method
     ! See equation (20-26) on page 188 Snyder (1987):
     numerator   = x_IM_P_prime * SIN(angle_C)
     denumerator = proj%D * rho * COS(proj%beta_M) * COS(angle_C) - proj%D**2 * y_IM_P_prime * SIN(proj%beta_M) * SIN(angle_C)
-    lambda_P    = radians_to_degrees * (proj%lambda_M + arctanges_quotient(numerator, denumerator))
+    lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
     
     ! Our choice is to return lambda in the 0-360 degree range:
     IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
@@ -980,7 +1154,7 @@ character(len=256) :: name, method
     END IF
   END SUBROUTINE inverse_oblique_laea_projection_ellipsoid_snyder
 
-  FUNCTION arctanges_quotient(numerator, denumerator) RESULT(angle)
+  FUNCTION arctangens_quotient(numerator, denumerator) RESULT(angle)
 
     IMPLICIT NONE
 
@@ -1013,7 +1187,7 @@ character(len=256) :: name, method
 
     return 
 
-  END FUNCTION arctanges_quotient
+  END FUNCTION arctangens_quotient
 
 
 
