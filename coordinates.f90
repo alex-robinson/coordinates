@@ -682,7 +682,6 @@ contains
                 pts%lat = pts%y 
 
                 do i = 1, pts%npts       
-!                     call oblique_sg_projection(pts%lon(i),pts%lat(i),pts%x(i),pts%y(i),pts%proj)
                     call oblimap_projection(pts%lon(i),pts%lat(i),pts%x(i),pts%y(i),pts%proj)
                     pts%x(i) = pts%x(i)/pts%xy_conv
                     pts%y(i) = pts%y(i)/pts%xy_conv
@@ -692,8 +691,6 @@ contains
                 ! Starting with xy points 
 
                 do i = 1, pts%npts       
-!                     call inverse_oblique_sg_projection(pts%x(i)*pts%xy_conv,pts%y(i)*pts%xy_conv, &
-!                                                        pts%lon(i),pts%lat(i),pts%proj)
                     call oblimap_projection_inverse(pts%x(i)*pts%xy_conv,pts%y(i)*pts%xy_conv, &
                                                     pts%lon(i),pts%lat(i),pts%proj)
                 end do
