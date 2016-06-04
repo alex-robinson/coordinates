@@ -66,10 +66,10 @@ program test_etopo
     ! =========================================================
     table = 0.d0 
 
-    table(1,:) = test_mapping(var0,grid0,grid1,niter=100)
-    table(2,:) = test_mapping(var0,grid0,grid2,niter=100)
-    table(3,:) = test_mapping(var0,grid0,grid3,niter=100)
-    table(4,:) = test_mapping(var0,grid0,grid4,niter=100)
+    table(1,:) = test_mapping(var0,grid0,grid1,niter=100,lat_lim=0.5d0)
+    table(2,:) = test_mapping(var0,grid0,grid2,niter=100,lat_lim=0.5d0)
+    table(3,:) = test_mapping(var0,grid0,grid3,niter=100,lat_lim=0.5d0)
+    table(4,:) = test_mapping(var0,grid0,grid4,niter=100,lat_lim=0.5d0)
 
     write(*,*)
     write(*,*) "Mapping/interpolation summary"
@@ -84,13 +84,14 @@ program test_etopo
 
 contains
 
-    function test_mapping(var0,grid0,grid1,niter) result(table)
+    function test_mapping(var0,grid0,grid1,niter,lat_lim) result(table)
 
         implicit none 
 
         double precision :: var0(:,:)
         type(grid_class) :: grid0, grid1
         integer          :: niter 
+        double precision :: lat_lim 
         double precision :: table(4)
 
         ! Local variables
@@ -115,7 +116,7 @@ contains
         call cpu_time(start)
 
         ! Create a map object for grid0=>grid1 mapping
-        call map_init(map,grid0,grid1,max_neighbors=10,lat_lim=2.0d0,fldr="maps",load=.FALSE.)
+        call map_init(map,grid0,grid1,max_neighbors=10,lat_lim=lat_lim,fldr="maps",load=.FALSE.)
     
         call cpu_time(finish)
         mapping_time = (finish-start)/60.0d0
@@ -138,7 +139,7 @@ contains
         interp_time = (finish-start)/60.0d0
 
         write(*,*) "Summary: "//trim(map%name1)//" => "//trim(map%name2)
-        write(*,"(a,f7.2,i4,f7.5)") "Mapping time, niter, interp. time (min.): ", &
+        write(*,"(a,f10.2,i4,f10.5)") "Mapping time, niter, interp. time (min.): ", &
                                          mapping_time, niter, interp_time 
 
         ! Write results to netcdf file 
