@@ -928,7 +928,7 @@ CONTAINS
 
      ! See equations (21-37) on page 161 in Snyder (1987):
      write(*,*) "\nDEBUGGING ....\n"
-     write(*,*) angle_C, COS(angle_C), proj%chi_M, sin(proj%chi_M)
+     write(*,*) angle_C, COS(angle_C), proj%chi_M, sin(proj%chi_M), rho 
      write(*,*) COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho
      chi_P   = ASIN(COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho)
 
