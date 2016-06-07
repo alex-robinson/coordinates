@@ -927,6 +927,9 @@ CONTAINS
      angle_C = 2._dp * ATAN(rho * COS(proj%chi_M) / proj%akm)
 
      ! See equations (21-37) on page 161 in Snyder (1987):
+     write(*,*) "\nDEBUGGING ....\n"
+     write(*,*) angle_C, COS(angle_C), proj%chi_M, sin(proj%chi_M)
+     write(*,*) COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho
      chi_P   = ASIN(COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho)
 
      ! See equation (3-5) on page 162 instead of equation (3-4) on page 161 Snyder (1987):
