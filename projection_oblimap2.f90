@@ -614,31 +614,36 @@ CONTAINS
     
     ! See equation (20-18) on page 159 Snyder (1987):
     rho      = SQRT(x_IM_P_prime**2 + y_IM_P_prime**2)
-    ! See equation (21-15) on page 159 Snyder (1987), because the denumerator is always positive this ATAN doesn't 
-    ! need a correction like note 2 on page ix in Snyder (1987):
-    angle_C  = 2._dp * ATAN(rho / ((1._dp + COS(proj%alpha_stereographic)) * proj%earth_radius))
-    
-    ! See equation (20-14) on page 158 Snyder (1987):
-    if (rho /= 0._dp) then 
-        phi_P    = radians_to_degrees * &
-        ( ASIN(COS(angle_C)*SIN(proj%phi_M) + ((y_IM_P_prime*SIN(angle_C)*COS(proj%phi_M)) / rho)) )
-    else 
-        phi_P    = 1._dp
-    end if 
 
-    ! See equation (20-15) on page 159 Snyder (1987):
-    numerator   = x_IM_P_prime * SIN(angle_C)
-    denumerator = rho * COS(proj%phi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%phi_M) * SIN(angle_C)
-    lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
-    
-    ! Our choice is to return lambda in the 0-360 degree range:
-    IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
-    
     ! In case point P coincides with M (see condition at the first line of page  159 Snyder (1987):
     IF(rho == 0._dp) THEN
      lambda_P = radians_to_degrees * proj%lambda_M
      phi_P    = radians_to_degrees * proj%phi_M
-    END IF
+
+    ELSE 
+
+     ! See equation (21-15) on page 159 Snyder (1987), because the denumerator is always positive this ATAN doesn't 
+     ! need a correction like note 2 on page ix in Snyder (1987):
+     angle_C  = 2._dp * ATAN(rho / ((1._dp + COS(proj%alpha_stereographic)) * proj%earth_radius))
+     
+     ! See equation (20-14) on page 158 Snyder (1987):
+     if (rho /= 0._dp) then 
+         phi_P    = radians_to_degrees * &
+         ( ASIN(COS(angle_C)*SIN(proj%phi_M) + ((y_IM_P_prime*SIN(angle_C)*COS(proj%phi_M)) / rho)) )
+     else 
+         phi_P    = 1._dp
+     end if 
+
+     ! See equation (20-15) on page 159 Snyder (1987):
+     numerator   = x_IM_P_prime * SIN(angle_C)
+     denumerator = rho * COS(proj%phi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%phi_M) * SIN(angle_C)
+     lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
+    
+    END IF 
+
+    ! Our choice is to return lambda in the 0-360 degree range:
+    IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
+
   END SUBROUTINE inverse_oblique_sg_projection_snyder
 
 
@@ -720,30 +725,37 @@ CONTAINS
     
     ! See equation (20-18) on page 187 Snyder (1987):
     rho      = SQRT(x_IM_P_prime**2 + y_IM_P_prime**2)
-    ! See equation (24-16) on page 187 Snyder (1987):
-    angle_C  = 2._dp * ASIN(rho / (2._dp * proj%earth_radius))
+
+
+    ! In case point P coincides with M (see the condition down equation (20-14) on page 186 Snyder (1987):
+    IF(rho == 0._dp) THEN
+
+     lambda_P = radians_to_degrees * proj%lambda_M
+     phi_P    = radians_to_degrees * proj%phi_M
+
+    ELSE 
+
+     ! See equation (24-16) on page 187 Snyder (1987):
+     angle_C  = 2._dp * ASIN(rho / (2._dp * proj%earth_radius))
+     
+     ! See equation (20-14) on page 186 Snyder (1987):
+     if (rho /= 0._dp) then 
+         phi_P    = radians_to_degrees* &
+          ( ASIN(COS(angle_C)*SIN(proj%phi_M) + ((y_IM_P_prime * SIN(angle_C) * COS(proj%phi_M)) / rho)) )
+     else 
+         phi_P    = 1._dp
+     end if 
+     
+     ! See equation (20-15) on page 186 Snyder (1987):
+     numerator   = x_IM_P_prime * SIN(angle_C)
+     denumerator = rho * COS(proj%phi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%phi_M) * SIN(angle_C)
+     lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
     
-    ! See equation (20-14) on page 186 Snyder (1987):
-    if (rho /= 0._dp) then 
-        phi_P    = radians_to_degrees* &
-         ( ASIN(COS(angle_C)*SIN(proj%phi_M) + ((y_IM_P_prime * SIN(angle_C) * COS(proj%phi_M)) / rho)) )
-    else 
-        phi_P    = 1._dp
-    end if 
-    
-    ! See equation (20-15) on page 186 Snyder (1987):
-    numerator   = x_IM_P_prime * SIN(angle_C)
-    denumerator = rho * COS(proj%phi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%phi_M) * SIN(angle_C)
-    lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
-    
+    END IF 
+
     ! Our choice is to return lambda in the 0-360 degree range:
     IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
     
-    ! In case point P coincides with M (see the condition down equation (20-14) on page 186 Snyder (1987):
-    IF(rho == 0._dp) THEN
-     lambda_P = radians_to_degrees * proj%lambda_M
-     phi_P    = radians_to_degrees * proj%phi_M
-    END IF
   END SUBROUTINE inverse_oblique_laea_projection_snyder
 
 
@@ -923,39 +935,42 @@ CONTAINS
 
      ! See equation (20-18) on page 162 Snyder (1987):
      rho     = SQRT(x_IM_P_prime**2 + y_IM_P_prime**2)
-     ! See equation (21-38) on page 162 Snyder (1987):
-     angle_C = 2._dp * ATAN(rho * COS(proj%chi_M) / proj%akm)
 
-     ! See equations (21-37) on page 161 in Snyder (1987):
-     write(*,*) "\nDEBUGGING ....\n"
-     write(*,*) angle_C, COS(angle_C), proj%chi_M, sin(proj%chi_M), rho 
-     write(*,*) COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho
-     chi_P   = ASIN(COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho)
+     ! In case point P coincides with M (see condition at the first line of page  162 Snyder (1987):
+     IF(rho == 0._dp) THEN
 
-     ! See equation (3-5) on page 162 instead of equation (3-4) on page 161 Snyder (1987):
-     phi_P = radians_to_degrees * (chi_P + &
-             (proj%e**2 / 2._dp + 5._dp * proj%e**4 / 24._dp +          &
-                proj%e**6 / 12._dp  +   13._dp * proj%e**8 /    360._dp) * SIN(2._dp * chi_P) + &
-             (                 7._dp * proj%e**4 / 48._dp +             &
-                29._dp * proj%e**6 / 240._dp +  811._dp * proj%e**8 /  11520._dp) * SIN(4._dp * chi_P) + &
-             (   7._dp * proj%e**6 / 120._dp +   81._dp * proj%e**8 /   1120._dp) * SIN(6._dp * chi_P) + &
-             (        4279._dp * proj%e**8 / 161280._dp) * SIN(8._dp * chi_P))
+      lambda_P = radians_to_degrees * proj%lambda_M
+      phi_P    = radians_to_degrees * proj%phi_M
 
-     ! See equation (21-36) on page 161 Snyder (1987):
-     numerator   = x_IM_P_prime * SIN(angle_C)
-     denumerator = rho * COS(proj%chi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%chi_M) * SIN(angle_C)
-     lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
+     ELSE 
+
+      ! See equation (21-38) on page 162 Snyder (1987):
+      angle_C = 2._dp * ATAN(rho * COS(proj%chi_M) / proj%akm)
+
+      ! See equations (21-37) on page 161 in Snyder (1987):
+      chi_P   = ASIN(COS(angle_C) * SIN(proj%chi_M) + y_IM_P_prime * SIN(angle_C) * COS(proj%chi_M) / rho)
+
+      ! See equation (3-5) on page 162 instead of equation (3-4) on page 161 Snyder (1987):
+      phi_P = radians_to_degrees * (chi_P + &
+              (proj%e**2 / 2._dp + 5._dp * proj%e**4 / 24._dp +          &
+                 proj%e**6 / 12._dp  +   13._dp * proj%e**8 /    360._dp) * SIN(2._dp * chi_P) + &
+              (                 7._dp * proj%e**4 / 48._dp +             &
+                 29._dp * proj%e**6 / 240._dp +  811._dp * proj%e**8 /  11520._dp) * SIN(4._dp * chi_P) + &
+              (   7._dp * proj%e**6 / 120._dp +   81._dp * proj%e**8 /   1120._dp) * SIN(6._dp * chi_P) + &
+              (        4279._dp * proj%e**8 / 161280._dp) * SIN(8._dp * chi_P))
+
+      ! See equation (21-36) on page 161 Snyder (1987):
+      numerator   = x_IM_P_prime * SIN(angle_C)
+      denumerator = rho * COS(proj%chi_M) * COS(angle_C) - y_IM_P_prime * SIN(proj%chi_M) * SIN(angle_C)
+      lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
+
+     END IF 
 
      ! Our choice is to return lambda in the 0-360 degree range:
      IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
 
-     ! In case point P coincides with M (see condition at the first line of page  162 Snyder (1987):
-     IF(rho == 0._dp) THEN
-      lambda_P = radians_to_degrees * proj%lambda_M
-      phi_P    = radians_to_degrees * proj%phi_M
-     END IF
-
     END IF
+
   END SUBROUTINE inverse_oblique_sg_projection_ellipsoid_snyder
 
 
@@ -1126,35 +1141,37 @@ CONTAINS
     
     ! See equation (24-28) on page 189 Snyder (1987):
     rho      = SQRT((x_IM_P_prime / proj%D)**2 + (y_IM_P_prime / proj%D)**2)
-    ! See equation (24-29) on page 189 Snyder (1987):
-    angle_C  = 2._dp * ASIN(rho / (2._dp * proj%R_q_polar))
-    
-    ! See equation (24-30) on page 189 Snyder (1987):
-    if (rho /= 0._dp) then 
-        beta = ASIN(COS(angle_C)*SIN(proj%beta_M) + (proj%D*y_IM_P_prime*SIN(angle_C)*COS(proj%beta_M) / rho))
-    else
-        beta = 1._dp 
-    end if 
 
-    ! See equation (3-18) on page 189 instead of equation (3-16) on page 188 Snyder (1987):
-    phi_P = radians_to_degrees * (beta + &
-            (proj%e**2 / 3._dp + 31._dp * proj%e**4 / 180._dp + 517._dp * proj%e**6 /  5040._dp) * SIN(2._dp * beta) + &
-            (                 23._dp * proj%e**4 / 360._dp + 251._dp * proj%e**6 /  3780._dp) * SIN(4._dp * beta) + &
-            (                                             761._dp * proj%e**6 / 45360._dp) * SIN(6._dp * beta)) 
-    
-    ! See equation (20-26) on page 188 Snyder (1987):
-    numerator   = x_IM_P_prime * SIN(angle_C)
-    denumerator = proj%D * rho * COS(proj%beta_M) * COS(angle_C) - proj%D**2 * y_IM_P_prime * SIN(proj%beta_M) * SIN(angle_C)
-    lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
-    
-    ! Our choice is to return lambda in the 0-360 degree range:
-    IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
-    
     ! In case point P coincides with M (see the condition down equation (20-14) on page 186 Snyder (1987):
     IF(rho == 0._dp) THEN
      lambda_P = radians_to_degrees * proj%lambda_M
      phi_P    = radians_to_degrees * proj%phi_M
-    END IF
+
+    ELSE 
+
+     ! See equation (24-29) on page 189 Snyder (1987):
+     angle_C  = 2._dp * ASIN(rho / (2._dp * proj%R_q_polar))
+     
+     ! See equation (24-30) on page 189 Snyder (1987):
+     beta = ASIN(COS(angle_C)*SIN(proj%beta_M) + (proj%D*y_IM_P_prime*SIN(angle_C)*COS(proj%beta_M) / rho)) 
+
+     ! See equation (3-18) on page 189 instead of equation (3-16) on page 188 Snyder (1987):
+     phi_P = radians_to_degrees * (beta + &
+             (proj%e**2 / 3._dp + 31._dp * proj%e**4 / 180._dp + 517._dp * proj%e**6 /  5040._dp) * SIN(2._dp * beta) + &
+             (                 23._dp * proj%e**4 / 360._dp + 251._dp * proj%e**6 /  3780._dp) * SIN(4._dp * beta) + &
+             (                                             761._dp * proj%e**6 / 45360._dp) * SIN(6._dp * beta)) 
+     
+     ! See equation (20-26) on page 188 Snyder (1987):
+     numerator   = x_IM_P_prime * SIN(angle_C)
+     denumerator = proj%D * rho * COS(proj%beta_M) * COS(angle_C) - proj%D**2 * y_IM_P_prime * SIN(proj%beta_M) * SIN(angle_C)
+     lambda_P    = radians_to_degrees * (proj%lambda_M + arctangens_quotient(numerator, denumerator))
+    
+    END IF 
+
+    ! Our choice is to return lambda in the 0-360 degree range:
+    IF(lambda_P < 0._dp) lambda_P = lambda_P + 360._dp
+    
+
   END SUBROUTINE inverse_oblique_laea_projection_ellipsoid_snyder
 
   FUNCTION arctangens_quotient(numerator, denumerator) RESULT(angle)
