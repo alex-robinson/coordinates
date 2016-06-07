@@ -16,6 +16,13 @@ program test_etopo
 
     write(*,*) 
     
+    call grid_init(grid0,name="GRL-20KM",mtype="stereographic",units="kilometers", &
+                   lon180=.TRUE.,dx=20.d0,nx=90,dy=20.d0,ny=150, &
+                   lambda=-40.d0,phi=72.d0,alpha=8.4d0)
+
+
+    stop 
+
     ! =======================================================================
     !
     ! Define global input grid and load input data
