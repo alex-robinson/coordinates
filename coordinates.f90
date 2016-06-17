@@ -127,6 +127,7 @@ module coordinates
     interface points_init
         module procedure points_init_from_opts, points_init_from_par
         module procedure points_init_from_points, points_init_from_grid
+        module procedure points_init_from_file 
     end interface 
 
     interface points_allocate 
@@ -555,6 +556,55 @@ contains
         return
 
     end subroutine points_init_from_par
+
+    subroutine points_init_from_file(pts,name,mtype,units,filename,planet,lon180, &
+                                     lambda,phi,alpha,x_e,y_n,latlon,skip)
+
+
+        implicit none
+
+        type(points_class) :: pts 
+        character(len=*) :: name, mtype, units
+        character(len=*) :: filename  
+        character(len=*), optional :: planet
+        logical,  optional :: lon180
+        real(dp), optional :: lambda, phi, alpha, x_e, y_n 
+        logical,  optional :: latlon 
+        integer,  optional :: skip 
+
+        integer :: i, io, n, nskip   
+        integer, parameter :: nmax = 1000000
+        character(len=10)  :: tmp_char 
+        real(dp) :: x_in(nmax), y_in(nmax)
+        real(dp), allocatable :: x(:), y(:)
+
+        nskip = 0 
+        if (present(skip)) nskip = skip 
+
+        open(7,file=trim(filename))
+        if (nskip .gt. 0) then 
+            do i = 1, nskip 
+                read(7,*) tmp_char 
+            end do 
+        end if 
+        do i = 1, nmax
+            read(7,*,iostat=io) x_in(i), y_in(i)
+            if (io .lt. 0) exit 
+        end do 
+        close(7)
+
+        n = i-1
+        allocate(x(n),y(n))
+
+        x = x_in(1:n)
+        y = y_in(1:n)
+
+        call points_init_from_opts(pts,name,mtype,units,planet,lon180, &
+                         x,y,lambda,phi,alpha,x_e,y_n,latlon)
+
+        return
+
+    end subroutine points_init_from_file
 
     subroutine points_init_from_opts(pts,name,mtype,units,planet,lon180,x,y, &
                                      lambda,phi,alpha,x_e,y_n,latlon)

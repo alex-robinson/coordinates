@@ -100,12 +100,6 @@ MODULE oblimap_projection_module
     public :: optimal_alpha
     public :: oblimap_projection, oblimap_projection_inverse
 
-!     public :: oblique_sg_projection, inverse_oblique_sg_projection
-!     public :: inverse_oblique_sg_projection_snyder
-!     public :: oblique_laea_projection_snyder, inverse_oblique_laea_projection_snyder
-!     public :: oblique_sg_projection_ellipsoid_snyder, inverse_oblique_sg_projection_ellipsoid_snyder
-!     public :: oblique_laea_projection_ellipsoid_snyder, inverse_oblique_laea_projection_ellipsoid_snyder
-    
 CONTAINS
   
   SUBROUTINE projection_init(proj,name,planet,lambda,phi,alpha,x_e,y_n,method)
@@ -183,7 +177,17 @@ CONTAINS
     if (present(x_e))    proj%x_e    = x_e 
     if (present(y_n))    proj%y_n    = y_n 
 
-    if ( present(alpha) ) then    
+    if ( trim(proj%name) .eq. "polar_stereographic" ) then 
+
+        proj%alpha = 90.0_dp - proj%phi 
+
+        if (present(alpha)) then 
+            write(*,*) "oblimap_projection_module:: ", &
+            "Note: for polar grids, alpha is determined via the specified phi, &
+            &while the user-specified alpha is ignored."
+        end if 
+
+    else if ( present(alpha) ) then    
 
         if ( alpha .gt. 0.0_dp ) then 
 
@@ -195,17 +199,6 @@ CONTAINS
             write(*,*) "    Instead, please specify a positive value for alpha."
             write(*,*)
             stop
-
-!             ! Check for optimal alpha
-!             test1 = grid%nx*grid%ny*(grid%dx*grid%xy_conv)*(grid%dy*grid%xy_conv)
-!             test2 = 2.0_dp * pi * grid%P%R**2
-!             if (test1 .lt. test2) then  ! Projected grid is smaller than 1 hemisphere
-!                 alpha = asin( (1.0_dp / grid%P%R) sqrt((1/(2.0_dp*pi)*test1)) )
-!             else                        ! Projected grid is equal to 1 hemisphere
-!                 gamma = 45.0_dp * degrees_to_radians
-!                 alpha = 2.0_dp * atan( sqrt(1.0_dp/(2.0_dp*pi))*tan(gamma) )  ! alpha = 43.5 deg
-!                 alpha = alpha * radians_to_degrees
-!             end if
 
         end if 
 
