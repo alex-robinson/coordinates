@@ -492,38 +492,62 @@ contains
 
     end subroutine grid_init_from_opts
 
-    subroutine points_init_from_points(pts,pts0,name,x,y)
+    subroutine points_init_from_points(pts,pts0,name,filename,x,y,latlon,skip)
 
         implicit none
 
         type(points_class) :: pts, pts0 
-        character(len=*)   :: name  
+        character(len=*)   :: name 
+        character(len=*), optional :: filename 
         real(dp), optional :: x(:), y(:)
+        logical, optional  :: latlon
+        integer, optional  :: skip 
 
-        call points_init_from_opts(pts,name,mtype=pts0%mtype,units=pts0%units, &
-                                 planet=pts0%planet%name,lon180=pts0%is_lon180,x=x,y=y, &
-                                 lambda=pts0%proj%lambda,phi=pts0%proj%phi, &
-                                 alpha=pts0%proj%alpha,x_e=pts0%proj%x_e,y_n=pts0%proj%y_n)
+        if (present(filename)) then 
+            call points_init_from_file(pts,name,mtype=pts0%mtype,units=pts0%units, &
+                                       filename=trim(filename),planet=pts0%planet%name,lon180=pts0%is_lon180, &
+                                       lambda=pts0%proj%lambda,phi=pts0%proj%phi, &
+                                       alpha=pts0%proj%alpha,x_e=pts0%proj%x_e,y_n=pts0%proj%y_n, &
+                                       latlon=latlon,skip=skip)
+
+        else
+            call points_init_from_opts(pts,name,mtype=pts0%mtype,units=pts0%units, &
+                                     planet=pts0%planet%name,lon180=pts0%is_lon180,x=x,y=y, &
+                                     lambda=pts0%proj%lambda,phi=pts0%proj%phi, &
+                                     alpha=pts0%proj%alpha,x_e=pts0%proj%x_e,y_n=pts0%proj%y_n, &
+                                     latlon=latlon)
+        end if 
 
         return
 
     end subroutine points_init_from_points
 
-    subroutine points_init_from_grid(pts,grid0,name,x,y,latlon)
+    subroutine points_init_from_grid(pts,grid0,name,filename,x,y,latlon,skip)
 
         implicit none
 
         type(points_class) :: pts
         type(grid_class)   :: grid0 
         character(len=*)   :: name  
+        character(len=*), optional :: filename
         real(dp), optional :: x(:), y(:)
         logical, optional  :: latlon 
+        integer, optional  :: skip 
 
-        call points_init_from_opts(pts,name,mtype=grid0%mtype,units=grid0%units, &
-                                 planet=grid0%planet%name,lon180=grid0%is_lon180,x=x,y=y, &
-                                 lambda=grid0%proj%lambda,phi=grid0%proj%phi, &
-                                 alpha=grid0%proj%alpha,x_e=grid0%proj%x_e,y_n=grid0%proj%y_n, &
-                                 latlon=latlon)
+        if (present(filename)) then 
+            call points_init_from_file(pts,name,mtype=grid0%mtype,units=grid0%units, &
+                                       filename=trim(filename),planet=grid0%planet%name,lon180=grid0%is_lon180, &
+                                       lambda=grid0%proj%lambda,phi=grid0%proj%phi, &
+                                       alpha=grid0%proj%alpha,x_e=grid0%proj%x_e,y_n=grid0%proj%y_n, &
+                                       latlon=latlon,skip=skip)
+
+        else
+            call points_init_from_opts(pts,name,mtype=grid0%mtype,units=grid0%units, &
+                                       planet=grid0%planet%name,lon180=grid0%is_lon180,x=x,y=y, &
+                                       lambda=grid0%proj%lambda,phi=grid0%proj%phi, &
+                                       alpha=grid0%proj%alpha,x_e=grid0%proj%x_e,y_n=grid0%proj%y_n, &
+                                       latlon=latlon)
+        end if
 
         return
 
@@ -599,9 +623,15 @@ contains
         x = x_in(1:n)
         y = y_in(1:n)
 
+        write(*,*) "points_init_from_file: ", minval(x), maxval(x)
+        write(*,*) "points_init_from_file: ", minval(y), maxval(y)
+        
         call points_init_from_opts(pts,name,mtype,units,planet,lon180, &
                          x,y,lambda,phi,alpha,x_e,y_n,latlon)
 
+        write(*,*) "points_init_from_file: ", minval(pts%lon), maxval(pts%lon)
+        write(*,*) "points_init_from_file: ", minval(pts%lat), maxval(pts%lat)
+        
         return
 
     end subroutine points_init_from_file
