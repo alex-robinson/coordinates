@@ -9,6 +9,7 @@ module mod_toms526
 
     interface interp2D_akima
         module procedure interp2D_akima_grid_grid
+        module procedure interp2D_akima_points_points
     end interface 
 
     private
@@ -45,8 +46,8 @@ contains
         y1D = reshape(y,[ndp])
         z1D = reshape(z,[ndp])
         
-        xout1D = reshape(xout,[ndp])
-        yout1D = reshape(yout,[ndp])
+        xout1D = reshape(xout,[nip])
+        yout1D = reshape(yout,[nip])
 
         ! Make sure longitude values are in -180:180 
         where( x1D    .gt. 180.0_dp ) x1D    = x1D    - 360.0_dp 

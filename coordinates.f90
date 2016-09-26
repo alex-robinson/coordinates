@@ -19,6 +19,8 @@ module coordinates
     use gaussian_filter  
     use interp2D 
     
+    use mod_toms526 
+
     implicit none 
 
     !! real(dp) definition and some internal constants
@@ -2040,7 +2042,7 @@ contains
             if (check .gt. 0) then 
 
                 ! If method == nn (nearest neighbor), limit neighbors to 1
-                if (method .eq. "nn") then
+                if (trim(method) .eq. "nn") then
 !                     v_neighb(2:map%nmax) = missing_val
 
                     found = .FALSE. 
@@ -2054,7 +2056,7 @@ contains
                         end if 
                     end do
 
-                else if (method .eq. "quadrant") then 
+                else if (trim(method) .eq. "quadrant") then 
                     ! For quadrant method, limit the number of neighbors to 
                     ! 4 points in different quadrants
                     do q = 1, 4

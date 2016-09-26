@@ -25,7 +25,56 @@ program test_etopo
     double precision :: tmplon(720), tmplat(360)
     character(len=256) :: gridname1, gridname0, outfldr 
     
+    type akima_test_type 
+        real(8), allocatable :: x(:), y(:), z(:) 
+    end type 
+
+    type(akima_test_type) :: ak_in, ak_out 
+    integer :: i 
+
     write(*,*) 
+
+    ! =======================================================================
+    !
+    ! Testing Akima routines
+    !
+    ! =======================================================================
+    write(*,*) 
+    write(*,*) " === Akima === "
+    write(*,*) 
+
+    allocate(ak_in%x(101),ak_in%y(101),ak_in%z(101))
+    allocate(ak_out%x(20),ak_out%y(20),ak_out%z(20))
+    
+    call random_number(ak_in%x)
+    call random_number(ak_in%y)
+    ak_in%z = sin(ak_in%x*2.d0*3.14159)*cos(ak_in%y*2.d0*3.14159)
+
+    write(*,*) "ak_in%x: ", minval(ak_in%x), maxval(ak_in%x)
+    write(*,*) "ak_in%y: ", minval(ak_in%y), maxval(ak_in%y)
+    write(*,*) "ak_in%z: ", minval(ak_in%z), maxval(ak_in%z)
+    
+    do i = 1, 20 
+        ak_out%x(i) = dble(i-1) / 20.d0 
+        ak_out%y(i) = dble(i-1) / 20.d0 
+    end do 
+
+    call random_number(ak_out%x)
+    call random_number(ak_out%y)
+    
+    write(*,*) "ak_out%x: ", minval(ak_out%x), maxval(ak_out%x)
+    write(*,*) "ak_out%y: ", minval(ak_out%y), maxval(ak_out%y)
+    
+    call interp2D_akima(ak_in%x,ak_in%y,ak_in%z, &
+                        xout=ak_out%x,yout=ak_out%y,zout=ak_out%z)
+
+    write(*,*) "ak_out%z: ", minval(ak_out%z), maxval(ak_out%z)
+    
+    
+    call write_ascii("output/akima_in.txt",ak_in%x,ak_in%y,ak_in%z)
+    call write_ascii("output/akima_out.txt",ak_out%x,ak_out%y,ak_out%z)
+
+    stop 
 
     ! =========================================================
     !
@@ -127,11 +176,10 @@ program test_etopo
     write(*,*) 
 
     ! Map each field to the regional domain using the quadrant method (no max_distance required here)
-    call map_init(map_g0g1,grid0,grid1,max_neighbors=4,lat_lim=2.0d0,fldr="maps",load=.FALSE.)
+    call map_init(map_g0g1,grid0,grid1,max_neighbors=4,lat_lim=2.0d0,fldr="maps",load=.TRUE.)
     call map_field(map_g0g1,"zs",vars0%zs,vars1%zs,vars1%mask,method="quadrant")
     call nc_write(file1,"zs",vars1%zs,dim1="xc",dim2="yc")
     call nc_write(file1,"mask",vars1%mask,dim1="xc",dim2="yc")
-    stop 
 
     ! Map each field back to the original domain using the radius method
     call map_init(map_g1g0,grid1,grid0,max_neighbors=6,lat_lim=2.0d0,fldr="maps",load=.TRUE.)
@@ -141,29 +189,7 @@ program test_etopo
 
     ! Calculate statistics concerning remapping
     ! (as in Table 3 of Reerink et al, 2010)
-    call grid_stats("zs",vars0%zs,vars0b%zs,vars0%mask)
-
-
-    ! =======================================================================
-    !
-    ! Testing Akima routines
-    !
-    ! =======================================================================
-!     write(*,*) 
-!     write(*,*) " === Akima === "
-!     write(*,*) 
-
-!     write(*,*) "in  x: ", minval(gCCSM3%x),   maxval(gCCSM3%x) 
-!     write(*,*) "in  y: ", minval(gCCSM3%y),   maxval(gCCSM3%y) 
-!     write(*,*) "in  z: ", minval(CCSM3a%Ts), maxval(CCSM3a%Ts) 
-!     write(*,*) "out x: ", minval(gREG%lon),   maxval(gREG%lon) 
-!     write(*,*) "out y: ", minval(gREG%lat),   maxval(gREG%lat) 
-    
-!     call interp2D_akima(gCCSM3%x,gCCSM3%y,CCSM3a%Ts,xout=gREG%lon,yout=gREG%lat,zout=REG%Ts)
-
-!     write(*,*) "out z: ", minval(REG%Ts), maxval(REG%Ts) 
-    
-!     call nc_write(file_gREG,"Ts_akima",  REG%Ts,  dim1="xc",dim2="yc")
+    call grid_stats("zs",vars0%zs,vars0b%zs,vars0b%mask)
 
 contains
 
@@ -191,18 +217,39 @@ contains
             end do 
         end do 
 
-        fld_ave = sum(var2*mask2) / dble(n) 
-        fld_range(1) = minval(var2,mask2 .eq. 1)
-        fld_range(2) = maxval(var2,mask2 .eq. 1)
-        MAE = sum(dabs(err)) / dble(n)
-        AE_SD = dsqrt( sum( (dabs(err) - (sum(dabs(err))/n))**2 ) / (n-1) )
-        RRD   = MAE / (fld_range(2)-fld_range(1)) *100.d0
+        if (count(mask2 .eq. 1) .gt. 0) then 
+            fld_ave = sum(var2*mask2) / dble(n) 
+            fld_range(1) = minval(var2,mask2 .eq. 1)
+            fld_range(2) = maxval(var2,mask2 .eq. 1)
+            MAE = sum(dabs(err)) / dble(n)
+            AE_SD = dsqrt( sum( (dabs(err) - (sum(dabs(err))/n))**2 ) / (n-1) )
+            RRD   = MAE / (fld_range(2)-fld_range(1)) *100.d0
 
-        write(*,"(a,3f10.1,3f12.4)") name, fld_range, fld_ave, MAE, AE_SD*2.d0, RRD
+            write(*,"(a,3f10.1,3f12.4)") name, fld_range, fld_ave, MAE, AE_SD*2.d0, RRD
+        else
+            write(*,*) "Interpolation mask empty - no interpolation performed?"
+        end if 
 
         return 
 
     end subroutine grid_stats 
+
+    subroutine write_ascii(filename,x,y,z)
+        implicit none 
+
+        character(len=*), intent(IN) :: filename 
+        double precision, intent(IN) :: x(:), y(:), z(:) 
+        integer :: i 
+
+        open(10,file=trim(filename))
+        write(10,"(3a12)") "x", "y", "z" 
+        do i = 1, size(x)
+            write(10,"(3f12.2)") x(i), y(i), z(i)
+        end do 
+        close(10)
+
+        return 
+    end subroutine write_ascii 
 
 end program test_etopo
 
