@@ -2105,7 +2105,7 @@ contains
 
                     ! Calculate the weighted average
                     var2(i)  = weighted_ave(v_neighb(1:ntot),weight_neighb(1:ntot))
-                    var2(i)  = weighted_ave_shepard(v_neighb(1:ntot),dist_neighb(1:ntot),shephard_exponent=2.d0)
+                    var2(i)  = weighted_ave_shepard(v_neighb(1:ntot),dist_neighb(1:ntot),shephard_exponent=3.d0)
                     mask2_local(i) = 1
 
                 else if (ntot .eq. 1) then
