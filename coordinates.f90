@@ -1404,7 +1404,7 @@ contains
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
-        real(dp) :: shephard_exponent
+        real(dp) :: shepard_exponent
 
         real(dp), dimension(:), allocatable   :: var2_vec
         integer,  dimension(:), allocatable   :: mask2_vec
@@ -1444,7 +1444,7 @@ contains
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border  
-        real(dp) :: shephard_exponent
+        real(dp) :: shepard_exponent
 
         real(dp), dimension(:), allocatable   :: var2_vec
 
@@ -1476,7 +1476,7 @@ contains
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
-        real(dp) :: shephard_exponent
+        real(dp) :: shepard_exponent
 
         real(dp), dimension(:), allocatable   :: var2_vec
         integer,  dimension(:), allocatable   :: mask2_vec
@@ -1516,7 +1516,7 @@ contains
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border  
-        real(dp) :: shephard_exponent
+        real(dp) :: shepard_exponent
 
         real(dp), dimension(:), allocatable   :: var2_vec
 
@@ -1546,7 +1546,7 @@ contains
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
-        real(dp) :: shephard_exponent
+        real(dp) :: shepard_exponent
 
         real(dp), dimension(:), allocatable   :: var2_vec
         integer,  dimension(:), allocatable   :: mask2_vec
@@ -1610,7 +1610,7 @@ contains
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border  
-        real(dp) :: shephard_exponent
+        real(dp) :: shepard_exponent
 
         integer :: npts1 
 
@@ -1639,7 +1639,7 @@ contains
         character(len=*) :: name, method
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
-        real(dp) :: shephard_exponent
+        real(dp) :: shepard_exponent
 
         real(dp), dimension(:), allocatable   :: var2_vec
         integer,  dimension(:), allocatable   :: mask2_vec
@@ -1704,7 +1704,7 @@ contains
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border 
         logical            :: fill_pts, fill_border
-        real(dp) :: shephard_exponent
+        real(dp) :: shepard_exponent
         real(dp) :: max_distance, missing_val 
 
         type map_local_type
@@ -1980,9 +1980,10 @@ contains
         real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border 
         logical            :: fill_pts, fill_border
-        real(dp) :: shephard_exponent
+        real(dp) :: shepard_exponent
         real(dp) :: max_distance, missing_val 
         real(dp), dimension(:), allocatable   :: weight_neighb, v_neighb
+        real(dp), dimension(:), allocatable   :: dist_neighb
         real(dp), dimension(:), allocatable   :: v_neighb_tmp 
         integer,  dimension(:), allocatable   :: mask2_local
         integer :: i, k, q, j, ntot, check  
@@ -2011,7 +2012,8 @@ contains
         if (present(mask_pack)) maskp = mask_pack 
 
         allocate(v_neighb(map%nmax),weight_neighb(map%nmax),v_neighb_tmp(map%nmax))
-        
+        allocate(dist_neighb(map%nmax))
+
         ! Initialize mask to show which points have been mapped
         allocate(mask2_local(map%npts))
         mask2_local = 0 
@@ -2083,6 +2085,7 @@ contains
                 v_neighb_tmp  = v_neighb 
                 v_neighb      = missing_val 
                 weight_neighb = 0.0_dp 
+                dist_neighb   = max_distance
 
                 ! Reinitialize temp neighbor and weight values so that they appear in order (1:ntot)
                 if (ntot .gt. 0) then 
@@ -2091,6 +2094,7 @@ contains
                         if (v_neighb_tmp(k) .ne. missing_val) then
                             q = q+1
                             weight_neighb(q) = map%weight(i,k)
+                            dist_neighb(q)   = map%dist(i,k)
                             v_neighb(q)      = var1(map%i(i,k))
                         end if 
                     end do 
@@ -2101,6 +2105,7 @@ contains
 
                     ! Calculate the weighted average
                     var2(i)  = weighted_ave(v_neighb(1:ntot),weight_neighb(1:ntot))
+                    var2(i)  = weighted_ave_shepard(v_neighb(1:ntot),dist_neighb(1:ntot),shephard_exponent=2.d0)
                     mask2_local(i) = 1
 
                 else if (ntot .eq. 1) then

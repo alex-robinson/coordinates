@@ -234,12 +234,13 @@ contains
     
     end function cartesian_area 
 
-    function shepard_weight(dist,shephard_exponent)
+    elemental function shepard_weight(dist,shephard_exponent)
         implicit none 
 
-        real(dp) :: dist 
-        real(dp), optional :: shephard_exponent
-        real(dp) :: shep_e, shepard_weight
+        real(dp), intent(IN) :: dist 
+        real(dp), intent(IN), optional :: shephard_exponent
+        real(dp) :: shep_e
+        real(dp) :: shepard_weight
 
         shep_e = 2.0_dp 
         if (present(shephard_exponent)) shep_e = shephard_exponent
