@@ -1,0 +1,4 @@
+
+# To run original natural neighbor interpolation example:
+gfortran -o testc.x t4* testc.f
+./testc.x 

@@ -1,0 +1,7 @@
+In order to compile this code, you need to run the makefile as a script, i.e.
+
+./Makefile
+
+and not run it with the usual "make -f Makefile".  The latter command gives
+errors complaining about missing colons. 
+
