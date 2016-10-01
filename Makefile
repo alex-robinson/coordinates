@@ -13,6 +13,7 @@ usage:
 # PATH options
 objdir = .obj
 srcdir = src
+testdir = tests
 
 # netcdf_inc = /usr/include
 # netcdf_lib = /usr/lib
@@ -153,95 +154,97 @@ coord0-shared: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
 	@echo " "
 
 # Program to test interpolations of CCSM3 data
-ccsm3: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3.x test_ccsm3.f90 libcoordinates.a -L. $(LFLAGS)
+test_ccsm3: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3.x $(testdir)/test_ccsm3.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "
 	@echo "    test_ccsm3.x is ready."
 	@echo " "
 
-etopo: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_etopo.x test_etopo.f90 libcoordinates.a -L. $(LFLAGS)
+test_etopo: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o test_etopo.x $(testdir)/test_etopo.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "
 	@echo "    test_etopo.x is ready."
 	@echo " "
 
-test_subset: coord0
-	$(FC) $(DFLAGS) $(FLAGS) -o test_subset.x test_subset.f90 -L. -lcoordinates0 $(LFLAGS)
+test_subset: coord0-shared
+	$(FC) $(DFLAGS) $(FLAGS) -o test_subset.x $(testdir)/test_subset.f90 -L. -lcoordinates0 $(LFLAGS)
 	@echo " "
 	@echo "    test_subset.x is ready."
 	@echo " "
 
-test_subset2: coord
-	$(FC) $(DFLAGS) $(FLAGS) -o test_subset2.x test_subset2.f90 -L. -lcoordinates $(LFLAGS)
+test_subset2: coord-shared
+	$(FC) $(DFLAGS) $(FLAGS) -o test_subset2.x $(testdir)/test_subset2.f90 -L. -lcoordinates $(LFLAGS)
 	@echo " "
 	@echo "    test_subset2.x is ready."
 	@echo " "
 
 test_proj: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_proj.x test_proj.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_proj.x $(testdir)/test_proj.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "
 	@echo "    test_proj.x is ready."
 	@echo " "
 
 test_proj_etopo1: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_proj_etopo1.x test_proj_etopo1.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_proj_etopo1.x $(testdir)/test_proj_etopo1.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "
 	@echo "    test_proj_etopo1.x is ready."
 	@echo " "
 
 test_interp: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x test_interp.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x $(testdir)/test_interp.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "
 	@echo "    test_interp.x is ready."
 	@echo " "
 
 test_climber: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_climber.x test_climber.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_climber.x $(testdir)/test_climber.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "
 	@echo "    test_climber.x is ready."
 	@echo " "
 
-ccsm3diff: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3_diffusion.x test_ccsm3_diffusion.f90 libcoordinates.a -L. $(LFLAGS)
+test_ccsm3diff: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3_diffusion.x $(testdir)/test_ccsm3_diffusion.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "
 	@echo "    test_ccsm3_diffusion.x is ready."
 	@echo " "
 
 test_loess: $(objdir)/ncio.o $(objdir)/interp1D.o $(objdir)/index.o $(objdir)/loess.o 
-	$(FC) $(DFLAGS) $(FLAGS) -o test_loess.x $^ test_loess.f90 $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_loess.x $^ $(testdir)/test_loess.f90 $(LFLAGS)
 	@echo " "
 	@echo "    test_loess.x is ready."
 	@echo " "
 
-test_nat: tile/t4gen.f tile/t4man.f tile/t4int.f tile/t4que.f tile/t4int.f90
-	$(FC) $(DFLAGS) $(FLAGS) -o test_nat.x $^ test_nat.f90
+test_nat: extra/tile/t4gen.f extra/tile/t4man.f extra/tile/t4int.f \
+	      extra/tile/t4que.f extra/tile/t4int.f90
+	$(FC) $(DFLAGS) $(FLAGS) -o test_nat.x $^ $(testdir)/test_nat.f90
 	@echo " "
 	@echo "    test_nat.x is ready."
 	@echo " "
 
-test_nat_new: tile/t4gen.f tile/t4man.f tile/t4int.f tile/t4que.f tile/t4int.f90
-	$(FC) $(DFLAGS) $(FLAGS) -o test_nat_new.x $^ test_nat_new.f90
+test_nat_new: extra/tile/t4gen.f extra/tile/t4man.f extra/tile/t4int.f \
+			  extra/tile/t4que.f extra/tile/t4int.f90
+	$(FC) $(DFLAGS) $(FLAGS) -o test_nat_new.x $^ $(testdir)/test_nat_new.f90
 	@echo " "
 	@echo "    test_nat_new.x is ready."
 	@echo " "
 
 # Program to test distance calculations using the geographiclib library
 test_geodinverse: $(objdir)/planet.o $(objdir)/geodesic.o
-	$(FC) $(DFLAGS) $(FLAGS) -o test_geodinverse.x $^ test_geodinverse.f90
+	$(FC) $(DFLAGS) $(FLAGS) -o test_geodinverse.x $^ $(testdir)/test_geodinverse.f90
 	@echo " "
 	@echo "    test_geodinverse.x is ready."
 	@echo " "
 
 # Program to test polygon calculations
 test_pointpoly: $(objdir)/polygons.o
-	$(FC) $(DFLAGS) $(FLAGS) -o test_pointpoly.x $^ test_pointpoly.f90 $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_pointpoly.x $^ $(testdir)/test_pointpoly.f90 $(LFLAGS)
 	@echo " "
 	@echo "    test_pointpoly.x is ready."
 	@echo " "
 
 # Program to test custom polygon calculations
 test_polygon: $(objdir)/polygons.o $(objdir)/index.o
-	$(FC) $(DFLAGS) $(FLAGS) -o test_polygon.x $^ test_polygon.f90 $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_polygon.x $^ $(testdir)/test_polygon.f90 $(LFLAGS)
 	@echo " "
 	@echo "    test_polygon.x is ready."
 	@echo " "

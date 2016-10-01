@@ -122,7 +122,7 @@ program test
     call grid_allocate(gridhi,vargauss)
     
     call gaussian_kernel(sigma=0.1,kernel=kernel)
-    call convolve(real(varhi), kernel, vargauss, mask=real(maskhi))
+    call convolve(real(varhi), kernel, vargauss, mask=maskhi.eq.1)
 
     call nc_write(file_outhi,"zs_gauss",vargauss,dim1="xc",dim2="yc")
 
