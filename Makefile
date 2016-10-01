@@ -12,6 +12,7 @@ usage:
 
 # PATH options
 objdir = .obj
+srcdir = src
 
 # netcdf_inc = /usr/include
 # netcdf_lib = /usr/lib
@@ -60,50 +61,50 @@ else
 endif
 
 ## Individual libraries or modules ##
-$(objdir)/ncio.o: ncio.f90
+$(objdir)/ncio.o: $(srcdir)/ncio.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/index.o: index.f90
+$(objdir)/index.o: $(srcdir)/index.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/interp1D.o: interp1D.f90
+$(objdir)/interp1D.o: $(srcdir)/interp1D.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/interp2D.o: interp2D.f90
+$(objdir)/interp2D.o: $(srcdir)/interp2D.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/loess.o: loess.f90 $(objdir)/interp1D.o $(objdir)/index.o
+$(objdir)/loess.o: $(srcdir)/loess.f90 $(objdir)/interp1D.o $(objdir)/index.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/gaussian_filter.o: gaussian_filter.f90
+$(objdir)/gaussian_filter.o: $(srcdir)/gaussian_filter.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/mod_toms526.o: mod_toms526.f90
+$(objdir)/mod_toms526.o: $(srcdir)/mod_toms526.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/interp_time.o: interp_time.f90
+$(objdir)/interp_time.o: $(srcdir)/interp_time.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/polygons.o: polygons.f90
+$(objdir)/polygons.o: $(srcdir)/polygons.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/planet.o: planet.f90
+$(objdir)/planet.o: $(srcdir)/planet.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/geodesic.o: geodesic.f90
+$(objdir)/geodesic.o: $(srcdir)/geodesic.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/projection_oblimap2.o: projection_oblimap2.f90
+$(objdir)/projection_oblimap2.o: $(srcdir)/projection_oblimap2.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/coordinates.o: coordinates.f90 $(objdir)/ncio.o $(objdir)/planet.o $(objdir)/geodesic.o \
+$(objdir)/coordinates.o: $(srcdir)/coordinates.f90 $(objdir)/ncio.o $(objdir)/planet.o $(objdir)/geodesic.o \
 						 $(objdir)/projection_oblimap2.o $(objdir)/gaussian_filter.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/subset.o: subset.f90 $(objdir)/coordinates.o
+$(objdir)/subset.o: $(srcdir)/subset.f90 $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/subset2.o: subset2.f90 $(objdir)/coordinates.o
+$(objdir)/subset2.o: $(srcdir)/subset2.f90 $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 ## Complete programs
