@@ -88,7 +88,7 @@ $(objdir)/interp_time.o: $(srcdir)/interp_time.f90
 $(objdir)/polygons.o: $(srcdir)/polygons.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
-$(objdir)/planet.o: $(srcdir)/planet.f90
+$(objdir)/planet.o: $(srcdir)/planet.f90 $(objdir)/geodesic.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 $(objdir)/geodesic.o: $(srcdir)/geodesic.f90
@@ -107,14 +107,29 @@ $(objdir)/subset.o: $(srcdir)/subset.f90 $(objdir)/coordinates.o
 $(objdir)/subset2.o: $(srcdir)/subset2.f90 $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
+$(objdir)/grid_gen.o: $(srcdir)/grid_gen.f90 $(objdir)/coordinates.o
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
+
+coord_obj = $(objdir)/ncio.o \
+		    $(objdir)/index.o \
+		    $(objdir)/interp1D.o \
+		    $(objdir)/interp2D.o \
+		    $(objdir)/loess.o \
+		    $(objdir)/gaussian_filter.o \
+		    $(objdir)/mod_toms526.o \
+		    $(objdir)/interp_time.o \
+		    $(objdir)/polygons.o \
+		    $(objdir)/planet.o \
+		    $(objdir)/geodesic.o \
+		    $(objdir)/projection_oblimap2.o \
+		    $(objdir)/coordinates.o \
+		    $(objdir)/subset2.o \
+		    $(objdir)/grid_gen.o 
+
 ## Complete programs
 
 # coordinates static library - using subset2
-coord-static: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
-	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
-	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/mod_toms526.o $(objdir)/gaussian_filter.o \
-	$(objdir)/loess.o $(objdir)/interp_time.o \
-	$(objdir)/subset2.o $(objdir)/coordinates.o
+coord-static: $(coord_obj)
 	ar rc libcoordinates.a $^
 	@echo " "
 	@echo "    libcoordinates.a is ready."
