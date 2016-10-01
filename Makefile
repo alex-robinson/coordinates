@@ -136,10 +136,7 @@ coord-static: $(coord_obj)
 	@echo " "
 
 # coordinates shared library - using subset2
-coord-shared: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
-	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
-	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
-	$(objdir)/subset2.o $(objdir)/coordinates.o
+coord-shared: $(coord_obj)
 	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates.so $^ $(LFLAGS)
 	@echo " "
 	@echo "    libcoordinates.so is ready."
@@ -186,10 +183,10 @@ test_proj: coord-static
 	@echo "    test_proj.x is ready."
 	@echo " "
 
-proj_etopo1: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o proj_etopo1.x proj_etopo1.f90 libcoordinates.a -L. $(LFLAGS)
+test_proj_etopo1: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o test_proj_etopo1.x test_proj_etopo1.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "
-	@echo "    proj_etopo1.x is ready."
+	@echo "    test_proj_etopo1.x is ready."
 	@echo " "
 
 test_interp: coord-static
@@ -229,21 +226,21 @@ test_nat_new: tile/t4gen.f tile/t4man.f tile/t4int.f tile/t4que.f tile/t4int.f90
 	@echo " "
 
 # Program to test distance calculations using the geographiclib library
-geodinverse: $(objdir)/planet.o $(objdir)/geodesic.o
-	$(FC) $(DFLAGS) $(FLAGS) -o geodinverse.x $^ geodinverse.f90
+test_geodinverse: $(objdir)/planet.o $(objdir)/geodesic.o
+	$(FC) $(DFLAGS) $(FLAGS) -o test_geodinverse.x $^ test_geodinverse.f90
 	@echo " "
-	@echo "    geodinverse.x is ready."
+	@echo "    test_geodinverse.x is ready."
 	@echo " "
 
 # Program to test polygon calculations
-Pointpoly: $(objdir)/polygons.o
-	$(FC) $(DFLAGS) $(FLAGS) -o Pointpoly.x $^ Pointpoly.f90 $(LFLAGS)
+test_pointpoly: $(objdir)/polygons.o
+	$(FC) $(DFLAGS) $(FLAGS) -o test_pointpoly.x $^ test_pointpoly.f90 $(LFLAGS)
 	@echo " "
-	@echo "    Pointpoly.x is ready."
+	@echo "    test_pointpoly.x is ready."
 	@echo " "
 
 # Program to test custom polygon calculations
-poly: $(objdir)/polygons.o $(objdir)/index.o
+test_polygon: $(objdir)/polygons.o $(objdir)/index.o
 	$(FC) $(DFLAGS) $(FLAGS) -o test_polygon.x $^ test_polygon.f90 $(LFLAGS)
 	@echo " "
 	@echo "    test_polygon.x is ready."
