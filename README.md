@@ -2,8 +2,10 @@
 # coordinates
 
 The coordinates library provides functions to manage grids
-and aribirary sets of points, including interpolation and mapping
-between different coordinate systems.
+and arbitrary sets of points, including interpolation and mapping
+between different coordinate systems. It also contains several helper
+modules that are useful generally for the manipulation of sets of
+points and grids. 
 
 ## coordinates data types
 

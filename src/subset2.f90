@@ -2,7 +2,8 @@
 
 module subset2
 
-    use coordinates
+    use coordinates 
+    use coordinates_mapping
 !     use interp2D
     use ncio 
 

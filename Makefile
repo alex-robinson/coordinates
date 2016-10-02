@@ -102,6 +102,9 @@ $(objdir)/coordinates.o: $(srcdir)/coordinates.f90 $(objdir)/ncio.o $(objdir)/pl
 						 $(objdir)/projection_oblimap2.o $(objdir)/gaussian_filter.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
+$(objdir)/coordinates_mapping.o: $(srcdir)/coordinates_mapping.f90 $(objdir)/coordinates.o
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
+
 $(objdir)/subset.o: $(srcdir)/subset.f90 $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
@@ -124,6 +127,7 @@ coord_obj = $(objdir)/ncio.o \
 		    $(objdir)/geodesic.o \
 		    $(objdir)/projection_oblimap2.o \
 		    $(objdir)/coordinates.o \
+		    $(objdir)/coordinates_mapping.o \
 		    $(objdir)/subset2.o \
 		    $(objdir)/grid_gen.o 
 
