@@ -1,10 +1,6 @@
-
-
-
-
-
-
 module planet
+
+    use geodesic
 
     implicit none 
 
@@ -94,8 +90,6 @@ contains
 
     function planet_distance(a,f,lon1,lat1,lon2,lat2)
 
-        use geodesic
-
         implicit none 
 
         real(dp) :: planet_distance
@@ -162,8 +156,6 @@ contains
     end function spherical_distance
 
     function planet_area(a,f,lons,lats)
-
-        use geodesic
 
         implicit none 
 

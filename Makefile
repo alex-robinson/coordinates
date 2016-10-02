@@ -114,6 +114,10 @@ $(objdir)/subset2.o: $(srcdir)/subset2.f90 $(objdir)/coordinates.o
 $(objdir)/grid_gen.o: $(srcdir)/grid_gen.f90 $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
+$(objdir)/interp2D_conservative.o: $(srcdir)/interp2D_conservative.f90 \
+								   $(objdir)/coordinates.o $(objdir)/coordinates_mapping.o
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
+
 coord_obj = $(objdir)/ncio.o \
 		    $(objdir)/index.o \
 		    $(objdir)/interp1D.o \
@@ -129,7 +133,8 @@ coord_obj = $(objdir)/ncio.o \
 		    $(objdir)/coordinates.o \
 		    $(objdir)/coordinates_mapping.o \
 		    $(objdir)/subset2.o \
-		    $(objdir)/grid_gen.o 
+		    $(objdir)/grid_gen.o \
+		    $(objdir)/interp2D_conservative.o
 
 coord0_obj = $(objdir)/ncio.o \
 		    $(objdir)/index.o \

@@ -174,6 +174,9 @@ module geodesic
     integer :: digits, maxit1, maxit2
     logical :: init = .FALSE.
 
+    private 
+    public :: direct, invers, area 
+
 contains 
 
       subroutine direct(a, f, lat1, lon1, azi1, s12a12, arcmod, &
