@@ -3,6 +3,7 @@
 module subset
 
     use coordinates
+    use coordinates_mapping
 !     use interp2D
     use ncio 
 

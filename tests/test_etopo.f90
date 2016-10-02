@@ -3,6 +3,7 @@ program test_etopo
 
     use ncio 
     use coordinates
+    use coordinates_mapping 
     use mod_toms526 
 
     implicit none

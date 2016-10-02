@@ -8,6 +8,7 @@ program test_ccsm3
 
     use ncio 
     use coordinates
+    use coordinates_mapping 
     
     implicit none
 

@@ -8,7 +8,8 @@ program test_MAR
 
     use ncio 
     use coordinates
-
+    use coordinates_mapping 
+    
     implicit none
 
     type(grid_class) :: gMAR, gSICO

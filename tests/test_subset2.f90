@@ -8,6 +8,7 @@ program test_subset
 
     use ncio 
     use coordinates
+    use coordinates_mapping 
     use subset2 
     use interp2D
 

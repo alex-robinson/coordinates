@@ -131,6 +131,23 @@ coord_obj = $(objdir)/ncio.o \
 		    $(objdir)/subset2.o \
 		    $(objdir)/grid_gen.o 
 
+coord0_obj = $(objdir)/ncio.o \
+		    $(objdir)/index.o \
+		    $(objdir)/interp1D.o \
+		    $(objdir)/interp2D.o \
+		    $(objdir)/loess.o \
+		    $(objdir)/gaussian_filter.o \
+		    $(objdir)/mod_toms526.o \
+		    $(objdir)/interp_time.o \
+		    $(objdir)/polygons.o \
+		    $(objdir)/planet.o \
+		    $(objdir)/geodesic.o \
+		    $(objdir)/projection_oblimap2.o \
+		    $(objdir)/coordinates.o \
+		    $(objdir)/coordinates_mapping.o \
+		    $(objdir)/subset.o \
+		    $(objdir)/grid_gen.o 
+
 ## Complete programs
 
 # coordinates static library - using subset2
@@ -148,10 +165,7 @@ coord-shared: $(coord_obj)
 	@echo " "
 
 # coordinates shared library - using subset
-coord0-shared: $(objdir)/ncio.o $(objdir)/index.o $(objdir)/polygons.o \
-	$(objdir)/geodesic.o $(objdir)/planet.o $(objdir)/projection_oblimap2.o \
-	$(objdir)/interp1D.o $(objdir)/interp2D.o $(objdir)/interp_time.o \
-	$(objdir)/subset.o $(objdir)/coordinates.o
+coord0-shared: $(coord0_obj)
 	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates0.so $^ $(LFLAGS)
 	@echo " "
 	@echo "    libcoordinates0.so is ready."

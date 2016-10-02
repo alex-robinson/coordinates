@@ -6,6 +6,7 @@ program test
     use interp2D
     use interp_time
     use coordinates 
+    use coordinates_mapping 
     use ncio 
 
     use gaussian_filter 

@@ -4,6 +4,7 @@
 program test_climber
     
     use coordinates
+    use coordinates_mapping 
     use ncio 
 
     use gaussian_filter 
