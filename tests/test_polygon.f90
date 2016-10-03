@@ -25,8 +25,8 @@ program test_points
     xx = [0.0,1.0,1.0,0.0]
     yy = [0.0,0.0,1.0,1.0]
 
-    x = 1.0 
-    y = 0.0 
+    x = 0.1 
+    y = 0.1 
 
     write(*,*) "Points inside polygon?"
     inside = point_in_polygon(x, y, xx, yy)

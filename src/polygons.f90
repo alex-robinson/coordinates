@@ -33,9 +33,12 @@ module polygons
 
     interface point_in_polygon 
         module procedure point_is_inside_poly
+        module procedure points_1D_is_inside_poly
+        module procedure points_2D_is_inside_poly
         module procedure point_is_inside_points
         module procedure points_1D_is_inside_points
         module procedure points_2D_is_inside_points   
+        
     end interface 
 
     private 
@@ -201,10 +204,13 @@ contains
     end function ray_intersects_seg
     
     ! ## Functions to test individual points inside of polygons ##
-    function point_is_inside_poly(p, pol) result(inside)
-        logical :: inside
+    function point_is_inside_poly_internal(p, pol) result(inside)
+        
+        implicit none 
+
         type(point),   intent(in) :: p
         type(polygon), intent(in) :: pol
+        logical :: inside
 
         integer :: i, cnt, pa, pb
 
@@ -218,12 +224,71 @@ contains
         inside = .true.
         if ( mod(cnt, 2) == 0 ) inside = .false.
 
-    end function point_is_inside_poly
- 
+    end function point_is_inside_poly_internal
+    
+    function point_is_inside_poly(x, y, pol) result(inside)
+        
+        implicit none 
 
+        real(4), intent(in) :: x, y
+        type(polygon), intent(in) :: pol
+        logical :: inside
+
+        type(point) :: p 
+
+        p = point(x,y)
+        inside = point_is_inside_poly_internal(p,pol)
+
+    end function point_is_inside_poly
+    
+    function points_1D_is_inside_poly(x, y, pol) result(inside)
+
+        implicit none 
+
+        real(4),       intent(in) :: x(:), y(:)
+        type(polygon), intent(in) :: pol
+        logical :: inside(size(x))
+
+        integer :: i 
+        type(point) :: p 
+
+        do i = 1, size(x) 
+            p = point(x(i),y(i))
+            inside(i) = point_is_inside_poly_internal(p,pol)
+        end do 
+
+        return 
+
+    end function points_1D_is_inside_poly
+ 
+    function points_2D_is_inside_poly(x, y, pol) result(inside)
+
+        implicit none 
+
+        real(4),       intent(in) :: x(:,:), y(:,:)
+        type(polygon), intent(in) :: pol
+        logical :: inside(size(x,1),size(x,2))
+
+        integer :: i, j 
+        type(point) :: p 
+
+        do i = 1, size(x,1)
+        do j = 1, size(x,2) 
+            p = point(x(i,j),y(i,j))
+            inside(i,j) = point_is_inside_poly_internal(p,pol)
+        end do 
+        end do 
+        
+        return 
+
+    end function points_2D_is_inside_poly
+ 
     function point_is_inside_points(x, y, xx, yy) result(inside)
-        real(4) :: x, y
-        real(4) :: xx(:), yy(:) 
+
+        implicit none 
+
+        real(4), intent(in) :: x, y
+        real(4), intent(in) :: xx(:), yy(:) 
         logical :: inside
 
         type(point)   :: p
@@ -231,62 +296,59 @@ contains
 
         integer :: i, cnt, pa, pb
 
-        ! Create point from values
-        p = point(x,y)
-
-        ! Create polygon from border values
-        pol = create_polygon(xx,yy)
-
-        ! Calculate number of ray intersections
-        cnt = 0
-        do i = lbound(pol%vertices,1), ubound(pol%vertices,1), 2
-            pa = pol%vertices(i)
-            pb = pol%vertices(i+1)
-            if ( ray_intersects_seg(p, pol%points(pa), pol%points(pb)) ) cnt = cnt + 1
-        end do
-
-        ! If count is even, point is outside polygon
-        inside = .true.
-        if ( mod(cnt, 2) == 0 ) inside = .false.
+        p = point(x,y)                       ! Create point from values
+        pol = create_polygon(xx,yy)          ! Create polygon from border values
+        inside = point_is_inside_poly_internal(p,pol)
 
     end function point_is_inside_points
  
-
     function points_1D_is_inside_points(x, y, xx, yy) result(inside)
-        real(4) :: x(:), y(:)
-        real(4) :: xx(:), yy(:) 
+
+        implicit none 
+
+        real(4), intent(in) :: x(:), y(:)
+        real(4), intent(in) :: xx(:), yy(:) 
         logical :: inside(size(x))
 
+        type(point)   :: p 
+        type(polygon) :: pol
         integer :: i 
 
+        pol = create_polygon(xx,yy)          ! Create polygon from border values
+
         do i = 1, size(x) 
-            inside(i) = point_is_inside_points(x(i),y(i),xx,yy)
+            p = point(x(i),y(i))
+            inside(i) = point_is_inside_poly_internal(p,pol)
         end do 
 
         return 
 
     end function points_1D_is_inside_points
- 
+    
     function points_2D_is_inside_points(x, y, xx, yy) result(inside)
-        real(4) :: x(:,:), y(:,:)
-        real(4) :: xx(:), yy(:) 
+
+        implicit none 
+
+        real(4), intent(in) :: x(:,:), y(:,:)
+        real(4), intent(in) :: xx(:), yy(:) 
         logical :: inside(size(x,1),size(x,2))
+
+        type(point)   :: p 
+        type(polygon) :: pol 
 
         integer :: i, j 
 
+        pol = create_polygon(xx,yy)          ! Create polygon from border values
+
         do i = 1, size(x,1)
         do j = 1, size(x,2) 
-            inside(i,j) = point_is_inside_points(x(i,j),y(i,j),xx,yy)
+            p = point(x(i,j),y(i,j))
+            inside(i,j) = point_is_inside_poly_internal(p,pol)
         end do 
         end do 
         
         return 
 
     end function points_2D_is_inside_points
- 
-
-
-
-
 
 end module polygons

@@ -16,6 +16,7 @@ module coordinates_mapping
     integer,  parameter :: dp  = kind(1.d0)
     integer,  parameter :: sp  = kind(1.0)
     real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
+    real(dp), parameter :: mv = -9999.0_dp 
     
     real(dp), parameter :: ERR_DIST = 1E8_dp 
     integer,  parameter :: ERR_IND  = -1 
@@ -1217,9 +1218,9 @@ contains
 
                 if ( ntot .gt. 1) then 
 
-                    ! Calculate the weighted average
+                    ! Calculate the weighted average (using distance weighting)
                     var2(i)  = weighted_ave(v_neighb(1:ntot),weight_neighb(1:ntot))
-!                     var2(i)  = weighted_ave_shepard(v_neighb(1:ntot),dist_neighb(1:ntot),shephard_exponent=2.d0)
+!                   var2(i)  = weighted_ave_shepard(v_neighb(1:ntot),dist_neighb(1:ntot),shephard_exponent=2.d0)
                     mask2_local(i) = 1
 
                 else if (ntot .eq. 1) then
@@ -1272,7 +1273,7 @@ contains
 
     ! === HELPER SUBROUTINES === 
 
-    
+
 
     subroutine quadrant_search(dist,quadrant,max_distance)
         ! Set distances to max distance if a neighbor in a given quadrant

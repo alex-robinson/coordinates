@@ -7,6 +7,8 @@ program test
     use interp_time
     use coordinates 
     use coordinates_mapping 
+    use interp2D_conservative 
+
     use ncio 
 
     use gaussian_filter 
@@ -126,5 +128,24 @@ program test
     call convolve(real(varhi), kernel, vargauss, mask=maskhi.eq.1)
 
     call nc_write(file_outhi,"zs_gauss",vargauss,dim1="xc",dim2="yc")
+
+
+    ! ===== TEST CONSERVATIVE INTERPOLATION  =====
+
+    write(*,*) 
+    write(*,*) "Testing conservative interpolation ..."
+    write(*,*) 
+
+    ! Re-load data to avoid missing values 
+    call nc_read(file_inputhi,"zs",varhi)
+    write(*,*) "zs range: ",minval(varhi), maxval(varhi)
+
+    call nc_read(file_inputhi,"mask",maskhi)
+    write(*,*) "mask range: ",minval(maskhi), maxval(maskhi)
+
+    call map_field_conservative(gridhi,grid,"zs",varhi,var,missing_value)
+
+    write(*,*) "zs range interp: ",minval(var), maxval(var)
+
 
 end program test

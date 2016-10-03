@@ -189,6 +189,12 @@ test_etopo: coord-static
 	@echo "    test_etopo.x is ready."
 	@echo " "
 
+test_MAR: coord-static
+	$(FC) $(DFLAGS) $(FLAGS) -o test_MAR.x $(testdir)/test_MAR.f90 libcoordinates.a -L. $(LFLAGS)
+	@echo " "
+	@echo "    test_MAR.x is ready."
+	@echo " "
+
 test_subset: coord0-shared
 	$(FC) $(DFLAGS) $(FLAGS) -o test_subset.x $(testdir)/test_subset.f90 -L. -lcoordinates0 $(LFLAGS)
 	@echo " "
