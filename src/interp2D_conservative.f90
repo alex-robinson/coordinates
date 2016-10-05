@@ -69,20 +69,8 @@ contains
         missing_val = mv 
         if (present(missing_value)) missing_val = missing_value
 
-        ! From the coordinates package, there are some distance calculation routines
-        ! already available:
-        write(*,*) "Calculating distance..."
-
-        x1 = grid1%G%x(1)
-        y1 = grid1%G%y(1)
-        x2 = grid2%G%x(5)
-        y2 = grid2%G%y(5)
-        write(*,"(a,2f10.2,a,2f10.2,a,f10.2)") "Distance [km]: ",x1, y1, " => ", x2, y2, " = ", &
-                                               cartesian_distance(x1,y1,x2,y2)
-        write(*,*) 
-
-        ! Initially set all values to something 
-        var2 = -10.d0 
+        ! Initially set all values to missing
+        var2 = missing_val
 
         ! A loop to get started 
         do j = 1, grid2%G%ny
@@ -99,13 +87,13 @@ contains
                                               xout=grid2%x(i,j),yout=grid2%y(i,j), &
                                               dxout=grid2%G%dx,dyout=grid2%G%dy)
 
-                if (sum(area) .gt. 0.d0) then 
+                if (sum(area(ii,jj)) .gt. 0.d0) then 
 
                     var2(i,j) = sum(var1(ii,jj)*area(ii,jj),mask=area(ii,jj).gt.0.d0) &
                                   / sum(area(ii,jj),mask=area(ii,jj).gt.0.d0)
 
                 else 
-                    var2(i,j) = -5.d0 
+                    var2(i,j) = missing_val 
 
                 end if 
 
@@ -115,6 +103,66 @@ contains
         return 
 
     end subroutine map_field_conservative 
+
+    function interpconserv1_weights(x,y,dx,dy,xout,yout,dxout,dyout,latlon,missing_value) result(area)
+        ! Calculate 1st order conservative interpolation for a 
+        ! point given its nearest neighbors  
+        real(dp), intent(IN) :: x(:,:), y(:,:), dx, dy 
+        real(dp), intent(IN) :: xout, yout, dxout, dyout 
+        logical,  intent(IN), optional :: latlon
+        real(dp), intent(IN), optional :: missing_value  
+        real(dp) :: area(size(x,1),size(x,2))
+
+        ! Local variables
+        logical  :: is_latlon 
+        type(polygon)       :: pol  
+        integer, parameter :: nx = 50, ny = 50, npts = nx*ny
+        real(dp) :: x1, y1
+        integer  :: npts_in 
+        integer :: i, j, now  
+        real(dp) :: missing_val
+        real(dp) :: x_vec(size(x,1)*size(x,2)), y_vec(size(x,1)*size(x,2)) 
+        real(dp) :: area_vec(size(x,1)*size(x,2))
+
+        is_latlon = .FALSE. 
+        if (present(latlon)) is_latlon = latlon 
+
+        missing_val = mv 
+        if (present(missing_value)) missing_val = missing_value
+
+        ! Generate polygon representing boundaries of target point 
+        pol = create_polygon(real([xout-dxout/2.d0,xout-dxout/2.d0,xout+dxout/2.d0,xout+dxout/2.d0]), &
+                             real([yout-dyout/2.d0,yout+dyout/2.d0,yout+dyout/2.d0,yout-dyout/2.d0]))
+
+        x_vec = reshape(x,[size(x_vec)])
+        y_vec = reshape(y,[size(y_vec)])
+        
+        ! Loop over source points and get the area of each source
+        ! polygon that is inside of the target polygon 
+        ! - Save the area (absolute area, not fraction)
+        area_vec = 0.d0 
+        do now = 1, size(x_vec) 
+         
+            npts_in = 0
+            do i = 1, nx
+            do j = 1, ny 
+                x1 = (x_vec(now)-dx/2.d0) + (dx)*dble(i-1)/dble(nx-1) 
+                y1 = (y_vec(now)-dy/2.d0) + (dy)*dble(j-1)/dble(ny-1)
+                if (point_in_polygon(real(x1),real(y1),pol)) npts_in = npts_in+1
+
+            end do
+            end do 
+            
+            area_vec(now) = dble(npts_in)/dble(npts) * dx*dy 
+
+        end do 
+
+        ! Return 2D area 
+        area = reshape(area_vec,[size(x,1),size(x,2)])
+
+        return 
+
+    end function interpconserv1_weights
 
 !     subroutine map_calc_conserv1_weights_grid_grid(map,grid1)
 
@@ -178,125 +226,5 @@ contains
 !         return 
 
 !     end subroutine map_calc_conserv1_weights_points_points
-
-    function interpconserv1_weights(x,y,dx,dy,xout,yout,dxout,dyout,latlon,missing_value) result(area)
-        ! Calculate 1st order conservative interpolation for a 
-        ! point given its nearest neighbors  
-        real(dp), intent(IN) :: x(:,:), y(:,:), dx, dy 
-        real(dp), intent(IN) :: xout, yout, dxout, dyout 
-        logical,  intent(IN), optional :: latlon
-        real(dp), intent(IN), optional :: missing_value  
-        real(dp) :: area(size(x,1),size(x,2))
-
-        ! Local variables
-        logical  :: is_latlon 
-        type(polygon)       :: pol  
-        integer, parameter :: nx = 50, ny = 50, npts = nx*ny
-        real(dp) :: x1, y1
-        integer  :: npts_in 
-        integer :: i, j, now  
-        real(dp) :: missing_val
-        real(dp) :: x_vec(size(x,1)*size(x,2)), y_vec(size(x,1)*size(x,2)) 
-        real(dp) :: area_vec(size(x,1)*size(x,2))
-
-        is_latlon = .FALSE. 
-        if (present(latlon)) is_latlon = latlon 
-
-        missing_val = mv 
-        if (present(missing_value)) missing_val = missing_value
-
-        ! Generate polygon representing boundaries of target point 
-        pol = create_polygon(real([xout-dxout/2.d0,xout-dxout/2.d0,xout+dxout/2.d0,xout+dxout/2.d0]), &
-                             real([yout-dyout/2.d0,yout+dyout/2.d0,yout+dyout/2.d0,yout-dyout/2.d0]))
-
-        x_vec = reshape(x,[size(x_vec)])
-        y_vec = reshape(y,[size(y_vec)])
-        
-        ! Loop over source points and get the area of each source
-        ! polygon that is inside of the target polygon 
-        ! - Save the area (absolute area, not fraction)
-        area_vec = 0.d0 
-        do now = 1, size(x_vec) 
-         
-            npts_in = 0
-            do i = 1, nx
-            do j = 1, ny 
-                x1 = (x_vec(now)-dx/2.d0) + (dx)*dble(i-1)/dble(nx-1) 
-                y1 = (y_vec(now)-dy/2.d0) + (dy)*dble(j-1)/dble(ny-1)
-                if (point_in_polygon(real(x1),real(y1),pol)) npts_in = npts_in+1
-
-            end do
-            end do 
-            
-            area_vec(now) = dble(npts_in)/dble(npts) * dx*dy 
-
-        end do 
-
-        ! Return 2D area 
-        area = reshape(area_vec,[size(x,1),size(x,2)])
-
-        return 
-
-    end function interpconserv1_weights
-
-    function interpconserv1(x,y,z,dx,dy,xout,yout,dxout,dyout,latlon,missing_value) result(zout)
-        ! Calculate 1st order conservative interpolation for a 
-        ! point given its nearest neighbors  
-        real(dp) :: x(:), y(:), z(:), dx, dy 
-        real(dp) :: xout, yout, dxout, dyout 
-        logical,  optional :: latlon
-        real(dp), optional :: missing_value  
-        real(dp) :: zout 
-
-        ! Local variables
-        logical  :: is_latlon 
-        type(polygon)       :: pol  
-        integer, parameter :: nx = 20, ny = 20, npts = nx*ny
-        real(dp) :: x1, y1, area(size(x))
-        integer  :: npts_in 
-        integer :: i, j, now  
-        real(dp) :: missing_val
-
-        is_latlon = .FALSE. 
-        if (present(latlon)) is_latlon = latlon 
-
-        missing_val = mv 
-        if (present(missing_value)) missing_val = missing_value
-
-        ! Generate polygon representing boundaries of target point 
-        pol = create_polygon(real([xout-dxout/2.d0,xout-dxout/2.d0,xout+dxout/2.d0,xout+dxout/2.d0]), &
-                             real([yout-dyout/2.d0,yout+dyout/2.d0,yout+dyout/2.d0,yout-dyout/2.d0]))
-
-        ! Loop over source points and get the area of each source
-        ! polygon that is inside of the target polygon 
-        ! - Save the area (absolute area, not fraction)
-        do now = 1, size(x) 
-        
-            if (z(now) .ne. missing_val) then 
-                npts_in = 0
-                do i = 1, nx
-                do j = 1, ny 
-                    x1 = (x(now)-dx/2.d0) + (dx)*dble(i-1)/dble(nx-1) 
-                    y1 = (y(now)-dy/2.d0) + (dy)*dble(j-1)/dble(ny-1)
-                    if (point_in_polygon(real(x1),real(y1),pol)) npts_in = npts_in+1
-                end do
-                end do 
-                
-                area(now) = dble(npts_in)/dble(npts) * dx*dy 
-            else 
-                area(now) = 0.d0 
-            end if 
-
-        end do 
-
-        if (sum(area) .gt. 0.d0) then 
-            zout = sum(z*area)/sum(area)
-        else 
-            zout = mv 
-        end if 
-
-        return 
-
-    end function interpconserv1
 
 end module interp2D_conservative 

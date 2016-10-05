@@ -54,6 +54,9 @@ contains
         type(point) :: c
 
         c = point(a%x - b%x, a%y - b%y)
+
+        return 
+        
     end function pt_sub
  
     function pt_len(a) result(l)
@@ -61,6 +64,9 @@ contains
         real :: l
 
         l = sqrt((a%x)**2 + (a%y)**2)
+
+        return 
+        
     end function pt_len
  
 
@@ -80,6 +86,8 @@ contains
         create_polygon_vts%points   = pts
         create_polygon_vts%vertices = vt
 
+        return 
+        
     end function create_polygon_vts
     
     function create_polygon_novts(pts)
@@ -111,6 +119,8 @@ contains
         create_polygon_novts%points   = pts
         create_polygon_novts%vertices = vt
 
+        return 
+        
     end function create_polygon_novts
     
     function create_polygon_vals(xx,yy)
@@ -149,6 +159,8 @@ contains
         allocate(create_polygon_vals%points(np), create_polygon_vals%vertices(nv))
         create_polygon_vals%points   = pts
         create_polygon_vals%vertices = vt
+
+        return 
 
     end function create_polygon_vals
  
@@ -210,7 +222,9 @@ contains
                 intersect = .false.
             end if
         end if
- 
+    
+        return 
+        
     end function ray_intersects_seg
     
     ! ## Functions to test individual points inside of polygons ##
@@ -234,13 +248,15 @@ contains
         inside = .true.
         if ( mod(cnt, 2) == 0 ) inside = .false.
 
+        return 
+        
     end function point_is_inside_poly_internal
     
     function point_is_inside_poly(x, y, pol) result(inside)
         
         implicit none 
 
-        real(4), intent(in) :: x, y
+        real(4),       intent(in) :: x, y
         type(polygon), intent(in) :: pol
         logical :: inside
 
@@ -249,6 +265,8 @@ contains
         p = point(x,y)
         inside = point_is_inside_poly_internal(p,pol)
 
+        return 
+        
     end function point_is_inside_poly
     
     function points_1D_is_inside_poly(x, y, pol) result(inside)
@@ -310,6 +328,8 @@ contains
         pol = create_polygon(xx,yy)          ! Create polygon from border values
         inside = point_is_inside_poly_internal(p,pol)
 
+        return 
+        
     end function point_is_inside_points
  
     function points_1D_is_inside_points(x, y, xx, yy) result(inside)
