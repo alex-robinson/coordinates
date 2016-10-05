@@ -75,6 +75,7 @@ contains
         np = size(pts,1)
         nv = size(vt,1)
 
+        call free_polygon(create_polygon_vts)
         allocate(create_polygon_vts%points(np), create_polygon_vts%vertices(nv))
         create_polygon_vts%points   = pts
         create_polygon_vts%vertices = vt
@@ -93,6 +94,7 @@ contains
         nv = np*2
 
         ! Define vertices (loop around point indices)
+        if (allocated(vt)) deallocate(vt)
         allocate(vt(nv)) 
         vt(1)  = 1
         vt(nv) = 1 
@@ -104,6 +106,7 @@ contains
             end if 
         end do 
 
+        call free_polygon(create_polygon_novts)
         allocate(create_polygon_novts%points(np), create_polygon_novts%vertices(nv))
         create_polygon_novts%points   = pts
         create_polygon_novts%vertices = vt
@@ -123,12 +126,14 @@ contains
         nv = np*2
 
         ! Define pts 
+        if (allocated(pts)) deallocate(pts)
         allocate(pts(np))
         do i = 1, np 
             pts(i) = point(xx(i),yy(i))
         end do 
 
         ! Define vertices (loop around point indices)
+        if (allocated(vt)) deallocate(vt)
         allocate(vt(nv)) 
         vt(1)  = 1
         vt(nv) = 1 
@@ -140,6 +145,7 @@ contains
             end if 
         end do 
 
+        call free_polygon(create_polygon_vals)
         allocate(create_polygon_vals%points(np), create_polygon_vals%vertices(nv))
         create_polygon_vals%points   = pts
         create_polygon_vals%vertices = vt
@@ -147,9 +153,13 @@ contains
     end function create_polygon_vals
  
     subroutine free_polygon(pol)
+
         type(polygon), intent(inout) :: pol
 
-        deallocate(pol%points, pol%vertices)
+        if (allocated(pol%points))   deallocate(pol%points)
+        if (allocated(pol%vertices)) deallocate(pol%vertices)
+        
+        return 
 
     end subroutine free_polygon
  

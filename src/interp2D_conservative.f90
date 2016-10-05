@@ -7,6 +7,7 @@ module interp2D_conservative
     use oblimap_projection_module
     use polygons 
     use geodesic 
+    use index 
 
     implicit none 
 
@@ -16,13 +17,13 @@ module interp2D_conservative
     real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
     real(dp), parameter :: mv = MISSING_VALUE_DEFAULT
 
-    interface map_calc_conserv1_weights
-        module procedure map_calc_conserv1_weights_points_points
-        module procedure map_calc_conserv1_weights_grid_grid
-    end interface 
+!     interface map_calc_conserv1_weights
+!         module procedure map_calc_conserv1_weights_points_points
+!         module procedure map_calc_conserv1_weights_grid_grid
+!     end interface 
 
     private 
-    public :: map_calc_conserv1_weights
+!     public :: map_calc_conserv1_weights
     public :: map_field_conservative
 
 contains 
@@ -42,6 +43,9 @@ contains
 
         double precision :: x1, y1, x2, y2 
         integer :: i, j 
+        integer, allocatable :: ii(:), jj(:) 
+
+        real(dp) :: area(size(grid1%x,1),size(grid1%x,2))
 
         ! Helpful fields available from grid_class objects grid and grid1:
         ! grid%x    : 2D array of projected x-values [km]
@@ -77,13 +81,33 @@ contains
                                                cartesian_distance(x1,y1,x2,y2)
         write(*,*) 
 
+        ! Initially set all values to something 
+        var2 = -10.d0 
+
         ! A loop to get started 
-        do j = 1, grid2%G%ny 
+        do j = 1, grid2%G%ny
+            write(*,*) "j / ny: ", j, grid2%G%ny 
+
             do i = 1, grid2%G%nx 
 
                 ! == TO DO == 
 
-                var2(i,j) = -10.d0   ! Just a fill value now for the example
+                call which(grid1%G%x .gt. grid2%x(i,j)-grid2%G%dx .and. grid1%G%x .lt. grid2%x(i,j)+grid2%G%dx,ii)
+                call which(grid1%G%y .gt. grid2%y(i,j)-grid2%G%dy .and. grid1%G%y .lt. grid2%y(i,j)+grid2%G%dy,jj)
+                
+                area(ii,jj) = interpconserv1_weights(x=grid1%x(ii,jj),y=grid1%y(ii,jj),dx=grid1%G%dx,dy=grid1%G%dy, &
+                                              xout=grid2%x(i,j),yout=grid2%y(i,j), &
+                                              dxout=grid2%G%dx,dyout=grid2%G%dy)
+
+                if (sum(area) .gt. 0.d0) then 
+
+                    var2(i,j) = sum(var1(ii,jj)*area(ii,jj),mask=area(ii,jj).gt.0.d0) &
+                                  / sum(area(ii,jj),mask=area(ii,jj).gt.0.d0)
+
+                else 
+                    var2(i,j) = -5.d0 
+
+                end if 
 
             end do 
         end do 
@@ -92,86 +116,88 @@ contains
 
     end subroutine map_field_conservative 
 
-    subroutine map_calc_conserv1_weights_grid_grid(map,grid1)
+!     subroutine map_calc_conserv1_weights_grid_grid(map,grid1)
 
-        implicit none 
+!         implicit none 
 
-        type(map_class),  intent(INOUT) :: map
-        type(grid_class), intent(IN)    :: grid1   
+!         type(map_class),  intent(INOUT) :: map
+!         type(grid_class), intent(IN)    :: grid1   
 
-        type(points_class) :: pts1 
-        integer :: i, k, ntot  
+!         type(points_class) :: pts1 
+!         integer :: i, k, ntot  
 
-        ! Convert the grid to points for calculating weights more easily
-        call grid_to_points(grid1,pts1)
+!         ! Convert the grid to points for calculating weights more easily
+!         call grid_to_points(grid1,pts1)
 
-        ! Update the map weights with area inside polygon calculations
-        do i = 1, map%npts  
+!         ! Update the map weights with area inside polygon calculations
+!         do i = 1, map%npts  
  
-            do k = 1, map%nmax 
-                if (map%i(i,k) .le. 0) exit 
-            end do 
-            ntot = k-1 
+!             do k = 1, map%nmax 
+!                 if (map%i(i,k) .le. 0) exit 
+!             end do 
+!             ntot = k-1 
 
-            if (ntot .gt. 0) then
-                ! Update weights if their are neighbors available 
+!             if (ntot .gt. 0) then
+!                 ! Update weights if their are neighbors available 
 
-                map%weight(i,1:ntot) = interpconserv1_weights(x=pts1%lon(map%i(i,1:ntot)),y=pts1%lat(map%i(i,1:ntot)), &
-                                                      dx=grid1%G%dx,dy=grid1%G%dy,xout=map%x(i),yout=map%y(i), &
-                                                      dxout=map%G%dx,dyout=map%G%dy)
-                write(*,*) i, minval(map%weight(i,1:ntot)), maxval(map%weight(i,1:ntot))
-            end if 
+!                 map%weight(i,1:ntot) = interpconserv1_weights(x=pts1%lon(map%i(i,1:ntot)),y=pts1%lat(map%i(i,1:ntot)), &
+!                                                       dx=grid1%G%dx,dy=grid1%G%dy,xout=map%x(i),yout=map%y(i), &
+!                                                       dxout=map%G%dx,dyout=map%G%dy)
+!                 write(*,*) i, minval(map%weight(i,1:ntot)), maxval(map%weight(i,1:ntot))
+!             end if 
 
-        end do 
+!         end do 
 
-        write(*,*) "** Updated map weights to conservative (1st) order scheme."
+!         write(*,*) "** Updated map weights to conservative (1st) order scheme."
 
-        return 
+!         return 
 
-    end subroutine map_calc_conserv1_weights_grid_grid
+!     end subroutine map_calc_conserv1_weights_grid_grid
 
-    subroutine map_calc_conserv1_weights_points_points(map,pts1,dx1,dy1,dx2,dy2)
+!     subroutine map_calc_conserv1_weights_points_points(map,pts1,dx1,dy1,dx2,dy2)
 
-        implicit none 
+!         implicit none 
 
-        type(map_class),    intent(INOUT) :: map
-        type(points_class), intent(IN)    :: pts1 
-        real(dp), intent(IN) :: dx1, dy1, dx2, dy2  
+!         type(map_class),    intent(INOUT) :: map
+!         type(points_class), intent(IN)    :: pts1 
+!         real(dp), intent(IN) :: dx1, dy1, dx2, dy2  
 
-        integer :: i
+!         integer :: i
 
-        ! Update the map weights with area inside polygon calculations
-        do i = 1, map%npts  
+!         ! Update the map weights with area inside polygon calculations
+!         do i = 1, map%npts  
 
-            map%weight(i,:) = interpconserv1_weights(x=pts1%x(map%i(i,:)),y=pts1%y(map%i(i,:)), &
-                                                      dx=dx1,dy=dy1,xout=map%x(i),yout=map%y(i), &
-                                                      dxout=dx2,dyout=dy2)
+!             map%weight(i,:) = interpconserv1_weights(x=pts1%x(map%i(i,:)),y=pts1%y(map%i(i,:)), &
+!                                                       dx=dx1,dy=dy1,xout=map%x(i),yout=map%y(i), &
+!                                                       dxout=dx2,dyout=dy2)
 
-        end do 
+!         end do 
 
-        write(*,*) "** Updated map weights to conservative (1st) order scheme."
+!         write(*,*) "** Updated map weights to conservative (1st) order scheme."
         
-        return 
+!         return 
 
-    end subroutine map_calc_conserv1_weights_points_points
+!     end subroutine map_calc_conserv1_weights_points_points
 
     function interpconserv1_weights(x,y,dx,dy,xout,yout,dxout,dyout,latlon,missing_value) result(area)
         ! Calculate 1st order conservative interpolation for a 
         ! point given its nearest neighbors  
-        real(dp), intent(IN) :: x(:), y(:), dx, dy 
+        real(dp), intent(IN) :: x(:,:), y(:,:), dx, dy 
         real(dp), intent(IN) :: xout, yout, dxout, dyout 
         logical,  intent(IN), optional :: latlon
         real(dp), intent(IN), optional :: missing_value  
-        real(dp) :: area(size(x))
+        real(dp) :: area(size(x,1),size(x,2))
 
         ! Local variables
         logical  :: is_latlon 
         type(polygon)       :: pol  
-        integer, parameter :: nx = 20, ny = 20, npts = nx*ny
+        integer, parameter :: nx = 50, ny = 50, npts = nx*ny
         real(dp) :: x1, y1
         integer  :: npts_in 
         integer :: i, j, now  
         real(dp) :: missing_val
+        real(dp) :: x_vec(size(x,1)*size(x,2)), y_vec(size(x,1)*size(x,2)) 
+        real(dp) :: area_vec(size(x,1)*size(x,2))
 
         is_latlon = .FALSE. 
         if (present(latlon)) is_latlon = latlon 
@@ -183,23 +209,31 @@ contains
         pol = create_polygon(real([xout-dxout/2.d0,xout-dxout/2.d0,xout+dxout/2.d0,xout+dxout/2.d0]), &
                              real([yout-dyout/2.d0,yout+dyout/2.d0,yout+dyout/2.d0,yout-dyout/2.d0]))
 
+        x_vec = reshape(x,[size(x_vec)])
+        y_vec = reshape(y,[size(y_vec)])
+        
         ! Loop over source points and get the area of each source
         ! polygon that is inside of the target polygon 
         ! - Save the area (absolute area, not fraction)
-        do now = 1, size(x) 
+        area_vec = 0.d0 
+        do now = 1, size(x_vec) 
          
             npts_in = 0
             do i = 1, nx
             do j = 1, ny 
-                x1 = (x(now)-dx/2.d0) + (dx)*dble(i-1)/dble(nx-1) 
-                y1 = (y(now)-dy/2.d0) + (dy)*dble(j-1)/dble(ny-1)
+                x1 = (x_vec(now)-dx/2.d0) + (dx)*dble(i-1)/dble(nx-1) 
+                y1 = (y_vec(now)-dy/2.d0) + (dy)*dble(j-1)/dble(ny-1)
                 if (point_in_polygon(real(x1),real(y1),pol)) npts_in = npts_in+1
+
             end do
             end do 
             
-            area(now) = dble(npts_in)/dble(npts) * dx*dy 
+            area_vec(now) = dble(npts_in)/dble(npts) * dx*dy 
 
         end do 
+
+        ! Return 2D area 
+        area = reshape(area_vec,[size(x,1),size(x,2)])
 
         return 
 

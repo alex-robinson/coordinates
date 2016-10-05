@@ -34,6 +34,7 @@ program test
     file_input   = trim(outfldr)//"GRL-50KM_TOPO.nc"
     file_inputhi = trim(outfldr)//"GRL-20KM_TOPO.nc"
     file_outhi   = trim(outfldr)//"GRL-20KM_TOPO1.nc"
+    file_outlo   = trim(outfldr)//"GRL-50KM_TOPO1.nc"
 
     allocate(x(37),y(61))
     call nc_read(file_input,"xc",x)
@@ -111,23 +112,23 @@ program test
 
 
 
-    ! Test Gaussian smoothing
+!     ! Test Gaussian smoothing
 
-    ! Test bilinear interpolation
-    varhi = interp_bilinear(grid%G%x,grid%G%y,var,gridhi%G%x,gridhi%G%y,missing_value)
+!     ! Test bilinear interpolation
+!     varhi = interp_bilinear(grid%G%x,grid%G%y,var,gridhi%G%x,gridhi%G%y,missing_value)
     
-    maskhi = 0
-    where(varhi.eq.missing_value) maskhi = 1
+!     maskhi = 0
+!     where(varhi.eq.missing_value) maskhi = 1
 
-!     call run_gaussian_filter(sigma=2.0, truncate=4.0, kx=5, ky=5, kernel, &
-!                              nx, ny, input, output, mask, has_mask)
+! !     call run_gaussian_filter(sigma=2.0, truncate=4.0, kx=5, ky=5, kernel, &
+! !                              nx, ny, input, output, mask, has_mask)
     
-    call grid_allocate(gridhi,vargauss)
+!     call grid_allocate(gridhi,vargauss)
     
-    call gaussian_kernel(sigma=0.1,kernel=kernel)
-    call convolve(real(varhi), kernel, vargauss, mask=maskhi.eq.1)
+!     call gaussian_kernel(sigma=0.1,kernel=kernel)
+!     call convolve(real(varhi), kernel, vargauss, mask=maskhi.eq.1)
 
-    call nc_write(file_outhi,"zs_gauss",vargauss,dim1="xc",dim2="yc")
+!     call nc_write(file_outhi,"zs_gauss",vargauss,dim1="xc",dim2="yc")
 
 
     ! ===== TEST CONSERVATIVE INTERPOLATION  =====
@@ -143,9 +144,23 @@ program test
     call nc_read(file_inputhi,"mask",maskhi)
     write(*,*) "mask range: ",minval(maskhi), maxval(maskhi)
 
-    call map_field_conservative(gridhi,grid,"zs",varhi,var,missing_value)
+    ! Load low resolution variable for comparison 
+    call nc_read(file_input,"zs",var)
+    write(*,*) "zs range: ",minval(var), maxval(var)
 
+    ! Write file 
+    call grid_write(grid,file_outlo,xnm="xc",ynm="yc",create=.TRUE.)
+    call nc_write(file_outlo,"zs",var,dim1="xc",dim2="yc")
+
+    call map_field_conservative(gridhi,grid,"zs",varhi,var,missing_value)
     write(*,*) "zs range interp: ",minval(var), maxval(var)
 
+    call nc_write(file_outlo,"zs_con",var,dim1="xc",dim2="yc")
+
+    write(*,"(a,3g12.4)") "mass comparison (hi, con, % diff): ", &
+                sum(varhi*gridhi%G%dx*gridhi%G%dy), &
+                sum(var*grid%G%dx*grid%G%dy), & 
+                100*(sum(var*grid%G%dx*grid%G%dy) - sum(varhi*gridhi%G%dx*gridhi%G%dy)) &
+                        / sum(varhi*gridhi%G%dx*gridhi%G%dy)                  
 
 end program test
