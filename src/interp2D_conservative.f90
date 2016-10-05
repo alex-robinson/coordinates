@@ -116,7 +116,7 @@ contains
         ! Local variables
         logical  :: is_latlon 
         type(polygon)       :: pol  
-        integer, parameter :: nx = 50, ny = 50, npts = nx*ny
+        integer, parameter :: nx = 11, ny = 11, npts = nx*ny
         real(dp) :: x1, y1
         integer  :: npts_in 
         integer :: i, j, now  
