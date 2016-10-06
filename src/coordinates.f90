@@ -95,10 +95,15 @@ module coordinates
         module procedure points_allocate_double,  points_allocate_logical
     end interface
 
+    interface compare_coord 
+        module procedure compare_coord_grid_grid, compare_coord_points_points
+    end interface 
+
     private
     public :: points_class, points_init, points_allocate, points_write, points_print 
     public :: grid_axis_class, grid_class, grid_init, grid_allocate, grid_write, grid_print
     public :: grid_to_points, points_to_grid
+    public :: compare_coord
     public :: pts_which_nearest 
 
 contains
@@ -1047,6 +1052,72 @@ contains
         return 
 
     end subroutine points_allocate_logical
+
+    function compare_coord_points_points(pts1,pts2) result(same_map)
+
+        implicit none 
+
+        type(points_class) :: pts1, pts2 
+        logical :: same_map 
+
+        ! Check if both maps use the same projection  
+        if (pts1%is_projection .and. pts2%is_projection        .and. &
+            trim(pts1%mtype)       .eq. trim(pts2%mtype)       .and. &
+            same_projection(pts1%proj,pts2%proj) ) then 
+            
+            ! Both maps come from the same projection
+            same_map = .TRUE. 
+
+        else if (pts1%is_cartesian .and. .not. pts1%is_projection .and. &
+                 pts2%is_cartesian .and. .not. pts2%is_projection) then 
+            ! Both maps are generic cartesian grids (assume origin is the same)
+            same_map = .TRUE. 
+
+        else if (.not. pts1%is_cartesian .and. .not. pts2%is_cartesian) then 
+            ! Both maps are latlon maps
+            same_map = .TRUE. 
+
+        else
+            same_map = .FALSE.
+
+        end if 
+
+        return 
+
+    end function compare_coord_points_points
+
+    function compare_coord_grid_grid(grid1,grid2) result(same_map)
+
+        implicit none 
+
+        type(grid_class) :: grid1, grid2
+        logical :: same_map 
+
+        ! Check if both maps use the same projection  
+        if (grid1%is_projection .and. grid2%is_projection        .and. &
+            trim(grid1%mtype)       .eq. trim(grid2%mtype)       .and. &
+            same_projection(grid1%proj,grid2%proj) ) then 
+            
+            ! Both maps come from the same projection
+            same_map = .TRUE. 
+
+        else if (grid1%is_cartesian .and. .not. grid1%is_projection .and. &
+                 grid2%is_cartesian .and. .not. grid2%is_projection) then 
+            ! Both maps are generic cartesian grids (assume origin is the same)
+            same_map = .TRUE. 
+
+        else if (.not. grid1%is_cartesian .and. .not. grid2%is_cartesian) then 
+            ! Both maps are latlon maps
+            same_map = .TRUE. 
+
+        else
+            same_map = .FALSE.
+
+        end if 
+
+        return 
+
+    end function compare_coord_grid_grid
 
     subroutine grid_write(grid,fnm,xnm,ynm,create)
 

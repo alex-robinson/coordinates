@@ -73,8 +73,7 @@ module coordinates_mapping
         module procedure map_field_grid_points_integer, map_field_points_grid_integer
     end interface
 
-    interface compare_map 
-        module procedure compare_map_grid_grid, compare_map_points_points 
+    interface compare_map  
         module procedure compare_map_map_grid 
     end interface
 
@@ -233,7 +232,7 @@ contains
         map%xy_conv       = pts2%xy_conv 
 
         ! Check if the same map is defined for both sets of points
-        map%is_same_map = compare_map(pts1,pts2)
+        map%is_same_map = compare_coord(pts1,pts2)
 
         ! Note: do not assign max distance here, save all distances
         ! up until the maximum number of neighbors
@@ -394,72 +393,6 @@ contains
 
         return
     end subroutine map_calc_weights
-
-    function compare_map_points_points(pts1,pts2) result(same_map)
-
-        implicit none 
-
-        type(points_class) :: pts1, pts2 
-        logical :: same_map 
-
-        ! Check if both maps use the same projection  
-        if (pts1%is_projection .and. pts2%is_projection        .and. &
-            trim(pts1%mtype)       .eq. trim(pts2%mtype)       .and. &
-            same_projection(pts1%proj,pts2%proj) ) then 
-            
-            ! Both maps come from the same projection
-            same_map = .TRUE. 
-
-        else if (pts1%is_cartesian .and. .not. pts1%is_projection .and. &
-                 pts2%is_cartesian .and. .not. pts2%is_projection) then 
-            ! Both maps are generic cartesian grids (assume origin is the same)
-            same_map = .TRUE. 
-
-        else if (.not. pts1%is_cartesian .and. .not. pts2%is_cartesian) then 
-            ! Both maps are latlon maps
-            same_map = .TRUE. 
-
-        else
-            same_map = .FALSE.
-
-        end if 
-
-        return 
-
-    end function compare_map_points_points
-
-    function compare_map_grid_grid(grid1,grid2) result(same_map)
-
-        implicit none 
-
-        type(grid_class) :: grid1, grid2
-        logical :: same_map 
-
-        ! Check if both maps use the same projection  
-        if (grid1%is_projection .and. grid2%is_projection        .and. &
-            trim(grid1%mtype)       .eq. trim(grid2%mtype)       .and. &
-            same_projection(grid1%proj,grid2%proj) ) then 
-            
-            ! Both maps come from the same projection
-            same_map = .TRUE. 
-
-        else if (grid1%is_cartesian .and. .not. grid1%is_projection .and. &
-                 grid2%is_cartesian .and. .not. grid2%is_projection) then 
-            ! Both maps are generic cartesian grids (assume origin is the same)
-            same_map = .TRUE. 
-
-        else if (.not. grid1%is_cartesian .and. .not. grid2%is_cartesian) then 
-            ! Both maps are latlon maps
-            same_map = .TRUE. 
-
-        else
-            same_map = .FALSE.
-
-        end if 
-
-        return 
-
-    end function compare_map_grid_grid
 
     function compare_map_map_grid(map1,grid2) result(same_map)
 

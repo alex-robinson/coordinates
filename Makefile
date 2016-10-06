@@ -207,6 +207,12 @@ test_subset2: coord-shared
 	@echo "    test_subset2.x is ready."
 	@echo " "
 
+test_multigrid: coord-shared
+	$(FC) $(DFLAGS) $(FLAGS) -o test_multigrid.x $(testdir)/test_multigrid.f90 -L. -lcoordinates $(LFLAGS)
+	@echo " "
+	@echo "    test_multigrid.x is ready."
+	@echo " "
+
 test_proj: coord-static
 	$(FC) $(DFLAGS) $(FLAGS) -o test_proj.x $(testdir)/test_proj.f90 libcoordinates.a -L. $(LFLAGS)
 	@echo " "

@@ -21,9 +21,6 @@ program test
     character(len=256) :: file_outlo, file_outhi
     integer :: i, j 
 
-    real(4), dimension(:,:), allocatable :: vargauss
-    real, dimension(:, :), allocatable :: kernel
-
     outfldr = "output/interp/"
     file_input   = trim(outfldr)//"GRL-50KM_TOPO.nc"
     file_inputhi = trim(outfldr)//"GRL-20KM_TOPO.nc"
@@ -45,7 +42,7 @@ program test
                    lambda=-40d0,phi=72.d0,alpha=7.5d0,x=x,y=y)
 
     ! Check if the grids are defined as the same map 
-    write(*,*) "Same grid: ", compare_map(grid,gridhi)
+    write(*,*) "Same grid: ", compare_coord(grid,gridhi)
 
 
 end program test
