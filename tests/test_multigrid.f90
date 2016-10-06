@@ -21,6 +21,8 @@ program test
     character(len=256) :: file_outlo, file_outhi
     integer :: i, j 
 
+    type(multigrid_class) :: mgrid 
+
     outfldr = "output/interp/"
     file_input   = trim(outfldr)//"GRL-50KM_TOPO.nc"
     file_inputhi = trim(outfldr)//"GRL-20KM_TOPO.nc"
@@ -44,5 +46,8 @@ program test
     ! Check if the grids are defined as the same map 
     write(*,*) "Same grid: ", compare_coord(grid,gridhi)
 
+
+    ! Test multigrid initialization 
+    call multigrid_init(mgrid,grid,dx=[100.d0,200.d0])
 
 end program test
