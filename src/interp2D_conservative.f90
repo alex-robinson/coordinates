@@ -28,7 +28,7 @@ module interp2D_conservative
 
 contains 
 
-    subroutine map_field_conservative(grid1,grid2,varname,var1,var2,missing_value)
+    subroutine map_field_conservative(grid1,grid2,varname,var1,var2,fill,missing_value,mask_pack)
 
         implicit none 
 
@@ -37,10 +37,13 @@ contains
         character(len=*), intent(IN)  :: varname        ! Name of the variable being mapped
         double precision, intent(IN)  :: var1(:,:)      ! Input variable
         double precision, intent(OUT) :: var2(:,:)      ! Output variable
+        logical,  optional :: fill
         double precision, intent(IN), optional :: missing_value  ! Points not included in mapping
+        logical,          intent(IN), optional :: mask_pack(:,:)
 
+        logical          :: fill_pts
         double precision :: missing_val 
-
+        logical, allocatable :: maskp(:,:) 
         double precision :: x1, y1, x2, y2 
         integer :: i, j 
         integer, allocatable :: ii(:), jj(:) 
@@ -55,11 +58,20 @@ contains
             stop 
         end if 
 
+        ! By default, fill in target grid points with missing values
+        fill_pts = .TRUE. 
+        if (present(fill)) fill_pts = fill 
+
         missing_val = mv 
         if (present(missing_value)) missing_val = missing_value
 
-        ! Initially set all values to missing
-        var2 = missing_val
+        ! By default, all var2 points are interpolated
+        allocate(maskp(size(var2,1),size(var2,2)))
+        maskp = .TRUE. 
+        if (present(mask_pack)) maskp = mask_pack 
+
+        ! If fill is desired, initialize output points to missing values
+        if (fill_pts) var2 = missing_val 
 
         ! A loop to get started 
         do j = 1, grid2%G%ny
@@ -67,23 +79,26 @@ contains
 
             do i = 1, grid2%G%nx 
 
-                ! == TO DO == 
+                if (maskp(i,j)) then 
+                    ! Only interpolate for desired target points 
 
-                call which(grid1%G%x .ge. grid2%x(i,j)-grid2%G%dx .and. grid1%G%x .le. grid2%x(i,j)+grid2%G%dx,ii)
-                call which(grid1%G%y .ge. grid2%y(i,j)-grid2%G%dy .and. grid1%G%y .le. grid2%y(i,j)+grid2%G%dy,jj)
-                
-                area = 0.d0 
-                area(ii,jj) = interpconserv1_weights(x=grid1%x(ii,jj),y=grid1%y(ii,jj),dx=grid1%G%dx,dy=grid1%G%dy, &
-                                              xout=grid2%x(i,j),yout=grid2%y(i,j), &
-                                              dxout=grid2%G%dx,dyout=grid2%G%dy)
+                    call which(grid1%G%x .ge. grid2%x(i,j)-grid2%G%dx .and. grid1%G%x .le. grid2%x(i,j)+grid2%G%dx,ii)
+                    call which(grid1%G%y .ge. grid2%y(i,j)-grid2%G%dy .and. grid1%G%y .le. grid2%y(i,j)+grid2%G%dy,jj)
+                    
+                    area = 0.d0 
+                    area(ii,jj) = interpconserv1_weights(x=grid1%x(ii,jj),y=grid1%y(ii,jj),dx=grid1%G%dx,dy=grid1%G%dy, &
+                                                  xout=grid2%x(i,j),yout=grid2%y(i,j), &
+                                                  dxout=grid2%G%dx,dyout=grid2%G%dy)
 
-                if (sum(area(ii,jj)) .gt. 0.d0) then 
+                    if (sum(area(ii,jj)) .gt. 0.d0) then 
+                        ! If an interpolation point was found, calculate interpolation 
 
-                    var2(i,j) = sum(var1(ii,jj)*area(ii,jj),mask=area(ii,jj).gt.0.d0) &
-                                  / sum(area(ii,jj),mask=area(ii,jj).gt.0.d0)
+                        var2(i,j) = sum(var1(ii,jj)*area(ii,jj), &
+                            mask=area(ii,jj).gt.0.d0 .and. var1(ii,jj).ne.missing_val) &
+                                      / sum(area(ii,jj), &
+                            mask=area(ii,jj).gt.0.d0 .and. var1(ii,jj).ne.missing_val)
 
-                else 
-                    var2(i,j) = missing_val 
+                    end if 
 
                 end if 
 

@@ -152,7 +152,7 @@ program test
     call grid_write(grid,file_outlo,xnm="xc",ynm="yc",create=.TRUE.)
     call nc_write(file_outlo,"zs",var,dim1="xc",dim2="yc")
 
-    call map_field_conservative(gridhi,grid,"zs",varhi,var,missing_value)
+    call map_field_conservative(gridhi,grid,"zs",varhi,var,missing_value=missing_value)
     write(*,*) "zs range interp: ",minval(var), maxval(var)
 
     call nc_write(file_outlo,"zs_con",var,dim1="xc",dim2="yc")
@@ -164,7 +164,7 @@ program test
                         / sum(varhi*gridhi%G%dx*gridhi%G%dy)                  
 
     ! Go back to hi resolution
-    call map_field_conservative(grid,gridhi,"zs",var,varhi,missing_value)
+    call map_field_conservative(grid,gridhi,"zs",var,varhi,missing_value=missing_value)
     write(*,*) "zs range interp: ",minval(varhi), maxval(varhi)
 
     write(*,"(a,3g12.4)") "mass comparison (con, lo, % diff): ", &
