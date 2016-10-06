@@ -116,7 +116,7 @@ contains
         ! Local variables
         logical  :: is_latlon 
         type(polygon)       :: pol  
-        integer, parameter :: nx = 11, ny = 11, npts = nx*ny
+        integer, parameter :: nx = 15, ny = 15, npts = nx*ny
         real(dp) :: x1, y1
         integer  :: npts_in 
         integer :: i, j, now  
@@ -146,8 +146,8 @@ contains
             npts_in = 0
             do i = 1, nx
             do j = 1, ny 
-                x1 = (x_vec(now)-dx/2.d0) + (dx)*dble(i-1)/dble(nx-1) 
-                y1 = (y_vec(now)-dy/2.d0) + (dy)*dble(j-1)/dble(ny-1)
+                x1 = (x_vec(now)-dx/2.d0) + (dx)*dble(i-1)/dble(nx) + (dx)*0.5d0/dble(nx-1) 
+                y1 = (y_vec(now)-dy/2.d0) + (dy)*dble(j-1)/dble(ny) + (dy)*0.5d0/dble(ny-1) 
                 if (point_in_polygon(real(x1),real(y1),pol)) npts_in = npts_in+1
 
             end do
