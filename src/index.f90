@@ -37,11 +37,12 @@ contains
 
         if (present(stat)) stat = n 
 
+        if (allocated(ind)) deallocate(ind)
+        
         if (n .eq. 0) then 
             allocate(ind(1))
             ind = -1 
         else
-            if (allocated(ind)) deallocate(ind)
             allocate(ind(n))
             ind = tmp(1:n)
         end if 

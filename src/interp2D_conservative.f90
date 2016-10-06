@@ -80,8 +80,8 @@ contains
 
                 ! == TO DO == 
 
-                call which(grid1%G%x .gt. grid2%x(i,j)-grid2%G%dx .and. grid1%G%x .lt. grid2%x(i,j)+grid2%G%dx,ii)
-                call which(grid1%G%y .gt. grid2%y(i,j)-grid2%G%dy .and. grid1%G%y .lt. grid2%y(i,j)+grid2%G%dy,jj)
+                call which(grid1%G%x .ge. grid2%x(i,j)-grid2%G%dx .and. grid1%G%x .le. grid2%x(i,j)+grid2%G%dx,ii)
+                call which(grid1%G%y .ge. grid2%y(i,j)-grid2%G%dy .and. grid1%G%y .le. grid2%y(i,j)+grid2%G%dy,jj)
                 
                 area(ii,jj) = interpconserv1_weights(x=grid1%x(ii,jj),y=grid1%y(ii,jj),dx=grid1%G%dx,dy=grid1%G%dy, &
                                               xout=grid2%x(i,j),yout=grid2%y(i,j), &
@@ -123,6 +123,7 @@ contains
         real(dp) :: missing_val
         real(dp) :: x_vec(size(x,1)*size(x,2)), y_vec(size(x,1)*size(x,2)) 
         real(dp) :: area_vec(size(x,1)*size(x,2))
+        real(dp) :: area_target 
 
         is_latlon = .FALSE. 
         if (present(latlon)) is_latlon = latlon 
@@ -140,7 +141,9 @@ contains
         ! Loop over source points and get the area of each source
         ! polygon that is inside of the target polygon 
         ! - Save the area (absolute area, not fraction)
-        area_vec = 0.d0 
+        area_target = dxout*dyout 
+        area_vec    = 0.d0 
+
         do now = 1, size(x_vec) 
          
             npts_in = 0
@@ -155,6 +158,8 @@ contains
             
             area_vec(now) = dble(npts_in)/dble(npts) * dx*dy 
 
+            ! If the source points area adds up to the target cell area, exit loop
+            if (sum(area_vec) .ge. area_target) exit 
         end do 
 
         ! Return 2D area 

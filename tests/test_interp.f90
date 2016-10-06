@@ -163,4 +163,16 @@ program test
                 100*(sum(var*grid%G%dx*grid%G%dy) - sum(varhi*gridhi%G%dx*gridhi%G%dy)) &
                         / sum(varhi*gridhi%G%dx*gridhi%G%dy)                  
 
+    ! Go back to hi resolution
+    call map_field_conservative(grid,gridhi,"zs",var,varhi,missing_value)
+    write(*,*) "zs range interp: ",minval(varhi), maxval(varhi)
+
+    write(*,"(a,3g12.4)") "mass comparison (hi, con, % diff): ", &
+                sum(varhi*gridhi%G%dx*gridhi%G%dy), &
+                sum(var*grid%G%dx*grid%G%dy), & 
+                100*(sum(var*grid%G%dx*grid%G%dy) - sum(varhi*gridhi%G%dx*gridhi%G%dy)) &
+                        / sum(varhi*gridhi%G%dx*gridhi%G%dy)                  
+
+    call nc_write(file_outhi,"zs_con",varhi,dim1="xc",dim2="yc")
+
 end program test
