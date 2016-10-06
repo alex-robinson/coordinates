@@ -167,7 +167,7 @@ program test
     call map_field_conservative(grid,gridhi,"zs",var,varhi,missing_value)
     write(*,*) "zs range interp: ",minval(varhi), maxval(varhi)
 
-    write(*,"(a,3g12.4)") "mass comparison (hi, con, % diff): ", &
+    write(*,"(a,3g12.4)") "mass comparison (con, lo, % diff): ", &
                 sum(varhi*gridhi%G%dx*gridhi%G%dy), &
                 sum(var*grid%G%dx*grid%G%dy), & 
                 100*(sum(var*grid%G%dx*grid%G%dy) - sum(varhi*gridhi%G%dx*gridhi%G%dy)) &

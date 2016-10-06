@@ -47,17 +47,6 @@ contains
 
         real(dp) :: area(size(grid1%x,1),size(grid1%x,2))
 
-        ! Helpful fields available from grid_class objects grid and grid1:
-        ! grid%x    : 2D array of projected x-values [km]
-        ! grid%y    : 2D array of projected y-values [km]
-        ! grid%lon  : 2D array of lon-values [degrees]
-        ! grid%lat  : 2D array of lat-values [degrees]
-        ! grid%area : 2D array of grid-cell areas [m]
-        ! grid%G%x  : vector of x-values that defines the x-axis [km]
-        ! grid%G%y  : vector of y-values that defines the y-axis [km]
-        ! grid%G%nx : length of x-axis 
-        ! grid%G%ny : length of y-axis 
-
         ! Check if the grids are compatible for this mapping routine
         if (.not. same_projection(grid1%proj,grid2%proj)) then 
             write(*,*) "map_field_conservative:: error:  &
@@ -83,6 +72,7 @@ contains
                 call which(grid1%G%x .ge. grid2%x(i,j)-grid2%G%dx .and. grid1%G%x .le. grid2%x(i,j)+grid2%G%dx,ii)
                 call which(grid1%G%y .ge. grid2%y(i,j)-grid2%G%dy .and. grid1%G%y .le. grid2%y(i,j)+grid2%G%dy,jj)
                 
+                area = 0.d0 
                 area(ii,jj) = interpconserv1_weights(x=grid1%x(ii,jj),y=grid1%y(ii,jj),dx=grid1%G%dx,dy=grid1%G%dy, &
                                               xout=grid2%x(i,j),yout=grid2%y(i,j), &
                                               dxout=grid2%G%dx,dyout=grid2%G%dy)
