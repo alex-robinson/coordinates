@@ -24,30 +24,16 @@ program test
     type(multigrid_class) :: mgrid 
 
     outfldr = "output/interp/"
-    file_input   = trim(outfldr)//"GRL-50KM_TOPO.nc"
+    file_input   = trim(outfldr)//"GRL-5KM_TOPO.nc"
     file_inputhi = trim(outfldr)//"GRL-20KM_TOPO.nc"
     file_outhi   = trim(outfldr)//"GRL-20KM_TOPO1.nc"
     file_outlo   = trim(outfldr)//"GRL-50KM_TOPO1.nc"
 
-    allocate(x(37),y(61))
-    call nc_read(file_input,"xc",x)
-    call nc_read(file_input,"yc",y)
-    call grid_init(grid,name="GRL50KM",mtype="stereographic",units="km",lon180=.TRUE.,&
-                   lambda=-40d0,phi=72.d0,alpha=7.5d0,x=x,y=y)
-
-    deallocate(x)
-    deallocate(y)
-    allocate(x(90),y(150))
-    call nc_read(file_inputhi,"xc",x)
-    call nc_read(file_inputhi,"yc",y)
-    call grid_init(gridhi,name="GRL20KM",mtype="stereographic",units="km",lon180=.TRUE., &
-                   lambda=-40d0,phi=72.d0,alpha=7.5d0,x=x,y=y)
-
-    ! Check if the grids are defined as the same map 
-    write(*,*) "Same grid: ", compare_coord(grid,gridhi)
-
+    call grid_init(grid,name="GRL-5KM",mtype="stereographic",units="kilometers", &
+                               lon180=.TRUE.,dx=5.d0,nx=361,dy=5.d0,ny=601, &
+                               lambda=-40.d0,phi=72.d0,alpha=8.4d0)
 
     ! Test multigrid initialization 
-    call multigrid_init(mgrid,grid,dx=[100.d0,200.d0])
+    call multigrid_init(mgrid,grid,dx=[17.d0,100.d0,200.d0])
 
 end program test

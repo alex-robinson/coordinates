@@ -25,6 +25,8 @@ module grid_gen
 contains 
 
     subroutine multigrid_init(mgrid,grid,dx)
+        ! Generate multiple grids of different resolutions
+        ! (descending from high to low resolution)
 
         implicit none 
 
@@ -36,16 +38,38 @@ contains
         integer :: q, i, j  
         character(len=256) :: grid_name 
         real(dp), allocatable :: x(:), y(:) 
+        real(dp) :: nx_dble(size(dx)), ny_dble(size(dy))
+        integer  :: nx(size(dx)), ny(size(dy))
         character(len=12)  :: dx_str 
 
         ! How many sub-grids are desired? 
         mgrid%n_grids = size(dx,1)
+
+        ! === Check consistency of desired grids ===
+        ! 1. New grid resolutions result in integer multiple grid sizes
+        !    of the original grid 
+
+        nx_dble = (grid%G%nx-1)*grid%G%dx / dx
+        nx      = int(nx_dble)
+        if (sum(nx_dble-nx) .ne. 0.d0) then 
+
+            write(*,*) "multigrid_init:: error: desired grid resolutions &
+            &are not consistent."
+            write(*,"(a,10f10.1)") "dx:      ", dx 
+            write(*,"(a,10f10.1)") "nx:      ", nx_dble
+            write(*,"(a,10f10.1)") "err(nx): ", nx_dble-nx
+            stop 
+
+        end if 
+
 
         ! Allocate sub-grids 
         if (allocated(mgrid%grid)) deallocate(mgrid%grid)
         allocate(mgrid%grid(mgrid%n_grids))
 
 
+        ! Loop over dx values, generate new axis values and initialize
+        ! subgrid objects
         do q = 1, mgrid%n_grids 
 
             write(dx_str,"(i5)") int(dx(q))
@@ -54,7 +78,7 @@ contains
 
             if (allocated(x)) deallocate(x)
             if (allocated(y)) deallocate(y)
-            allocate(x(10),y(10))
+            allocate(x(nx(q)),y(10))
 
             do i = 1, size(x)
                 x(i) = minval(grid%G%x) + (i-1)*dx(q)
