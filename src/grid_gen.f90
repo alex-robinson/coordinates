@@ -105,6 +105,16 @@ contains
 
         end do 
 
+        write(*,*) "multigrid_init completed. Summary: "
+        write(*,"(a5,3a8,4a10)") "Grid", "dx", "nx", "ny", "xmin", "xmax", "ymin", "ymax"
+        write(*,"(i5,f8.1,2i8,4f10.2)") 1, grid%G%dx, grid%G%nx, grid%G%ny,  &
+                minval(grid%G%x), maxval(grid%G%x), minval(grid%G%y), maxval(grid%G%y)
+        do q = 1, mgrid%n_grids 
+            write(*,"(i5,f8.1,2i8,4f10.2)") q+1, mgrid%grid(q)%G%dx, mgrid%grid(q)%G%nx, mgrid%grid(q)%G%ny,  &
+                minval(mgrid%grid(q)%G%x), maxval(mgrid%grid(q)%G%x), minval(mgrid%grid(q)%G%y), maxval(mgrid%grid(q)%G%y)
+        end do 
+        write(*,*) 
+        
         return 
 
     end subroutine multigrid_init 
