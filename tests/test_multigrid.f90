@@ -34,6 +34,6 @@ program test
                                lambda=-40.d0,phi=72.d0,alpha=8.4d0)
 
     ! Test multigrid initialization 
-    call multigrid_init(mgrid,grid,dx=[17.d0,100.d0,200.d0])
+    call multigrid_init(mgrid,grid,dx=[20.d0,50.d0,100.d0])
 
 end program test

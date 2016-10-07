@@ -38,9 +38,10 @@ contains
         integer :: q, i, j  
         character(len=256) :: grid_name 
         real(dp), allocatable :: x(:), y(:) 
-        real(dp) :: nx_dble(size(dx)), ny_dble(size(dy))
-        integer  :: nx(size(dx)), ny(size(dy))
+        real(dp) :: nx_dble(size(dx)), ny_dble(size(dx))
+        integer  :: nx(size(dx)), ny(size(dx))
         character(len=12)  :: dx_str 
+        logical :: err 
 
         ! How many sub-grids are desired? 
         mgrid%n_grids = size(dx,1)
@@ -49,19 +50,32 @@ contains
         ! 1. New grid resolutions result in integer multiple grid sizes
         !    of the original grid 
 
-        nx_dble = (grid%G%nx-1)*grid%G%dx / dx
+        nx_dble = (grid%G%nx-1)*grid%G%dx / dx + 1
         nx      = int(nx_dble)
-        if (sum(nx_dble-nx) .ne. 0.d0) then 
+        
+        ny_dble = (grid%G%ny-1)*grid%G%dy / dx + 1
+        ny      = int(ny_dble)
 
+        err = .FALSE. 
+
+        if (sum(nx_dble-nx) .ne. 0.d0) then 
             write(*,*) "multigrid_init:: error: desired grid resolutions &
-            &are not consistent."
+            &are not consistent for the x-dimension."
             write(*,"(a,10f10.1)") "dx:      ", dx 
             write(*,"(a,10f10.1)") "nx:      ", nx_dble
             write(*,"(a,10f10.1)") "err(nx): ", nx_dble-nx
-            stop 
-
+            err = .TRUE.
+        end if 
+        if (sum(ny_dble-ny) .ne. 0.d0) then 
+            write(*,*) "multigrid_init:: error: desired grid resolutions &
+            &are not consistent for the y-dimension."
+            write(*,"(a,10f10.1)") "dx:      ", dx 
+            write(*,"(a,10f10.1)") "ny:      ", ny_dble
+            write(*,"(a,10f10.1)") "err(ny): ", ny_dble-ny
+            err = .TRUE.
         end if 
 
+        if (err) stop 
 
         ! Allocate sub-grids 
         if (allocated(mgrid%grid)) deallocate(mgrid%grid)
@@ -78,7 +92,7 @@ contains
 
             if (allocated(x)) deallocate(x)
             if (allocated(y)) deallocate(y)
-            allocate(x(nx(q)),y(10))
+            allocate(x(nx(q)),y(ny(q)))
 
             do i = 1, size(x)
                 x(i) = minval(grid%G%x) + (i-1)*dx(q)
