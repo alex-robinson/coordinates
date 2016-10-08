@@ -75,7 +75,7 @@ contains
 
         ! A loop to get started 
         do j = 1, grid2%G%ny
-            write(*,*) "j / ny: ", j, grid2%G%ny 
+!             write(*,*) "j / ny: ", j, grid2%G%ny 
 
             do i = 1, grid2%G%nx 
 
