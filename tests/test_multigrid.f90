@@ -40,7 +40,7 @@ program test
                                lambda=-40.d0,phi=72.d0,alpha=8.4d0)
 
     ! Test multigrid initialization 
-    call multigrid_init(mgrid,grid,dx=[10.d0,20.d0,50.d0,100.d0])
+    call multigrid_init(mgrid,grid,dx=[10.d0,20.d0,50.d0])
 
 
     ! Load test data 
@@ -68,6 +68,20 @@ program test
                 sum(var1*mgrid%grid(q)%G%dx*mgrid%grid(q)%G%dy), & 
                 100*(sum(var1*mgrid%grid(q)%G%dx*mgrid%grid(q)%G%dy) - sum(var*grid%G%dx*grid%G%dy)) &
                         / sum(var*mgrid%grid(q)%G%dx*mgrid%grid(q)%G%dy)                  
+
+        ! Remap to high resolution 
+        call grid_allocate(grid,var2)
+        call map_field_conservative(mgrid%grid(q),grid,varname,var1,var2)
+
+        file_out = trim(outfldr)//trim(mgrid%grid(q)%name)//"_5KM"//trim(file_out_suffix)
+        call grid_write(grid,file_out,xnm="xc",ynm="yc",create=.TRUE.)
+        call nc_write(file_out,varname,var2,dim1="xc",dim2="yc")
+
+        write(*,"(a,3g12.4)") "mass comparison (hi, con-hi, % diff): ", &
+                sum(var*grid%G%dx*grid%G%dy), &
+                sum(var2*grid%G%dx*grid%G%dy), & 
+                100*(sum(var2*grid%G%dx*grid%G%dy) - sum(var*grid%G%dx*grid%G%dy)) &
+                        / sum(var*grid%G%dx*grid%G%dy)                  
 
     end do 
 

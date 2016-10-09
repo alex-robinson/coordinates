@@ -8,6 +8,7 @@ module interp2D_conservative
     use polygons 
     use geodesic 
     use index 
+    use interp2D 
 
     implicit none 
 
@@ -105,6 +106,10 @@ contains
             end do 
         end do 
 
+        if (fill_pts) then 
+            call fill_nearest(var2,missing_value=missing_val)
+        end if 
+
         return 
 
     end subroutine map_field_conservative 
@@ -121,7 +126,7 @@ contains
         ! Local variables
         logical  :: is_latlon 
         type(polygon)       :: pol  
-        integer, parameter :: nx = 15, ny = 15, npts = nx*ny
+        integer, parameter :: nx = 20, ny = 20, npts = nx*ny
         real(dp) :: x1, y1
         integer  :: npts_in 
         integer :: i, j, now  
