@@ -52,14 +52,21 @@ program test
 
     do q = 1, mgrid%n_grids 
 
-        ! Interp field to subgrid
+        call map_conserv_init(mgrid%map(q),grid,mgrid%grid(q))
+        
+        ! Interp field to subgrid   
         call grid_allocate(mgrid%grid(q),var1)
-        call map_field_conservative(grid,mgrid%grid(q),varname,var,var1)
+!         call map_field_conservative(grid,mgrid%grid(q),varname,var,var1)
+        call map_field_conservative1(mgrid%map(q),varname,var,var1)
 
         ! Write to file 
         file_out = trim(outfldr)//trim(mgrid%grid(q)%name)//trim(file_out_suffix)
         call grid_write(mgrid%grid(q),file_out,xnm="xc",ynm="yc",create=.TRUE.)
+        
+        call map_field_conservative1(mgrid%map(q),varname,var,var1)
+        call nc_write(file_out,varname,var1,dim1="xc",dim2="yc")
 
+        call map_field_conservative1(mgrid%map(q),"zb",var,var1)
         call nc_write(file_out,varname,var1,dim1="xc",dim2="yc")
 
 
@@ -68,6 +75,8 @@ program test
                 sum(var1*mgrid%grid(q)%G%dx*mgrid%grid(q)%G%dy), & 
                 100*(sum(var1*mgrid%grid(q)%G%dx*mgrid%grid(q)%G%dy) - sum(var*grid%G%dx*grid%G%dy)) &
                         / sum(var*mgrid%grid(q)%G%dx*mgrid%grid(q)%G%dy)                  
+
+        stop 
 
         ! Remap to high resolution 
         call grid_allocate(grid,var2)

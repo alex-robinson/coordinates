@@ -18,6 +18,25 @@ module interp2D_conservative
     real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
     real(dp), parameter :: mv = MISSING_VALUE_DEFAULT
 
+    type pt_wts_class 
+        integer :: nx, ny  
+        integer,  allocatable :: i(:), j(:)
+        real(dp), allocatable :: dist(:,:), weight(:,:), area(:,:)
+    end type 
+
+    type map_conserv_class
+        type(grid_class) :: grid1, grid2 
+
+        ! Neighbor info
+        type(pt_wts_class), allocatable :: map(:,:)
+
+        ! Projection info 
+        logical  :: is_cartesian, is_projection, is_same_map
+        logical  :: is_lon180
+        logical :: is_grid
+
+    end type
+
 !     interface map_calc_conserv1_weights
 !         module procedure map_calc_conserv1_weights_points_points
 !         module procedure map_calc_conserv1_weights_grid_grid
@@ -25,9 +44,224 @@ module interp2D_conservative
 
     private 
 !     public :: map_calc_conserv1_weights
+    public :: map_conserv_class 
+    public :: map_conserv_init
+    public :: map_field_conservative1
     public :: map_field_conservative
 
 contains 
+
+    subroutine map_field_conservative1(map,varname,var1,var2,fill,missing_value,mask_pack)
+
+        implicit none 
+
+        type(map_conserv_class), intent(IN) :: map      ! Map grid1=>grid2
+        character(len=*), intent(IN)  :: varname        ! Name of the variable being mapped
+        double precision, intent(IN)  :: var1(:,:)      ! Input variable
+        double precision, intent(OUT) :: var2(:,:)      ! Output variable
+        logical,  optional :: fill
+        double precision, intent(IN), optional :: missing_value  ! Points not included in mapping
+        logical,          intent(IN), optional :: mask_pack(:,:)
+
+        logical          :: fill_pts
+        double precision :: missing_val 
+        logical, allocatable :: maskp(:,:) 
+        integer :: i, j 
+        integer, allocatable :: ii(:), jj(:) 
+
+        ! Local variables
+        real(dp) :: area(size(map%grid1%x,1),size(map%grid1%x,2))
+
+        ! Check if the grids are compatible for this mapping routine
+        if (.not. same_projection(map%grid1%proj,map%grid2%proj)) then 
+            write(*,*) "map_field_conservative:: error:  &
+                       &Currently this subroutine only interpolates between grids &
+                       &on the same projection. Try again."
+            stop 
+        end if 
+
+        ! By default, fill in target grid points with missing values
+        fill_pts = .TRUE. 
+        if (present(fill)) fill_pts = fill 
+
+        missing_val = mv 
+        if (present(missing_value)) missing_val = missing_value
+
+        ! By default, all var2 points are interpolated
+        allocate(maskp(size(var2,1),size(var2,2)))
+        maskp = .TRUE. 
+        if (present(mask_pack)) maskp = mask_pack 
+
+        ! If fill is desired, initialize output points to missing values
+        if (fill_pts) var2 = missing_val 
+
+        ! A loop to get started 
+        do j = 1, map%grid2%G%ny
+            do i = 1, map%grid2%G%nx 
+
+                if (maskp(i,j)) then 
+                    ! Only interpolate for desired target points 
+
+                    ii = map%map(i,j)%i 
+                    jj = map%map(i,j)%j 
+
+                    area = 0.d0 
+                    area(ii,jj) = map%map(i,j)%area 
+
+                    if (sum(area(ii,jj)) .gt. 0.d0) then 
+                        ! If an interpolation point was found, calculate interpolation 
+
+                        var2(i,j) = sum(var1(ii,jj)*area(ii,jj), &
+                            mask=area(ii,jj).gt.0.d0 .and. var1(ii,jj).ne.missing_val) &
+                                      / sum(area(ii,jj), &
+                            mask=area(ii,jj).gt.0.d0 .and. var1(ii,jj).ne.missing_val)
+
+                    end if 
+
+                end if 
+
+            end do 
+        end do 
+
+        if (fill_pts) then 
+            call fill_nearest(var2,missing_value=missing_val)
+        end if 
+
+        return 
+
+    end subroutine map_field_conservative1 
+
+    subroutine map_conserv_init(map,grid1,grid2)
+
+        implicit none 
+
+        type(map_conserv_class), intent(OUT) :: map 
+        type(grid_class),        intent(IN)  :: grid1, grid2 
+
+        ! Local variables          
+        double precision :: x1, y1, x2, y2 
+        integer :: i, j 
+        integer, allocatable :: ii(:), jj(:) 
+        real(dp) :: area(size(grid1%x,1),size(grid1%x,2))
+
+        write(*,*) "Mapping weights: ", trim(grid1%name), " => ", trim(grid2%name)
+
+        ! Assign grids to map for later use 
+        map%grid1 = grid1 
+        map%grid2 = grid2 
+
+        ! Allocate the map object to the size of the target grid
+        if (allocated(map%map)) deallocate(map%map)
+        allocate(map%map(grid2%G%nx,grid2%G%ny))
+                    
+        ! Loop over target grid, calculate area of points within each target grid point
+        do j = 1, grid2%G%ny
+            write(*,*) "j / ny: ", j, grid2%G%ny 
+
+            do i = 1, grid2%G%nx 
+
+                call which(grid1%G%x .ge. grid2%x(i,j)-grid2%G%dx .and. grid1%G%x .le. grid2%x(i,j)+grid2%G%dx,ii)
+                call which(grid1%G%y .ge. grid2%y(i,j)-grid2%G%dy .and. grid1%G%y .le. grid2%y(i,j)+grid2%G%dy,jj)
+                
+                area = 0.d0 
+                area(ii,jj) = interpconserv1_weights(x=grid1%x(ii,jj),y=grid1%y(ii,jj),dx=grid1%G%dx,dy=grid1%G%dy, &
+                                              xout=grid2%x(i,j),yout=grid2%y(i,j), &
+                                              dxout=grid2%G%dx,dyout=grid2%G%dy)
+
+                if (sum(area(ii,jj)) .gt. 0.d0) then 
+                    ! If an interpolation point was found, calculate interpolation 
+
+                    ! Allocate one map point to indicate no neighbors are available 
+                    call map_allocate_map(map%map(i,j),nx=size(ii),ny=size(jj))
+                    map%map(i,j)%i = ii 
+                    map%map(i,j)%j = jj  
+
+                    ! Store the area values in the map
+                    map%map(i,j)%area = area(ii,jj) 
+
+!                     write(*,*) i, j, sum(area(ii,jj)), sum(map%map(i,j)%area)
+
+                    ! Set the others to zero 
+                    map%map(i,j)%dist   = 0.d0 
+                    map%map(i,j)%weight = 0.d0 
+
+                else 
+                    ! Allocate one map point to indicate no neighbors are available 
+                    call map_allocate_map(map%map(i,j),nx=2,ny=2)
+                    map%map(i,j)%i = [1,2]    ! Fill values with area set to zero!
+                    map%map(i,j)%j = [1,2]    ! Fill values with area set to zero! 
+
+                    ! Set the others to zero 
+                    map%map(i,j)%area   = 0.d0 
+                    map%map(i,j)%dist   = 0.d0 
+                    map%map(i,j)%weight = 0.d0 
+
+                end if 
+
+            end do 
+        end do 
+
+        write(*,*) "Mapping completed."
+        write(*,*) 
+
+        return 
+
+    end subroutine map_conserv_init 
+
+    subroutine map_allocate_map(mp,nx,ny)
+
+        implicit none 
+
+        type(pt_wts_class), intent(INOUT) :: mp 
+        integer, intent(IN) :: nx, ny  
+
+        mp%nx = nx 
+        mp%ny = ny 
+
+        ! First deallocate if needed 
+        if (allocated(mp%i)) deallocate(mp%i) 
+        if (allocated(mp%j)) deallocate(mp%j) 
+        if (allocated(mp%dist)) deallocate(mp%dist) 
+        if (allocated(mp%weight)) deallocate(mp%weight) 
+        if (allocated(mp%area)) deallocate(mp%area) 
+        
+        allocate(mp%i(nx),mp%j(ny))
+        allocate(mp%dist(nx,ny), mp%weight(nx,ny), mp%area(nx,ny))
+
+        return 
+
+    end subroutine map_allocate_map
+
+    function gen_fraction_mask(grid1,grid2,varname,var1) result(var2)
+
+        implicit none 
+
+        type(grid_class), intent(IN)  :: grid1  ! Original grid information
+        type(grid_class), intent(IN)  :: grid2  ! New grid 
+        character(len=*), intent(IN)  :: varname        ! Name of the variable being mapped
+        logical,          intent(IN)  :: var1(:,:)      ! Input variable
+        double precision              :: var2(grid2%G%nx,grid2%G%ny)      ! Output variable
+        
+
+        return 
+
+    end function gen_fraction_mask 
+
+    function gen_stat_mask(grid1,grid2,varname,var1,stat) result(var2)
+
+        implicit none 
+
+        type(grid_class), intent(IN)  :: grid1  ! Original grid information
+        type(grid_class), intent(IN)  :: grid2  ! New grid 
+        character(len=*), intent(IN)  :: varname        ! Name of the variable being mapped
+        double precision, intent(IN)  :: var1(:,:)      ! Input variable
+        character(len=*), intent(IN)  :: stat           ! Statistic to calculate (mean,min,max,sd)
+        double precision              :: var2(grid2%G%nx,grid2%G%ny)      ! Output variable
+        
+
+        return 
+
+    end function gen_stat_mask 
 
     subroutine map_field_conservative(grid1,grid2,varname,var1,var2,fill,missing_value,mask_pack)
 
@@ -126,7 +360,7 @@ contains
         ! Local variables
         logical  :: is_latlon 
         type(polygon)       :: pol  
-        integer, parameter :: nx = 20, ny = 20, npts = nx*ny
+        integer, parameter :: nx = 10, ny = 10, npts = nx*ny
         real(dp) :: x1, y1
         integer  :: npts_in 
         integer :: i, j, now  
@@ -241,5 +475,5 @@ contains
 !         return 
 
 !     end subroutine map_calc_conserv1_weights_points_points
-
+    
 end module interp2D_conservative 

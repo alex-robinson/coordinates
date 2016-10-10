@@ -4,6 +4,7 @@ module grid_gen
     ! them, including staggered grids
 
     use coordinates 
+    use interp2D_conservative 
 
     implicit none 
 
@@ -15,6 +16,7 @@ module grid_gen
     type multigrid_class 
         integer :: n_grids
         type(grid_class), allocatable :: grid(:)
+        type(map_conserv_class), allocatable :: map(:)
     end type 
 
     private 
@@ -81,6 +83,9 @@ contains
         if (allocated(mgrid%grid)) deallocate(mgrid%grid)
         allocate(mgrid%grid(mgrid%n_grids))
 
+        ! Allocate maps 
+        if (allocated(mgrid%map)) deallocate(mgrid%map)
+        allocate(mgrid%map(mgrid%n_grids))
 
         ! Loop over dx values, generate new axis values and initialize
         ! subgrid objects
@@ -114,7 +119,7 @@ contains
                 minval(mgrid%grid(q)%G%x), maxval(mgrid%grid(q)%G%x), minval(mgrid%grid(q)%G%y), maxval(mgrid%grid(q)%G%y)
         end do 
         write(*,*) 
-        
+
         return 
 
     end subroutine multigrid_init 

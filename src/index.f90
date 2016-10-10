@@ -38,7 +38,7 @@ contains
         if (present(stat)) stat = n 
 
         if (allocated(ind)) deallocate(ind)
-        
+
         if (n .eq. 0) then 
             allocate(ind(1))
             ind = -1 
@@ -132,5 +132,19 @@ contains
         return 
 
     end subroutine unique_dble
+
+    function expand_grid(ii,jj) result(ij)
+        ! Return combined (i,j) indices given the separate i and j vectors
+
+        implicit none 
+
+        integer, intent(IN) :: ii(:), jj(:) 
+        integer :: ij(size(ii)*size(jj))
+
+        ! To do 
+        
+        return 
+
+    end function expand_grid 
 
 end module index
