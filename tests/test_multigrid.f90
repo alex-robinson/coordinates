@@ -43,7 +43,6 @@ program test
     ! Test multigrid initialization 
     call multigrid_init(mgrid,grid,dx=[10.d0,20.d0,50.d0])
 
-
     ! Load test data 
     call grid_allocate(grid,var)
 !     call nc_read(file_input,varname,var)
@@ -51,23 +50,21 @@ program test
     var(:,grid%G%ny) = var(:,grid%G%ny-1)
     var(grid%G%nx,:) = var(grid%G%nx-1,:)
 
+    ! Loop over multigrids
     do q = 1, mgrid%n_grids 
 
+        ! Generate maps (hi-lo,lo-hi)
         call map_conserv_init(mgrid%map(q),grid,mgrid%grid(q))
         call map_conserv_init(mlohi,mgrid%grid(q),grid)
 
         ! Interp field to subgrid   
         call grid_allocate(mgrid%grid(q),var1)
-!         call map_field_conservative(grid,mgrid%grid(q),varname,var,var1)
-        call map_field_conservative1(mgrid%map(q),varname,var,var1)
+        call map_field_conservative(mgrid%map(q),varname,var,var1)
 
         ! Write to file 
         file_out = trim(outfldr)//trim(mgrid%grid(q)%name)//trim(file_out_suffix)
         call grid_write(mgrid%grid(q),file_out,xnm="xc",ynm="yc",create=.TRUE.)
         
-        call map_field_conservative1(mgrid%map(q),varname,var,var1)
-        call nc_write(file_out,varname,var1,dim1="xc",dim2="yc")
-
         write(*,"(a,3g12.4)") "mass comparison (hi, con, % diff): ", &
                 sum(var*grid%G%dx*grid%G%dy), &
                 sum(var1*mgrid%grid(q)%G%dx*mgrid%grid(q)%G%dy), & 
@@ -76,8 +73,7 @@ program test
 
         ! Remap to high resolution 
         call grid_allocate(grid,var2)
-!         call map_field_conservative(mgrid%grid(q),grid,varname,var1,var2)
-        call map_field_conservative1(mlohi,varname,var1,var2)
+        call map_field_conservative(mlohi,varname,var1,var2)
 
         file_out = trim(outfldr)//trim(mgrid%grid(q)%name)//"_5KM"//trim(file_out_suffix)
         call grid_write(grid,file_out,xnm="xc",ynm="yc",create=.TRUE.)
