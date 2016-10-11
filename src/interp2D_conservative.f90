@@ -143,8 +143,13 @@ contains
         integer :: i, j 
         integer, allocatable :: ii(:), jj(:) 
         real(dp) :: area(size(grid1%x,1),size(grid1%x,2))
+        logical :: is_hi2lo 
 
         write(*,*) "Mapping weights: ", trim(grid1%name), " => ", trim(grid2%name)
+
+        ! Determine direction of mapping 
+        is_hi2lo = .TRUE. 
+        if (grid2%G%dx .lt. grid1%G%dx) is_hi2lo = .FALSE. 
 
         ! Assign grids to map for later use 
         map%grid1 = grid1 
@@ -160,13 +165,30 @@ contains
 
             do i = 1, grid2%G%nx 
 
-                call which(grid1%G%x .ge. grid2%x(i,j)-grid2%G%dx .and. grid1%G%x .le. grid2%x(i,j)+grid2%G%dx,ii)
-                call which(grid1%G%y .ge. grid2%y(i,j)-grid2%G%dy .and. grid1%G%y .le. grid2%y(i,j)+grid2%G%dy,jj)
-                
                 area = 0.d0 
-                area(ii,jj) = interpconserv1_weights(x=grid1%x(ii,jj),y=grid1%y(ii,jj),dx=grid1%G%dx,dy=grid1%G%dy, &
-                                              xout=grid2%x(i,j),yout=grid2%y(i,j), &
-                                              dxout=grid2%G%dx,dyout=grid2%G%dy)
+
+                if (is_hi2lo) then
+                    ! From high to low resolution 
+                    
+                    call which(grid1%G%x .ge. grid2%x(i,j)-grid2%G%dx .and. grid1%G%x .le. grid2%x(i,j)+grid2%G%dx,ii)
+                    call which(grid1%G%y .ge. grid2%y(i,j)-grid2%G%dy .and. grid1%G%y .le. grid2%y(i,j)+grid2%G%dy,jj)
+                 
+                    area(ii,jj) = interpconserv1_weights_hi2lo(x=grid1%x(ii,jj),y=grid1%y(ii,jj), &
+                                                  dx=grid1%G%dx,dy=grid1%G%dy, &
+                                                  xout=grid2%x(i,j),yout=grid2%y(i,j), &
+                                                  dxout=grid2%G%dx,dyout=grid2%G%dy)
+                else
+                    ! From low to high resolution 
+
+                    call which(grid1%G%x .ge. grid2%x(i,j)-grid1%G%dx .and. grid1%G%x .le. grid2%x(i,j)+grid1%G%dx,ii)
+                    call which(grid1%G%y .ge. grid2%y(i,j)-grid1%G%dy .and. grid1%G%y .le. grid2%y(i,j)+grid1%G%dy,jj)
+                 
+
+                    area(ii,jj) = interpconserv1_weights_lo2hi(x=grid1%x(ii,jj),y=grid1%y(ii,jj), &
+                                                  dx=grid1%G%dx,dy=grid1%G%dy, &
+                                                  xout=grid2%x(i,j),yout=grid2%y(i,j), &
+                                                  dxout=grid2%G%dx,dyout=grid2%G%dy)
+                end if 
 
                 if (sum(area(ii,jj)) .gt. 0.d0) then 
                     ! If an interpolation point was found, calculate interpolation 
@@ -263,94 +285,10 @@ contains
 
     end function gen_stat_mask 
 
-    subroutine map_field_conservative(grid1,grid2,varname,var1,var2,fill,missing_value,mask_pack)
-
-        implicit none 
-
-        type(grid_class), intent(IN)  :: grid1  ! Original grid information
-        type(grid_class), intent(IN)  :: grid2  ! New grid 
-        character(len=*), intent(IN)  :: varname        ! Name of the variable being mapped
-        double precision, intent(IN)  :: var1(:,:)      ! Input variable
-        double precision, intent(OUT) :: var2(:,:)      ! Output variable
-        logical,  optional :: fill
-        double precision, intent(IN), optional :: missing_value  ! Points not included in mapping
-        logical,          intent(IN), optional :: mask_pack(:,:)
-
-        logical          :: fill_pts
-        double precision :: missing_val 
-        logical, allocatable :: maskp(:,:) 
-        double precision :: x1, y1, x2, y2 
-        integer :: i, j 
-        integer, allocatable :: ii(:), jj(:) 
-
-        real(dp) :: area(size(grid1%x,1),size(grid1%x,2))
-
-        ! Check if the grids are compatible for this mapping routine
-        if (.not. same_projection(grid1%proj,grid2%proj)) then 
-            write(*,*) "map_field_conservative:: error:  &
-                       &Currently this subroutine only interpolates between grids &
-                       &on the same projection. Try again."
-            stop 
-        end if 
-
-        ! By default, fill in target grid points with missing values
-        fill_pts = .TRUE. 
-        if (present(fill)) fill_pts = fill 
-
-        missing_val = mv 
-        if (present(missing_value)) missing_val = missing_value
-
-        ! By default, all var2 points are interpolated
-        allocate(maskp(size(var2,1),size(var2,2)))
-        maskp = .TRUE. 
-        if (present(mask_pack)) maskp = mask_pack 
-
-        ! If fill is desired, initialize output points to missing values
-        if (fill_pts) var2 = missing_val 
-
-        ! A loop to get started 
-        do j = 1, grid2%G%ny
-!             write(*,*) "j / ny: ", j, grid2%G%ny 
-
-            do i = 1, grid2%G%nx 
-
-                if (maskp(i,j)) then 
-                    ! Only interpolate for desired target points 
-
-                    call which(grid1%G%x .ge. grid2%x(i,j)-grid2%G%dx .and. grid1%G%x .le. grid2%x(i,j)+grid2%G%dx,ii)
-                    call which(grid1%G%y .ge. grid2%y(i,j)-grid2%G%dy .and. grid1%G%y .le. grid2%y(i,j)+grid2%G%dy,jj)
-                    
-                    area = 0.d0 
-                    area(ii,jj) = interpconserv1_weights(x=grid1%x(ii,jj),y=grid1%y(ii,jj),dx=grid1%G%dx,dy=grid1%G%dy, &
-                                                  xout=grid2%x(i,j),yout=grid2%y(i,j), &
-                                                  dxout=grid2%G%dx,dyout=grid2%G%dy)
-
-                    if (sum(area(ii,jj)) .gt. 0.d0) then 
-                        ! If an interpolation point was found, calculate interpolation 
-
-                        var2(i,j) = sum(var1(ii,jj)*area(ii,jj), &
-                            mask=area(ii,jj).gt.0.d0 .and. var1(ii,jj).ne.missing_val) &
-                                      / sum(area(ii,jj), &
-                            mask=area(ii,jj).gt.0.d0 .and. var1(ii,jj).ne.missing_val)
-
-                    end if 
-
-                end if 
-
-            end do 
-        end do 
-
-        if (fill_pts) then 
-            call fill_nearest(var2,missing_value=missing_val)
-        end if 
-
-        return 
-
-    end subroutine map_field_conservative 
-
-    function interpconserv1_weights(x,y,dx,dy,xout,yout,dxout,dyout,latlon,missing_value) result(area)
+    function interpconserv1_weights_hi2lo(x,y,dx,dy,xout,yout,dxout,dyout,latlon,missing_value) result(area)
         ! Calculate 1st order conservative interpolation for a 
         ! point given its nearest neighbors  
+        ! Better for going from high res to low res (hi2lo)
         real(dp), intent(IN) :: x(:,:), y(:,:), dx, dy 
         real(dp), intent(IN) :: xout, yout, dxout, dyout 
         logical,  intent(IN), optional :: latlon
@@ -411,7 +349,158 @@ contains
 
         return 
 
-    end function interpconserv1_weights
+    end function interpconserv1_weights_hi2lo
+
+    function interpconserv1_weights_lo2hi(x,y,dx,dy,xout,yout,dxout,dyout,latlon,missing_value) result(area)
+        ! Calculate 1st order conservative interpolation for a 
+        ! point given its nearest neighbors 
+        ! Better for going from low res to high res (lo2hi) 
+        real(dp), intent(IN) :: x(:,:), y(:,:), dx, dy 
+        real(dp), intent(IN) :: xout, yout, dxout, dyout 
+        logical,  intent(IN), optional :: latlon
+        real(dp), intent(IN), optional :: missing_value  
+        real(dp) :: area(size(x,1),size(x,2))
+
+        ! Local variables
+        logical  :: is_latlon 
+        type(polygon)       :: pol  
+        integer, parameter :: nx = 10, ny = 10, npts = nx*ny
+        real(dp) :: x1, y1
+        integer  :: npts_in 
+        integer :: i, j, now  
+        real(dp) :: missing_val
+        real(dp) :: x_vec(size(x,1)*size(x,2)), y_vec(size(x,1)*size(x,2)) 
+        real(dp) :: area_vec(size(x,1)*size(x,2))
+        real(dp) :: area_target 
+
+        is_latlon = .FALSE. 
+        if (present(latlon)) is_latlon = latlon 
+
+        missing_val = mv 
+        if (present(missing_value)) missing_val = missing_value
+
+        ! Generate polygon representing boundaries of target point 
+        pol = create_polygon(real([xout-dxout/2.d0,xout-dxout/2.d0,xout+dxout/2.d0,xout+dxout/2.d0]), &
+                             real([yout-dyout/2.d0,yout+dyout/2.d0,yout+dyout/2.d0,yout-dyout/2.d0]))
+
+        x_vec = reshape(x,[size(x_vec)])
+        y_vec = reshape(y,[size(y_vec)])
+        
+        ! Loop over source points and get the area of each source
+        ! polygon that is inside of the target polygon 
+        ! - Save the area (absolute area, not fraction)
+        area_target = dxout*dyout 
+        area_vec    = 0.d0 
+
+        do now = 1, size(x_vec) 
+         
+            npts_in = 0
+            do i = 1, nx
+            do j = 1, ny 
+                x1 = (x_vec(now)-dx/2.d0) + (dx)*dble(i-1)/dble(nx) + (dx)*0.5d0/dble(nx-1) 
+                y1 = (y_vec(now)-dy/2.d0) + (dy)*dble(j-1)/dble(ny) + (dy)*0.5d0/dble(ny-1) 
+                if (point_in_polygon(real(x1),real(y1),pol)) npts_in = npts_in+1
+
+            end do
+            end do 
+            
+            area_vec(now) = dble(npts_in)/dble(npts) * dx*dy 
+
+            ! If the source points area adds up to the target cell area, exit loop
+            if (sum(area_vec) .ge. area_target) exit 
+        end do 
+
+        ! Return 2D area 
+        area = reshape(area_vec,[size(x,1),size(x,2)])
+
+        return 
+
+    end function interpconserv1_weights_lo2hi
+
+    subroutine map_field_conservative(grid1,grid2,varname,var1,var2,fill,missing_value,mask_pack)
+
+        implicit none 
+
+        type(grid_class), intent(IN)  :: grid1  ! Original grid information
+        type(grid_class), intent(IN)  :: grid2  ! New grid 
+        character(len=*), intent(IN)  :: varname        ! Name of the variable being mapped
+        double precision, intent(IN)  :: var1(:,:)      ! Input variable
+        double precision, intent(OUT) :: var2(:,:)      ! Output variable
+        logical,  optional :: fill
+        double precision, intent(IN), optional :: missing_value  ! Points not included in mapping
+        logical,          intent(IN), optional :: mask_pack(:,:)
+
+        logical          :: fill_pts
+        double precision :: missing_val 
+        logical, allocatable :: maskp(:,:) 
+        double precision :: x1, y1, x2, y2 
+        integer :: i, j 
+        integer, allocatable :: ii(:), jj(:) 
+
+        real(dp) :: area(size(grid1%x,1),size(grid1%x,2))
+
+        ! Check if the grids are compatible for this mapping routine
+        if (.not. same_projection(grid1%proj,grid2%proj)) then 
+            write(*,*) "map_field_conservative:: error:  &
+                       &Currently this subroutine only interpolates between grids &
+                       &on the same projection. Try again."
+            stop 
+        end if 
+
+        ! By default, fill in target grid points with missing values
+        fill_pts = .TRUE. 
+        if (present(fill)) fill_pts = fill 
+
+        missing_val = mv 
+        if (present(missing_value)) missing_val = missing_value
+
+        ! By default, all var2 points are interpolated
+        allocate(maskp(size(var2,1),size(var2,2)))
+        maskp = .TRUE. 
+        if (present(mask_pack)) maskp = mask_pack 
+
+        ! If fill is desired, initialize output points to missing values
+        if (fill_pts) var2 = missing_val 
+
+        ! A loop to get started 
+        do j = 1, grid2%G%ny
+!             write(*,*) "j / ny: ", j, grid2%G%ny 
+
+            do i = 1, grid2%G%nx 
+
+                if (maskp(i,j)) then 
+                    ! Only interpolate for desired target points 
+
+                    call which(grid1%G%x .ge. grid2%x(i,j)-grid2%G%dx .and. grid1%G%x .le. grid2%x(i,j)+grid2%G%dx,ii)
+                    call which(grid1%G%y .ge. grid2%y(i,j)-grid2%G%dy .and. grid1%G%y .le. grid2%y(i,j)+grid2%G%dy,jj)
+                    
+                    area = 0.d0 
+                    area(ii,jj) = interpconserv1_weights_hi2lo(x=grid1%x(ii,jj),y=grid1%y(ii,jj),dx=grid1%G%dx,dy=grid1%G%dy, &
+                                                  xout=grid2%x(i,j),yout=grid2%y(i,j), &
+                                                  dxout=grid2%G%dx,dyout=grid2%G%dy)
+
+                    if (sum(area(ii,jj)) .gt. 0.d0) then 
+                        ! If an interpolation point was found, calculate interpolation 
+
+                        var2(i,j) = sum(var1(ii,jj)*area(ii,jj), &
+                            mask=area(ii,jj).gt.0.d0 .and. var1(ii,jj).ne.missing_val) &
+                                      / sum(area(ii,jj), &
+                            mask=area(ii,jj).gt.0.d0 .and. var1(ii,jj).ne.missing_val)
+
+                    end if 
+
+                end if 
+
+            end do 
+        end do 
+
+        if (fill_pts) then 
+            call fill_nearest(var2,missing_value=missing_val)
+        end if 
+
+        return 
+
+    end subroutine map_field_conservative 
 
 !     subroutine map_calc_conserv1_weights_grid_grid(map,grid1)
 

@@ -22,7 +22,8 @@ program test
     character(len=56)  :: varname 
     integer :: q 
 
-    type(multigrid_class) :: mgrid 
+    type(multigrid_class)   :: mgrid 
+    type(map_conserv_class) :: mhilo, mlohi 
 
     outfldr = "output/multigrid/"
     file_input      = "data/GRL-5KM_TOPO-B13.nc"
@@ -53,7 +54,8 @@ program test
     do q = 1, mgrid%n_grids 
 
         call map_conserv_init(mgrid%map(q),grid,mgrid%grid(q))
-        
+        call map_conserv_init(mlohi,mgrid%grid(q),grid)
+
         ! Interp field to subgrid   
         call grid_allocate(mgrid%grid(q),var1)
 !         call map_field_conservative(grid,mgrid%grid(q),varname,var,var1)
@@ -66,21 +68,16 @@ program test
         call map_field_conservative1(mgrid%map(q),varname,var,var1)
         call nc_write(file_out,varname,var1,dim1="xc",dim2="yc")
 
-        call map_field_conservative1(mgrid%map(q),"zb",var,var1)
-        call nc_write(file_out,varname,var1,dim1="xc",dim2="yc")
-
-
         write(*,"(a,3g12.4)") "mass comparison (hi, con, % diff): ", &
                 sum(var*grid%G%dx*grid%G%dy), &
                 sum(var1*mgrid%grid(q)%G%dx*mgrid%grid(q)%G%dy), & 
                 100*(sum(var1*mgrid%grid(q)%G%dx*mgrid%grid(q)%G%dy) - sum(var*grid%G%dx*grid%G%dy)) &
                         / sum(var*mgrid%grid(q)%G%dx*mgrid%grid(q)%G%dy)                  
 
-        stop 
-
         ! Remap to high resolution 
         call grid_allocate(grid,var2)
-        call map_field_conservative(mgrid%grid(q),grid,varname,var1,var2)
+!         call map_field_conservative(mgrid%grid(q),grid,varname,var1,var2)
+        call map_field_conservative1(mlohi,varname,var1,var2)
 
         file_out = trim(outfldr)//trim(mgrid%grid(q)%name)//"_5KM"//trim(file_out_suffix)
         call grid_write(grid,file_out,xnm="xc",ynm="yc",create=.TRUE.)
