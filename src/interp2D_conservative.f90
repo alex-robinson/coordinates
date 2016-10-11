@@ -215,7 +215,7 @@ contains
                     
         ! Loop over target grid, calculate area of points within each target grid point
         do j = 1, grid2%G%ny
-            write(*,*) "j / ny: ", j, grid2%G%ny 
+            if (mod(j,10).eq.0) write(*,*) "j / ny: ", j, grid2%G%ny 
 
             do i = 1, grid2%G%nx 
 

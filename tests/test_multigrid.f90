@@ -64,7 +64,8 @@ program test
         ! Write to file 
         file_out = trim(outfldr)//trim(mgrid%grid(q)%name)//trim(file_out_suffix)
         call grid_write(mgrid%grid(q),file_out,xnm="xc",ynm="yc",create=.TRUE.)
-        
+        call nc_write(file_out,varname,var1,dim1="xc",dim2="yc")
+
         write(*,"(a,3g12.4)") "mass comparison (hi, con, % diff): ", &
                 sum(var*grid%G%dx*grid%G%dy), &
                 sum(var1*mgrid%grid(q)%G%dx*mgrid%grid(q)%G%dy), & 
