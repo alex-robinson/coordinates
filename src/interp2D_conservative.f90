@@ -44,8 +44,9 @@ module interp2D_conservative
 
     private 
     public :: map_conserv_class 
-    public :: map_conserv_init
+    public :: map_conservative_init
     public :: map_field_conservative
+    public :: map_field_conservative_smooth
 
 contains 
 
@@ -80,7 +81,123 @@ contains
 
     end function gen_stat_mask 
 
+    subroutine map_field_conservative_smooth(map,map_hilo,varname,var1,var2,fill,missing_value,mask_pack)
+        ! Map a low resolution field to a high resolution grid, but impose local smoothing
+        ! that retains conservative properties of field
+
+        implicit none 
+
+        type(map_conserv_class), intent(IN) :: map        ! Map grid1=>grid2
+        type(map_conserv_class), intent(IN) :: map_hilo   ! Map grid2=>grid1 
+        
+        character(len=*), intent(IN)  :: varname        ! Name of the variable being mapped
+        double precision, intent(IN)  :: var1(:,:)      ! Input variable
+        double precision, intent(OUT) :: var2(:,:)      ! Output variable
+        logical,  optional :: fill
+        double precision, intent(IN), optional :: missing_value  ! Points not included in mapping
+        logical,          intent(IN), optional :: mask_pack(:,:)
+
+        ! Local variables
+        logical          :: fill_pts
+        double precision :: missing_val 
+        logical, allocatable :: maskp(:,:) 
+        integer :: i, j 
+        integer, allocatable :: ii(:), jj(:) 
+        real(dp) :: area(size(map%grid1%x,1),size(map%grid1%x,2))
+
+        real(dp) :: low1(size(map%grid1%x,1),size(map%grid1%x,2))
+        real(dp) :: low2(size(map%grid1%x,1),size(map%grid1%x,2))
+        real(dp) :: high0(size(map%grid2%x,1),size(map%grid2%x,2))
+        real(dp) :: high(size(map%grid2%x,1),size(map%grid2%x,2))
+        real(dp) :: high_corr(size(map%grid2%x,1),size(map%grid2%x,2))
+        integer :: k, n_iter, n_border, nxh, nyh  
+        real(dp) :: target_val, current_val, err_percent 
+
+!         ! Generate conservation map for going from high to low resolution 
+!         call map_conservative_init(map_hilo,map%grid2,map%grid1)
+        
+        missing_val = mv 
+        if (present(missing_value)) missing_val = missing_value
+
+        ! Determine number of "border" grid points in high resolution field
+        n_border = int( map%grid1%G%dx / map%grid2%G%dx )
+        nxh      = map%grid2%G%nx 
+        nyh      = map%grid2%G%ny 
+
+        ! Calculate the target conservation value for the whole domain 
+        target_val = sum(var1*map%grid1%G%dx*map%grid1%G%dy)
+
+        ! Step 0: interpolate the field from low resolution to high resolution
+        ! conservatively (results in blocky map) 
+        call map_field_conservative(map,varname,var1,high0,fill,missing_val,mask_pack)
+        high = high0 
+
+        n_iter = 1 
+
+        ! Begin smoothing iteration
+        do k = 1, n_iter 
+
+            ! Step 1: re-interpolate back to low resolution
+            low1 = interp_nearest(x=map%grid2%G%x,y=map%grid2%G%y,z=high, &
+                                  xout=map%grid1%G%x,yout=map%grid1%G%y, &
+                                  missing_value=missing_val)
+
+            ! Step 2: use smooth interpolation to create a 
+            ! new high res field with interpolation points 
+            ! exactly on the values of the array `low1`
+            high = interp_bilinear(x=map%grid1%G%x,y=map%grid1%G%y,z=low1, &
+                                   xout=map%grid2%G%x,yout=map%grid2%G%y, &
+                                   missing_value=missing_val)
+
+            ! Step 3: integrate over high resolution points that fall into the
+            ! coarse resolution grid. This is the target conservation value
+            call map_field_conservative(map_hilo,varname,high,low2,missing_value=missing_val)
+
+            ! Step 4: Find conservation error (low2-low) and create a high res version of that.
+            ! Note, you compare against the original low here, not low1 from above.
+            call map_field_conservative(map,varname,low2-var1,high_corr,fill,missing_val,mask_pack)
+
+            ! Step 5: Apply the correction 
+            high = high - high_corr
+
+            ! Assign border values from blocky map to avoid artefacts 
+            high(1:n_border,:)           = high0(1:n_border,:)
+            high((nxh-n_border+1):nxh,:) = high0((nxh-n_border+1):nxh,:)
+            high(:,1:n_border)           = high0(:,1:n_border)
+            high(:,(nyh-n_border+1):nyh) = high0(:,(nyh-n_border+1):nyh)
+
+            ! Eliminate correction for border points 
+            high_corr(1:n_border,:)           = 0.d0
+            high_corr((nxh-n_border+1):nxh,:) = 0.d0
+            high_corr(:,1:n_border)           = 0.d0
+            high_corr(:,(nyh-n_border+1):nyh) = 0.d0
+
+            ! Calculate the current conservation value for the whole domain,
+            ! Stop if stopping criterion is reached 
+            current_val = sum(high*map%grid2%G%dx*map%grid2%G%dy)
+            err_percent = (current_val-target_val) / target_val * 100.d0 
+
+            write(*,"(a,i4,4g10.1)") "map_field_conservative_smooth:: k, err_percent: ", k, &
+                        target_val, current_val, err_percent, maxval(high_corr)
+
+            ! If error is less than 1%, exit the iterative loop 
+            if (abs(err_percent) .lt. 1.d0) exit 
+
+        end do 
+
+        ! After iterations store smooth high resolution grid for output 
+        var2 = high 
+
+            
+        return 
+
+    end subroutine map_field_conservative_smooth
+
     subroutine map_field_conservative_grid(grid1,grid2,varname,var1,var2,fill,missing_value,mask_pack)
+        ! Map a field from grid1 to grid2 without defining any map variable beforehand.
+        ! This is somewhat slower than performing the map initialization and 
+        ! field mapping in one step, but it is more consistent with the general
+        ! two-step approach (map_init, then map_field)
 
         implicit none 
 
@@ -96,7 +213,7 @@ contains
         type(map_conserv_class) :: map      ! Map grid1=>grid2
         
         ! Define the map locally 
-        call map_conserv_init(map,grid1,grid2)
+        call map_conservative_init(map,grid1,grid2)
 
         ! Interpolate the field 
         call map_field_conservative_map(map,varname,var1,var2,fill,missing_value,mask_pack)
@@ -106,6 +223,8 @@ contains
     end subroutine map_field_conservative_grid
 
     subroutine map_field_conservative_map(map,varname,var1,var2,fill,missing_value,mask_pack)
+        ! Map a field from grid1 to grid2 using a predefined map of neighbor weights
+        ! generated using `map_conserv_init` 
 
         implicit none 
 
@@ -117,13 +236,12 @@ contains
         double precision, intent(IN), optional :: missing_value  ! Points not included in mapping
         logical,          intent(IN), optional :: mask_pack(:,:)
 
+        ! Local variables
         logical          :: fill_pts
         double precision :: missing_val 
         logical, allocatable :: maskp(:,:) 
         integer :: i, j 
         integer, allocatable :: ii(:), jj(:) 
-
-        ! Local variables
         real(dp) :: area(size(map%grid1%x,1),size(map%grid1%x,2))
 
         ! Check if the grids are compatible for this mapping routine
@@ -185,7 +303,8 @@ contains
 
     end subroutine map_field_conservative_map 
 
-    subroutine map_conserv_init(map,grid1,grid2)
+    subroutine map_conservative_init(map,grid1,grid2)
+        ! Initialize a conservative weighting map to go from grid1 to grid2
 
         implicit none 
 
@@ -220,7 +339,7 @@ contains
             do i = 1, grid2%G%nx 
 
                 ! Get different range of neighbor indices depending on which direction
-                ! of interpolation is being performed 
+                ! of interpolation is being performed (to minimize neighborhood size)
 
                 if (is_hi2lo) then
                     ! From high to low resolution 
@@ -280,7 +399,7 @@ contains
 
         return 
 
-    end subroutine map_conserv_init 
+    end subroutine map_conservative_init 
 
     subroutine map_allocate_map(mp,nx,ny)
 

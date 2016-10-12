@@ -42,6 +42,7 @@ program test
 
     ! Test multigrid initialization 
     call multigrid_init(mgrid,grid,dx=[10.d0,20.d0,50.d0])
+!     call multigrid_init(mgrid,grid,dx=[50.d0])
 
     ! Load test data 
     call grid_allocate(grid,var)
@@ -54,8 +55,8 @@ program test
     do q = 1, mgrid%n_grids 
 
         ! Generate maps (hi-lo,lo-hi)
-        call map_conserv_init(mgrid%map(q),grid,mgrid%grid(q))
-        call map_conserv_init(mlohi,mgrid%grid(q),grid)
+        call map_conservative_init(mgrid%map(q),grid,mgrid%grid(q))
+        call map_conservative_init(mlohi,mgrid%grid(q),grid)
 
         ! Interp field to subgrid   
         call grid_allocate(mgrid%grid(q),var1)
@@ -74,7 +75,8 @@ program test
 
         ! Remap to high resolution 
         call grid_allocate(grid,var2)
-        call map_field_conservative(mlohi,varname,var1,var2)
+!         call map_field_conservative(mlohi,varname,var1,var2)
+        call map_field_conservative_smooth(mlohi,mgrid%map(q),varname,var1,var2)
 
         file_out = trim(outfldr)//trim(mgrid%grid(q)%name)//"_5KM"//trim(file_out_suffix)
         call grid_write(grid,file_out,xnm="xc",ynm="yc",create=.TRUE.)
