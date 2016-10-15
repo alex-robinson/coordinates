@@ -668,11 +668,10 @@ contains
     subroutine fill_bilinear_dble(x,y,z,missing_value,fill_value,cont)
         ! Fill the missing values of an array with a bilinear interpolation
         ! Extrapolate when needed 
-
-        ! ajr: TO DO: NOT FINISHED !!!
         
         implicit none 
-        double precision :: x(:), y(:), z(:,:)
+        double precision, intent(IN)    :: x(:), y(:)
+        double precision, intent(INOUT) :: z(:,:)
         double precision :: missing_value 
         double precision, optional :: fill_value
         logical, optional :: cont 
@@ -697,26 +696,125 @@ contains
                 if (z(i,j) .eq. missing_value) then 
                     ! Interpolation needed for this point
 
-                    ! Get horizontal bracketing indices
-                    ii = get_nn_indices_line(z(:,j),i,missing_value,cont)
-                    x1(1) = x(ii(1))
+                    ! Left index  
+                    do i1 = i, 1, -1 
+                        if (z(i1,j) .ne. missing_value) exit 
+                    end do 
+
+                    ! Right index  
+                    do i2 = i, nx 
+                        if (z(i2,j) .ne. missing_value) exit 
+                    end do 
+
+                    ! Down index  
+                    do j1 = j, 1, -1 
+                        if (z(i,j1) .ne. missing_value) exit 
+                    end do 
+
+                    do j2 = j, ny 
+                        if (z(i,j2) .ne. missing_value) exit 
+                    end do 
+
+                    x1(1) = x(i1)
                     x1(2) = y(j)
-                    x1(3) = z(ii(1),j)
-                    x2(1) = x(ii(2))
+                    x1(3) = z(i1,j) 
+
+                    x2(1) = x(i2)
                     x2(2) = y(j)
-                    x2(3) = z(ii(2),j)
+                    x2(3) = z(i2,j) 
+
+                    x3(1) = x(i)
+                    x3(2) = y(j1)
+                    x3(3) = z(i,j1) 
+
+                    x4(1) = x(i)
+                    x4(2) = y(j2)
+                    x4(3) = z(i,j2) 
+
+                    if (x1(3) .eq. missing_value .and. &
+                        x2(3) .ne. missing_value) then 
+                        x1(3) = x2(3)
+                    else if (x2(3) .eq. missing_value .and. &
+                             x1(3) .ne. missing_value) then 
+                        x2(3) = x1(3)
+                    end if 
+
+                    if (x3(3) .eq. missing_value .and. &
+                        x4(3) .ne. missing_value) then 
+                        x3(3) = x4(3)
+                    else if (x4(3) .eq. missing_value .and. &
+                             x3(3) .ne. missing_value) then 
+                        x4(3) = x3(3)
+                    end if 
                     
-                    z(i,j) = calc_bilinear(x1,x2,x3,x4,xout)
+                    if (x1(3) .ne. missing_value .and. &
+                        x3(3) .ne. missing_value) then 
+                        
+                        z(i,j) = calc_bilinear(x1,x2,x3,x4,xout)
+
+                    end if 
 
                 end if
 
             end do 
         end do 
 
-
         return
 
     end subroutine fill_bilinear_dble
+
+!     subroutine fill_bilinear_dble(x,y,z,missing_value,fill_value,cont)
+!         ! Fill the missing values of an array with a bilinear interpolation
+!         ! Extrapolate when needed 
+
+!         ! ajr: TO DO: NOT FINISHED !!!
+        
+!         implicit none 
+!         double precision :: x(:), y(:), z(:,:)
+!         double precision :: missing_value 
+!         double precision, optional :: fill_value
+!         logical, optional :: cont 
+
+!         integer :: nr 
+!         integer :: q, nx, ny, i, j
+
+!         double precision :: x1(3), x2(3), x3(3), x4(3)
+!         double precision :: xout(2) 
+!         integer :: i1, i2, i3, i4 
+!         integer :: j1, j2, j3, j4 
+!         integer :: ii(2)
+
+
+!         nx = size(z,1)
+!         ny = size(z,2) 
+
+!         ! Loop over array and interpolate missing values 
+!         do j = 1, ny 
+!             do i = 1, nx
+
+!                 if (z(i,j) .eq. missing_value) then 
+!                     ! Interpolation needed for this point
+
+!                     ! Get horizontal bracketing indices
+!                     ii = get_nn_indices_line(z(:,j),i,missing_value,cont)
+!                     x1(1) = x(ii(1))
+!                     x1(2) = y(j)
+!                     x1(3) = z(ii(1),j)
+!                     x2(1) = x(ii(2))
+!                     x2(2) = y(j)
+!                     x2(3) = z(ii(2),j)
+                    
+!                     z(i,j) = calc_bilinear(x1,x2,x3,x4,xout)
+
+!                 end if
+
+!             end do 
+!         end do 
+
+
+!         return
+
+!     end subroutine fill_bilinear_dble
 
     function get_nn_indices_line(z,i,missing_value,cont) result(ii)
         ! Find the indices of the nearest bracketing neighbors

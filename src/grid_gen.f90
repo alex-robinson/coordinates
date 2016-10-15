@@ -16,7 +16,7 @@ module grid_gen
     type multigrid_class 
         integer :: n_grids
         type(grid_class), allocatable :: grid(:)
-        type(map_conserv_class), allocatable :: map(:)
+        type(map_conserv_class), allocatable :: map_to_mgrid(:), map_from_mgrid(:)
     end type 
 
     private 
@@ -79,13 +79,18 @@ contains
 
         if (err) stop 
 
+        ! == Sub-grid initialization == 
+
         ! Allocate sub-grids 
         if (allocated(mgrid%grid)) deallocate(mgrid%grid)
         allocate(mgrid%grid(mgrid%n_grids))
 
         ! Allocate maps 
-        if (allocated(mgrid%map)) deallocate(mgrid%map)
-        allocate(mgrid%map(mgrid%n_grids))
+        if (allocated(mgrid%map_to_mgrid)) deallocate(mgrid%map_to_mgrid)
+        allocate(mgrid%map_to_mgrid(mgrid%n_grids))
+
+        if (allocated(mgrid%map_from_mgrid)) deallocate(mgrid%map_from_mgrid)
+        allocate(mgrid%map_from_mgrid(mgrid%n_grids))
 
         ! Loop over dx values, generate new axis values and initialize
         ! subgrid objects
@@ -108,7 +113,18 @@ contains
 
             call grid_init(mgrid%grid(q),grid,name=trim(grid_name),x=x,y=y)
 
+
+            ! Generate conservative maps (to, from)
+            call map_conservative_init(mgrid%map_to_mgrid(q),  grid,mgrid%grid(q))
+            call map_conservative_init(mgrid%map_from_mgrid(q),mgrid%grid(q),grid)
+
         end do 
+
+        ! == Map initialization == 
+
+        
+        
+        ! == Done == 
 
         write(*,*) "multigrid_init completed. Summary: "
         write(*,"(a5,3a8,4a10)") "Grid", "dx", "nx", "ny", "xmin", "xmax", "ymin", "ymax"

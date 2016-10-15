@@ -47,6 +47,7 @@ module interp2D_conservative
     public :: map_conservative_init
     public :: map_field_conservative
     public :: map_field_conservative_smooth
+    public :: calc_grid_total
 
 contains 
 
@@ -107,11 +108,13 @@ contains
 
         real(dp) :: low1(size(map%grid1%x,1),size(map%grid1%x,2))
         real(dp) :: low2(size(map%grid1%x,1),size(map%grid1%x,2))
+        real(dp) :: low_corr(size(map%grid1%x,1),size(map%grid1%x,2))
         real(dp) :: high0(size(map%grid2%x,1),size(map%grid2%x,2))
         real(dp) :: high(size(map%grid2%x,1),size(map%grid2%x,2))
         real(dp) :: high_corr(size(map%grid2%x,1),size(map%grid2%x,2))
         integer :: k, n_iter, n_border, nxh, nyh  
         real(dp) :: target_val, current_val, err_percent 
+        real(dp) :: xlim(2), ylim(2) 
 
 !         ! Generate conservation map for going from high to low resolution 
 !         call map_conservative_init(map_hilo,map%grid2,map%grid1)
@@ -125,22 +128,32 @@ contains
         nyh      = map%grid2%G%ny 
 
         ! Calculate the target conservation value for the whole domain 
-        target_val = sum(var1*map%grid1%G%dx*map%grid1%G%dy)
+        xlim = [minval(map%grid1%G%x+map%grid1%G%dx/2.d0),maxval(map%grid1%G%x-map%grid1%G%dx/2.d0)]
+        ylim = [minval(map%grid1%G%y+map%grid1%G%dy/2.d0),maxval(map%grid1%G%y-map%grid1%G%dy/2.d0)]
+        
+        write(*,*) "xlim = ", xlim
+        write(*,*) "ylim = ", ylim 
 
+!         target_val = sum(var1*map%grid1%G%dx*map%grid1%G%dy)
+        target_val = calc_grid_total(map%grid1%G%x,map%grid1%G%y,var1,xlim=xlim,ylim=ylim)
+        
         ! Step 0: interpolate the field from low resolution to high resolution
         ! conservatively (results in blocky map) 
         call map_field_conservative(map,varname,var1,high0,fill,missing_val,mask_pack)
-        high = high0 
+        high     = high0 
+        low1     = var1 
+        low_corr = 0.d0 
 
-        n_iter = 1 
+        n_iter = 10 
 
         ! Begin smoothing iteration
         do k = 1, n_iter 
 
             ! Step 1: re-interpolate back to low resolution
-            low1 = interp_nearest(x=map%grid2%G%x,y=map%grid2%G%y,z=high, &
-                                  xout=map%grid1%G%x,yout=map%grid1%G%y, &
-                                  missing_value=missing_val)
+!             low1 = interp_nearest(x=map%grid2%G%x,y=map%grid2%G%y,z=high, &
+!                                   xout=map%grid1%G%x,yout=map%grid1%G%y, &
+!                                   missing_value=missing_val)
+            low1 = low1 - low_corr 
 
             ! Step 2: use smooth interpolation to create a 
             ! new high res field with interpolation points 
@@ -153,35 +166,23 @@ contains
             ! coarse resolution grid. This is the target conservation value
             call map_field_conservative(map_hilo,varname,high,low2,missing_value=missing_val)
 
-            ! Step 4: Find conservation error (low2-low) and create a high res version of that.
-            ! Note, you compare against the original low here, not low1 from above.
-            call map_field_conservative(map,varname,low2-var1,high_corr,fill,missing_val,mask_pack)
+            ! Step 4: Find conservation error by comparing new low res field to original.
+            low_corr = (low2-var1)
 
-            ! Step 5: Apply the correction 
-            high = high - high_corr
-
-            ! Assign border values from blocky map to avoid artefacts 
-            high(1:n_border,:)           = high0(1:n_border,:)
-            high((nxh-n_border+1):nxh,:) = high0((nxh-n_border+1):nxh,:)
-            high(:,1:n_border)           = high0(:,1:n_border)
-            high(:,(nyh-n_border+1):nyh) = high0(:,(nyh-n_border+1):nyh)
-
-            ! Eliminate correction for border points 
-            high_corr(1:n_border,:)           = 0.d0
-            high_corr((nxh-n_border+1):nxh,:) = 0.d0
-            high_corr(:,1:n_border)           = 0.d0
-            high_corr(:,(nyh-n_border+1):nyh) = 0.d0
-
+            ! Eliminate correction for border points
+            low_corr(1,:) = 0.d0 
+            low_corr(:,1) = 0.d0 
+            low_corr(map%grid1%G%nx,:) = 0.d0 
+            low_corr(:,map%grid1%G%ny) = 0.d0 
+            
             ! Calculate the current conservation value for the whole domain,
             ! Stop if stopping criterion is reached 
-            current_val = sum(high*map%grid2%G%dx*map%grid2%G%dy)
+!             current_val = sum(high*map%grid2%G%dx*map%grid2%G%dy)
+            current_val = calc_grid_total(map%grid2%G%x,map%grid2%G%y,high,xlim=xlim,ylim=ylim)
             err_percent = (current_val-target_val) / target_val * 100.d0 
 
-            write(*,"(a,i4,4g10.1)") "map_field_conservative_smooth:: k, err_percent: ", k, &
-                        target_val, current_val, err_percent, maxval(high_corr)
-
-            ! If error is less than 1%, exit the iterative loop 
-            if (abs(err_percent) .lt. 1.d0) exit 
+            write(*,"(a,i4,4g11.2)") "map_field_conservative_smooth:: k, err_percent: ", k, &
+                        target_val, current_val, err_percent, maxval(low_corr)
 
         end do 
 
@@ -192,6 +193,76 @@ contains
         return 
 
     end subroutine map_field_conservative_smooth
+
+    function calc_grid_total(x,y,var,xlim,ylim) result(tot)
+
+        implicit none 
+
+        double precision, intent(IN)  :: x(:), y(:), var(:,:)
+        double precision, intent(IN)  :: xlim(2), ylim(2)   ! Extent over which to calculate total
+        double precision :: tot 
+
+        double precision :: dx, dy, d_extra 
+        double precision :: weight(size(var,1),size(var,2))
+        double precision :: xwt, ywt 
+        integer :: i, j 
+
+        ! Determine the resolution of the grid 
+        dx = abs(x(2)-x(1)) 
+        dy = abs(y(2)-y(1))
+
+        ! Initially set weight to zero 
+        weight = 0.d0 
+
+        ! Find weights over the whole domain 
+        do j = 1, size(y)
+            do i = 1, size(x)
+
+                if (x(i)-dx/2.d0 .le. xlim(1) .and. x(i)+dx/2.d0 .gt. xlim(1)) then 
+                    xwt = ( (x(i)+dx/2.d0) - xlim(1) ) / dx 
+                else if (x(i)-dx/2.d0 .lt. xlim(2) .and. x(i)+dx/2.d0 .ge. xlim(2)) then 
+                    xwt = ( xlim(2) - (x(i)-dx/2.d0) ) / dx 
+                else if (x(i)-dx/2.d0 .ge. xlim(1) .and. x(i)+dx/2.d0 .le. xlim(2)) then 
+                    xwt = 1.d0 
+                else 
+                    xwt = 0.d0 
+                end if 
+
+                if (y(j)-dy/2.d0 .le. ylim(1) .and. y(j)+dy/2.d0 .gt. ylim(1)) then 
+                    ywt = ( (y(j)+dy/2.d0) - ylim(1) ) / dy 
+                else if (y(j)-dy/2.d0 .lt. ylim(2) .and. y(j)+dy/2.d0 .ge. ylim(2)) then 
+                    ywt = ( ylim(2) - (y(j)-dy/2.d0) ) / dy 
+                else if (y(j)-dy/2.d0 .ge. ylim(1) .and. y(j)+dy/2.d0 .le. ylim(2)) then 
+                    ywt = 1.d0 
+                else 
+                    ywt = 0.d0 
+                end if 
+                
+                if (xwt*ywt .gt. 0.d0) weight(i,j) = xwt*ywt 
+            end do 
+        end do 
+
+        ! Check that weights are within range 0:1 
+        if (minval(weight) .lt. 0.d0 .or. maxval(weight) .gt. 1.d0) then 
+            write(*,*) "calc_grid_total:: error: weights less than 0 or greater than 1!"
+            write(*,*) "weight: ", minval(weight), maxval(weight)
+            stop 
+        end if 
+
+!         do i = 1, size(x)
+!             write(*,"(5f10.2)") x(i), weight(i,1:4)
+!         end do 
+
+!         do j = 1, size(y)
+!             write(*,"(5f10.2)") y(j), weight(1:4,j)
+!         end do 
+        
+        ! Calculate grid total 
+        tot = sum(var*weight*dx*dy)
+
+        return 
+
+    end function calc_grid_total
 
     subroutine map_field_conservative_grid(grid1,grid2,varname,var1,var2,fill,missing_value,mask_pack)
         ! Map a field from grid1 to grid2 without defining any map variable beforehand.
@@ -279,14 +350,13 @@ contains
 
                     area = 0.d0 
                     area(ii,jj) = map%map(i,j)%area 
+                    where (var1(ii,jj) .eq. missing_val) area(ii,jj) = 0.d0 
 
                     if (sum(area(ii,jj)) .gt. 0.d0) then 
                         ! If an interpolation point was found, calculate interpolation 
 
-                        var2(i,j) = sum(var1(ii,jj)*area(ii,jj), &
-                            mask=area(ii,jj).gt.0.d0 .and. var1(ii,jj).ne.missing_val) &
-                                      / sum(area(ii,jj), &
-                            mask=area(ii,jj).gt.0.d0 .and. var1(ii,jj).ne.missing_val)
+                        var2(i,j) = sum(var1(ii,jj)*area(ii,jj),mask=area(ii,jj).gt.0.d0) &
+                                      / sum(area(ii,jj),mask=area(ii,jj).gt.0.d0)
 
                     end if 
 
@@ -438,7 +508,7 @@ contains
         ! Local variables
         logical  :: is_latlon 
         type(polygon)       :: pol  
-        integer, parameter :: nx = 10, ny = 10, npts = nx*ny
+        integer, parameter :: nx = 11, ny = 11, npts = nx*ny
         real(dp) :: x1, y1
         integer  :: npts_in 
         integer :: i, j, now  
