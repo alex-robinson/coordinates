@@ -14,9 +14,9 @@ module grid_gen
     real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
 
     type multigrid_class 
-        integer :: n_grids
+        integer :: n
         type(grid_class), allocatable :: grid(:)
-        type(map_conserv_class), allocatable :: map_to_mgrid(:), map_from_mgrid(:)
+        type(map_conserv_class), allocatable :: map_to(:), map_from(:)
     end type 
 
     private 
@@ -44,9 +44,6 @@ contains
         integer  :: nx(size(dx)), ny(size(dx))
         character(len=12)  :: dx_str 
         logical :: err 
-
-        ! How many sub-grids are desired? 
-        mgrid%n_grids = size(dx,1)
 
         ! === Check consistency of desired grids ===
         ! 1. New grid resolutions result in integer multiple grid sizes
@@ -81,20 +78,23 @@ contains
 
         ! == Sub-grid initialization == 
 
+        ! How many sub-grids are desired? 
+        mgrid%n = size(dx,1)
+
         ! Allocate sub-grids 
         if (allocated(mgrid%grid)) deallocate(mgrid%grid)
-        allocate(mgrid%grid(mgrid%n_grids))
+        allocate(mgrid%grid(mgrid%n))
 
         ! Allocate maps 
-        if (allocated(mgrid%map_to_mgrid)) deallocate(mgrid%map_to_mgrid)
-        allocate(mgrid%map_to_mgrid(mgrid%n_grids))
+        if (allocated(mgrid%map_to)) deallocate(mgrid%map_to)
+        allocate(mgrid%map_to(mgrid%n))
 
-        if (allocated(mgrid%map_from_mgrid)) deallocate(mgrid%map_from_mgrid)
-        allocate(mgrid%map_from_mgrid(mgrid%n_grids))
+        if (allocated(mgrid%map_from)) deallocate(mgrid%map_from)
+        allocate(mgrid%map_from(mgrid%n))
 
         ! Loop over dx values, generate new axis values and initialize
         ! subgrid objects
-        do q = 1, mgrid%n_grids 
+        do q = 1, mgrid%n 
 
             write(dx_str,"(i5)") int(dx(q))
             dx_str = trim(adjustl(dx_str))
@@ -115,22 +115,18 @@ contains
 
 
             ! Generate conservative maps (to, from)
-            call map_conservative_init(mgrid%map_to_mgrid(q),  grid,mgrid%grid(q))
-            call map_conservative_init(mgrid%map_from_mgrid(q),mgrid%grid(q),grid)
+            call map_conservative_init(mgrid%map_to(q),  grid,mgrid%grid(q))
+            call map_conservative_init(mgrid%map_from(q),mgrid%grid(q),grid)
 
         end do 
 
-        ! == Map initialization == 
-
-        
-        
         ! == Done == 
 
         write(*,*) "multigrid_init completed. Summary: "
         write(*,"(a5,3a8,4a10)") "Grid", "dx", "nx", "ny", "xmin", "xmax", "ymin", "ymax"
         write(*,"(i5,f8.1,2i8,4f10.2)") 1, grid%G%dx, grid%G%nx, grid%G%ny,  &
                 minval(grid%G%x), maxval(grid%G%x), minval(grid%G%y), maxval(grid%G%y)
-        do q = 1, mgrid%n_grids 
+        do q = 1, mgrid%n 
             write(*,"(i5,f8.1,2i8,4f10.2)") q+1, mgrid%grid(q)%G%dx, mgrid%grid(q)%G%nx, mgrid%grid(q)%G%ny,  &
                 minval(mgrid%grid(q)%G%x), maxval(mgrid%grid(q)%G%x), minval(mgrid%grid(q)%G%y), maxval(mgrid%grid(q)%G%y)
         end do 

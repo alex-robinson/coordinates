@@ -113,7 +113,7 @@ contains
         real(dp) :: high(size(map%grid2%x,1),size(map%grid2%x,2))
         real(dp) :: high_corr(size(map%grid2%x,1),size(map%grid2%x,2))
         integer :: k, n_iter, n_border, nxh, nyh  
-        real(dp) :: target_val, current_val, err_percent 
+        real(dp) :: target_val, current_val, err_percent, norm_val 
         real(dp) :: xlim(2), ylim(2) 
 
 !         ! Generate conservation map for going from high to low resolution 
@@ -130,13 +130,11 @@ contains
         ! Calculate the target conservation value for the whole domain 
         xlim = [minval(map%grid1%G%x+map%grid1%G%dx/2.d0),maxval(map%grid1%G%x-map%grid1%G%dx/2.d0)]
         ylim = [minval(map%grid1%G%y+map%grid1%G%dy/2.d0),maxval(map%grid1%G%y-map%grid1%G%dy/2.d0)]
-        
-        write(*,*) "xlim = ", xlim
-        write(*,*) "ylim = ", ylim 
-
-!         target_val = sum(var1*map%grid1%G%dx*map%grid1%G%dy)
         target_val = calc_grid_total(map%grid1%G%x,map%grid1%G%y,var1,xlim=xlim,ylim=ylim)
         
+        ! Normalization of error vals by sd(var1)
+        norm_val = sqrt(sum(var1,mask=var1.ne.missing_val)**2) / dble(count(var1.ne.missing_val))
+
         ! Step 0: interpolate the field from low resolution to high resolution
         ! conservatively (results in blocky map) 
         call map_field_conservative(map,varname,var1,high0,fill,missing_val,mask_pack)
@@ -144,15 +142,12 @@ contains
         low1     = var1 
         low_corr = 0.d0 
 
-        n_iter = 10 
+        n_iter = 50 
 
         ! Begin smoothing iteration
         do k = 1, n_iter 
 
             ! Step 1: re-interpolate back to low resolution
-!             low1 = interp_nearest(x=map%grid2%G%x,y=map%grid2%G%y,z=high, &
-!                                   xout=map%grid1%G%x,yout=map%grid1%G%y, &
-!                                   missing_value=missing_val)
             low1 = low1 - low_corr 
 
             ! Step 2: use smooth interpolation to create a 
@@ -175,15 +170,15 @@ contains
             low_corr(map%grid1%G%nx,:) = 0.d0 
             low_corr(:,map%grid1%G%ny) = 0.d0 
             
-            ! Calculate the current conservation value for the whole domain,
-            ! Stop if stopping criterion is reached 
-!             current_val = sum(high*map%grid2%G%dx*map%grid2%G%dy)
+            ! Calculate the current conservation value for the whole domain
             current_val = calc_grid_total(map%grid2%G%x,map%grid2%G%y,high,xlim=xlim,ylim=ylim)
             err_percent = (current_val-target_val) / target_val * 100.d0 
 
-            write(*,"(a,i4,4g11.2)") "map_field_conservative_smooth:: k, err_percent: ", k, &
-                        target_val, current_val, err_percent, maxval(low_corr)
+            write(*,"(a,i4,5g11.2)") "map_field_conservative_smooth:: k, err_percent: ", k, &
+                        target_val, current_val, err_percent, maxval(low_corr), norm_val
 
+            ! Stop if stopping criterion is reached (eg, less than 1% of variance of field)
+            if (maxval(low_corr) .lt. 0.01d0*norm_val) exit 
         end do 
 
         ! After iterations store smooth high resolution grid for output 
