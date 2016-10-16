@@ -475,8 +475,8 @@ contains
             end if 
 
             ! Check progress
-            if (mod(i,100).eq.0) write(*,*) "i / ny: ", i, npts2 
-
+            if (mod(i,1000)==0) write(*,"(a,i10,a3,i12,a5,2g12.3)")  &
+                                "  ",i, " / ",npts2,"   : ", sum(map%map(i)%area), dx2*dy2
         end do 
 
         write(*,*) "Mapping completed."
@@ -521,9 +521,10 @@ contains
         ! Local variables
         logical  :: is_latlon 
         type(polygon)       :: pol  
-        integer, parameter :: nx = 11, ny = 11, npts = nx*ny
+!         integer, parameter :: nx = 31, ny = 31, npts = nx*ny
+        integer :: nx, ny, npts 
         real(dp) :: x1, y1
-        integer  :: npts_in 
+        integer  :: npts_in  
         integer :: i, j, now  
         real(dp) :: missing_val
         real(dp) :: area_target 
@@ -544,16 +545,20 @@ contains
         area_target = dxout*dyout 
         area        = 0.d0 
 
-        do now = 1, size(x) 
-         
-            npts_in = 0
-            do i = 1, nx
-            do j = 1, ny 
-                x1 = (x(now)-dx/2.d0) + (dx)*dble(i-1)/dble(nx) + (dx)*0.5d0/dble(nx-1) 
-                y1 = (y(now)-dy/2.d0) + (dy)*dble(j-1)/dble(ny) + (dy)*0.5d0/dble(ny-1) 
-                if (point_in_polygon(real(x1),real(y1),pol)) npts_in = npts_in+1
+        nx = max(1,int(dx/dxout))
+        ny = max(1,int(dy/dyout))
+        npts = nx*ny 
 
-            end do
+        do now = 1, size(x) 
+            
+            npts_in   = 0
+
+            do j = 1, ny 
+                do i = 1, nx 
+                    x1 = (x(now)-dx/2.d0) + (dx)*dble(i-1)/dble(nx) + 0.5d0*1.d0/dble(nx)
+                    y1 = (y(now)-dy/2.d0) + (dy)*dble(j-1)/dble(ny) + 0.5d0*1.d0/dble(ny) 
+                    if (point_in_polygon(real(x1),real(y1),pol)) npts_in = npts_in+1
+                end do
             end do 
             
             area(now) = dble(npts_in)/dble(npts) * dx*dy 

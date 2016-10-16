@@ -300,8 +300,8 @@ contains
         integer :: i, j 
         type(point) :: p 
 
-        do i = 1, size(x,1)
         do j = 1, size(x,2) 
+        do i = 1, size(x,1)
             p = point(x(i,j),y(i,j))
             inside(i,j) = point_is_inside_poly_internal(p,pol)
         end do 
@@ -370,8 +370,8 @@ contains
 
         pol = create_polygon(xx,yy)          ! Create polygon from border values
 
-        do i = 1, size(x,1)
         do j = 1, size(x,2) 
+        do i = 1, size(x,1)
             p = point(x(i,j),y(i,j))
             inside(i,j) = point_is_inside_poly_internal(p,pol)
         end do 

@@ -39,11 +39,9 @@ program test
 
     ! Test multigrid initialization 
 !     call multigrid_init(mgrid,grid,dx=[10.d0,20.d0,50.d0,100.d0])
-    call multigrid_init(mgrid,grid,dx=[20.d0]) 
+    call multigrid_init(mgrid,grid,dx=[10.d0]) 
     call grid_allocate(grid,var)
     
-!     xlim = [minval(grid%G%x),maxval(grid%G%y)]
-!     ylim = [minval(grid%G%y),maxval(grid%G%y)]
     xlim = [ -850.d0, 850.d0]
     ylim = [-1450.d0,1450.d0]
     
