@@ -88,7 +88,8 @@ program test
 
             if (trim(varname) .ne. "mask") then 
 !                call map_field_conservative(mgrid%map_from(q),varname,var1,var2)
-                call map_field_conservative_smooth(mgrid%map_from(q),mgrid%map_to(q),varname,var1,var2)
+                call map_field_conservative_smooth(mgrid%map_from(q),mgrid%map_to(q), &
+                            mgrid%grid(q),grid,varname,var1,var2)
 
                 current_val = calc_grid_total(mgrid%grid(q)%G%x,mgrid%grid(q)%G%y,var1,xlim=xlim,ylim=ylim)
                 err_percent = 100.d0 * (current_val-target_val) / target_val
