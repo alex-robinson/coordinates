@@ -6,6 +6,7 @@ module coordinates_mapping
     use planet 
     use polygons 
     use ncio
+    use index
 
     use gaussian_filter  
     use interp2D 
@@ -520,7 +521,9 @@ contains
 
     function calc_weights_interpconserv1(x,y,dx,dy,xout,yout,dxout,dyout,latlon) result(area)
         ! Calculate 1st order conservative interpolation for a 
-        ! point given a vector of its neighbors (x,y)
+        ! point given a vector of its neighbors (x,y) with corresponding 
+        ! resolutions (dx,dy)
+        ! Works only for regular (square) grid points
 
         real(sp), intent(IN) :: x(:), y(:), dx(:), dy(:) 
         real(sp), intent(IN) :: xout, yout, dxout, dyout 
@@ -529,8 +532,7 @@ contains
 
         ! Local variables
         logical  :: is_latlon 
-        type(polygon)       :: pol  
-!         integer, parameter :: nx = 31, ny = 31, npts = nx*ny
+        type(polygon) :: pol  
         integer :: nx, ny, npts 
         real(sp) :: x1, y1
         integer  :: npts_in  
@@ -1364,7 +1366,8 @@ contains
     end subroutine map_field_points_grid_double
 
     subroutine map_field_points_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
-        ! Methods include "radius", "nn" (nearest neighbor) and "quadrant"
+        ! Methods include "radius", "nn" (nearest neighbor), "quadrant"
+        ! See `map_field_conservative_map` for 1st order conservative mapping
         
         implicit none 
 
@@ -1380,12 +1383,13 @@ contains
         logical            :: fill_pts, fill_border
         real(dp) :: shepard_exponent
         real(dp) :: max_distance, missing_val 
-        real(dp), dimension(:), allocatable   :: weight_neighb, v_neighb
-        real(dp), dimension(:), allocatable   :: dist_neighb
-        real(dp), dimension(:), allocatable   :: v_neighb_tmp 
         integer,  dimension(:), allocatable   :: mask2_local
-        integer :: i, k, q, j, ntot, check  
+        integer :: i, k, q, j, ntot, check, n1  
         logical :: found 
+
+        type(pt_wts_class)    :: map_now 
+        real(dp), allocatable :: map_now_var(:) 
+        integer,  allocatable :: ii(:) 
 
         ! Set neighborhood radius to very large value (to include all neighbors)
         ! or to radius specified by user
@@ -1409,9 +1413,6 @@ contains
         maskp = .TRUE. 
         if (present(mask_pack)) maskp = mask_pack 
 
-        allocate(v_neighb(map%nmax),weight_neighb(map%nmax),v_neighb_tmp(map%nmax))
-        allocate(dist_neighb(map%nmax))
-
         ! Initialize mask to show which points have been mapped
         allocate(mask2_local(map%npts))
         mask2_local = 0 
@@ -1424,112 +1425,101 @@ contains
 
             if (maskp(i)) then ! Only perform calculations for packing mask points
 
-            ! Initialize neighbor variable values from input
-            v_neighb = missing_val 
-            do k = 1, map%nmax 
-                if (map%i(i,k) .gt. 0) v_neighb(k) = var1(map%i(i,k))
-            end do 
+                ! Get current map and size of neighborhood
+                map_now = map%map(i) 
+                n1      = size(map_now%i)
 
-            ! Eliminate neighbors outside of distance limit (in meters)
-            where(map%dist(i,:) .gt. max_distance) v_neighb = missing_val 
+                ! Get current variable values 
+                map_now_var = var1(map_now%i)
 
-            ! Skip remaining calculations if no neighbors are found
-            check = count(.not. v_neighb .eq. missing_val) 
-            if (check .gt. 0) then 
+                ! Eliminate neighbors outside of distance limit
+                where(map_now%dist .gt. max_distance) map_now_var = missing_val
 
-                ! If method == nn (nearest neighbor), limit neighbors to 1
-                if (trim(method) .eq. "nn") then
-!                     v_neighb(2:map%nmax) = missing_val
+                ! Skip remaining calculations if no neighbors are found
+                check = count(.not. map_now_var .eq. missing_val) 
+                if (check .gt. 0) then 
 
-                    found = .FALSE. 
-                    do k = 1, map%nmax 
-                        if (v_neighb(k) .ne. missing_val) then 
-                            if (found) then 
-                                v_neighb(k) = missing_val 
-                            else
-                                found = .TRUE. 
-                            end if 
-                        end if 
-                    end do
+                    ! If method == nn (nearest neighbor), limit neighbors to 1
+                    if (trim(method) .eq. "nn") then
 
-                else if (trim(method) .eq. "quadrant") then 
-                    ! For quadrant method, limit the number of neighbors to 
-                    ! 4 points in different quadrants
-                    do q = 1, 4
                         found = .FALSE. 
-                        do k = 1, map%nmax 
-                            if (v_neighb(k) .ne. missing_val .and. map%quadrant(i,k) .eq. q) then 
+                        do k = 1, n1 
+                            if (map_now_var(k) .ne. missing_val) then 
                                 if (found) then 
-                                    v_neighb(k) = missing_val 
+                                    map_now_var(k) = missing_val 
                                 else
                                     found = .TRUE. 
                                 end if 
                             end if 
+                        end do
+
+                    else if (trim(method) .eq. "quadrant") then 
+                        ! For quadrant method, limit the number of neighbors to 
+                        ! 4 points in different quadrants
+                        do q = 1, 4
+                            found = .FALSE. 
+                            do k = 1, n1 
+                                if (map_now_var(k) .ne. missing_val .and. map_now%quadrant(k) .eq. q) then 
+                                    if (found) then 
+                                        map_now_var(k) = missing_val 
+                                    else
+                                        found = .TRUE. 
+                                    end if 
+                                end if 
+                            end do 
                         end do 
-                    end do 
 
-                end if 
+                    end if 
 
-                ! Check number of neighbors available for calculations
-                ntot = count(v_neighb .ne. missing_val)
+                    ! Check number of neighbors available for calculations
+                    call which(map_now_var .ne. missing_val,ii)
+                    ntot = size(ii,1)
 
-                ! Check if a large fraction of neighbors are border points
-                ! (if so, do not interpolate here)
-                if ( (.not. fill_border) .and. ntot .gt. 0) then 
-                    if ( sum(map%border(i,1:ntot))/dble(ntot) .gt. 0.25_dp ) ntot = 0
-                end if 
+                    ! Check if a large fraction of neighbors are border points
+                    ! (if so, do not interpolate here)
+                    if ( (.not. fill_border) .and. ntot .gt. 0) then 
+                        if ( sum(map_now%border(ii))/dble(ntot) .gt. 0.25_dp ) ntot = 0
+                    end if 
 
-                ! Fill in temp neighbors with valid values when available
-                v_neighb_tmp  = v_neighb 
-                v_neighb      = missing_val 
-                weight_neighb = 0.0_dp 
-                dist_neighb   = max_distance
+                    ! Reset weights according to missing values 
+                    where (map_now_var .eq. missing_val) 
+                        map_now%weight = 0.0_dp 
+                        map_now%dist   = ERR_DIST
+                        map_now%area   = 0.0_dp 
+                    end where 
 
-                ! Reinitialize temp neighbor and weight values so that they appear in order (1:ntot)
-                if (ntot .gt. 0) then 
-                    q = 0 
-                    do k = 1, map%nmax 
-                        if (v_neighb_tmp(k) .ne. missing_val) then
-                            q = q+1
-                            weight_neighb(q) = map%weight(i,k)
-                            dist_neighb(q)   = map%dist(i,k)
-                            v_neighb(q)      = var1(map%i(i,k))
-                        end if 
-                    end do 
-                end if           
+                    if ( ntot .gt. 1) then 
 
+                        ! Calculate the weighted average (using distance weighting)
+                        var2(i)        = weighted_ave(map_now_var(ii),dble(map_now%weight(ii)))
+    !                   var2(i)        = weighted_ave_shepard(map_now_var(ii),map_now%dist(ii),shephard_exponent=2.d0)
+                        mask2_local(i) = 1
 
-                if ( ntot .gt. 1) then 
+                    else if (ntot .eq. 1) then
+                        call which(map_now%weight .ge. maxval(map_now%weight)*0.9999_dp,ii)
+                        var2(i)        = map_now_var(ii(1))
+                        mask2_local(i) = 1 
 
-                    ! Calculate the weighted average (using distance weighting)
-                    var2(i)  = weighted_ave(v_neighb(1:ntot),weight_neighb(1:ntot))
-!                   var2(i)  = weighted_ave_shepard(v_neighb(1:ntot),dist_neighb(1:ntot),shephard_exponent=2.d0)
-                    mask2_local(i) = 1
+                    else
+                        ! If no neighbors exist, field not mapped here.
+                        mask2_local(i) = 0  
 
-                else if (ntot .eq. 1) then
-                    var2(i)  = v_neighb(1)
-                    mask2_local(i) = 1 
+                    end if 
 
-                else
-                    ! If no neighbors exist, field not mapped here.
-                    mask2_local(i) = 0  
+                    ! Fill missing points with nearest neighbor if desired
+                    ! Note, will not necessarily fill ALL points, if 
+                    ! no neighbor can be found without a missing value
+                    if ( fill_pts .and. (var2(i) .eq. missing_val)) then
+                        do k = 1, n1  
+                            if (var1(map_now%i(k)) .ne. missing_val) then
+                                var2(i)  = var1(map_now%i(k))
+                                mask2_local(i) = 2 
+                                exit 
+                            end if
+                        end do 
+                    end if 
 
-                end if 
-
-                ! Fill missing points with nearest neighbor if desired
-                ! Note, will not necessarily fill ALL points, if 
-                ! no neighbor within nmax can be found without a missing value
-                if ( fill_pts .and. (var2(i) .eq. missing_val)) then
-                    do k = 1, map%nmax  
-                        if (var1(map%i(i,k)) .ne. missing_val) then
-                            var2(i)  = var1(map%i(i,k))
-                            mask2_local(i) = 2 
-                            exit 
-                        end if
-                    end do 
-                end if 
-
-            end if ! End of neighbor checking if-statement 
+                end if ! End of neighbor checking if-statement 
             end if ! End packing mask check if-statement 
 
         end do 
