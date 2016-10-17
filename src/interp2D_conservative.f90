@@ -464,8 +464,8 @@ contains
 
             else 
                 ! Allocate one map point to indicate no neighbors are available 
-                call map_allocate_map(map%map(i),n=2)
-                map%map(i)%i = [1,2]
+                call map_allocate_map(map%map(i),n=1)
+                map%map(i)%i = [1]
                 map%map(i)%area = 0.d0 ! Fill values with area set to zero! 
                 
                 ! Set the other values to zero 
@@ -508,14 +508,13 @@ contains
 
     end subroutine map_allocate_map
 
-    function interpconserv1_weights(x,y,dx,dy,xout,yout,dxout,dyout,latlon,missing_value) result(area)
+    function interpconserv1_weights(x,y,dx,dy,xout,yout,dxout,dyout,latlon) result(area)
         ! Calculate 1st order conservative interpolation for a 
         ! point given a vector of its neighbors (x,y)
 
         real(dp), intent(IN) :: x(:), y(:), dx, dy 
         real(dp), intent(IN) :: xout, yout, dxout, dyout 
         logical,  intent(IN), optional :: latlon
-        real(dp), intent(IN), optional :: missing_value  
         real(dp) :: area(size(x,1))
 
         ! Local variables
@@ -531,9 +530,6 @@ contains
 
         is_latlon = .FALSE. 
         if (present(latlon)) is_latlon = latlon 
-
-        missing_val = mv 
-        if (present(missing_value)) missing_val = missing_value
 
         ! Generate polygon representing boundaries of target point 
         pol = create_polygon(real([xout-dxout/2.d0,xout-dxout/2.d0,xout+dxout/2.d0,xout+dxout/2.d0]), &

@@ -43,6 +43,7 @@ module coordinates
         ! Points information
         integer :: npts
         real(dp), allocatable, dimension(:)   :: x, y, lon, lat, area
+        real(dp), allocatable, dimension(:)   :: dx, dy 
         integer,  allocatable, dimension(:)   :: border
         real(dp) :: xy_conv 
 
@@ -365,7 +366,7 @@ contains
 
         ! Initialize data as points, then convert back to grid using axis info
         call points_init_from_opts(pts,name,mtype,units,planet,lon180,reshape(grid%x,[grid%npts]),&
-                         reshape(grid%y,[grid%npts]),lambda,phi,alpha,x_e,y_n)
+                         reshape(grid%y,[grid%npts]),lambda=lambda,phi=phi,alpha=alpha,x_e=x_e,y_n=y_n)
         call points_to_grid(pts,grid)
 
         ! Calculate grid cell areas 
@@ -437,27 +438,28 @@ contains
 
     end subroutine grid_init_from_opts
 
-    subroutine points_init_from_points(pts,pts0,name,filename,x,y,latlon,skip)
+    subroutine points_init_from_points(pts,pts0,name,filename,x,y,dx,dy,latlon,skip)
 
         implicit none
 
         type(points_class) :: pts, pts0 
         character(len=*)   :: name 
         character(len=*), optional :: filename 
-        real(dp), optional :: x(:), y(:)
+        real(dp), optional :: x(:), y(:), dx(:), dy(:)
         logical, optional  :: latlon
         integer, optional  :: skip 
 
         if (present(filename)) then 
             call points_init_from_file(pts,name,mtype=pts0%mtype,units=pts0%units, &
-                                       filename=trim(filename),planet=pts0%planet%name,lon180=pts0%is_lon180, &
+                                       filename=trim(filename),planet=pts0%planet%name, &
+                                       lon180=pts0%is_lon180, &
                                        lambda=pts0%proj%lambda,phi=pts0%proj%phi, &
                                        alpha=pts0%proj%alpha,x_e=pts0%proj%x_e,y_n=pts0%proj%y_n, &
                                        latlon=latlon,skip=skip)
 
         else
             call points_init_from_opts(pts,name,mtype=pts0%mtype,units=pts0%units, &
-                                     planet=pts0%planet%name,lon180=pts0%is_lon180,x=x,y=y, &
+                                     planet=pts0%planet%name,lon180=pts0%is_lon180,x=x,y=y,dx=dx,dy=dy, &
                                      lambda=pts0%proj%lambda,phi=pts0%proj%phi, &
                                      alpha=pts0%proj%alpha,x_e=pts0%proj%x_e,y_n=pts0%proj%y_n, &
                                      latlon=latlon)
@@ -467,7 +469,7 @@ contains
 
     end subroutine points_init_from_points
 
-    subroutine points_init_from_grid(pts,grid0,name,filename,x,y,latlon,skip)
+    subroutine points_init_from_grid(pts,grid0,name,filename,x,y,dx,dy,latlon,skip)
 
         implicit none
 
@@ -475,20 +477,21 @@ contains
         type(grid_class)   :: grid0 
         character(len=*)   :: name  
         character(len=*), optional :: filename
-        real(dp), optional :: x(:), y(:)
+        real(dp), optional :: x(:), y(:), dx(:), dy(:)
         logical, optional  :: latlon 
         integer, optional  :: skip 
 
         if (present(filename)) then 
             call points_init_from_file(pts,name,mtype=grid0%mtype,units=grid0%units, &
-                                       filename=trim(filename),planet=grid0%planet%name,lon180=grid0%is_lon180, &
+                                       filename=trim(filename),planet=grid0%planet%name, &
+                                       dx=grid0%G%dx,dy=grid0%G%dy,lon180=grid0%is_lon180, &
                                        lambda=grid0%proj%lambda,phi=grid0%proj%phi, &
                                        alpha=grid0%proj%alpha,x_e=grid0%proj%x_e,y_n=grid0%proj%y_n, &
                                        latlon=latlon,skip=skip)
 
         else
             call points_init_from_opts(pts,name,mtype=grid0%mtype,units=grid0%units, &
-                                       planet=grid0%planet%name,lon180=grid0%is_lon180,x=x,y=y, &
+                                       planet=grid0%planet%name,lon180=grid0%is_lon180,x=x,y=y,dx=dx,dy=dy, &
                                        lambda=grid0%proj%lambda,phi=grid0%proj%phi, &
                                        alpha=grid0%proj%alpha,x_e=grid0%proj%x_e,y_n=grid0%proj%y_n, &
                                        latlon=latlon)
@@ -498,13 +501,14 @@ contains
 
     end subroutine points_init_from_grid
 
-    subroutine points_init_from_par(pts,filename,x,y,latlon)
+    subroutine points_init_from_par(pts,filename,x,y,dx,dy,latlon)
 
         implicit none
 
         type(points_class) :: pts 
         character(len=*)   :: filename 
         real(dp), optional :: x(:), y(:)
+        real(dp), optional :: dx(:), dy(:) 
         logical, optional  :: latlon 
 
         character(len=256)   :: name, mtype, units
@@ -520,13 +524,13 @@ contains
         close(7)
 
         call points_init_from_opts(pts,name,mtype,units,planet,lon180, &
-                         x,y,lambda,phi,alpha,x_e,y_n,latlon)
+                         x,y,dx,dy,lambda,phi,alpha,x_e,y_n,latlon)
 
         return
 
     end subroutine points_init_from_par
 
-    subroutine points_init_from_file(pts,name,mtype,units,filename,planet,lon180, &
+    subroutine points_init_from_file(pts,name,mtype,units,filename,planet,dx,dy,lon180, &
                                      lambda,phi,alpha,x_e,y_n,latlon,skip)
 
 
@@ -536,6 +540,7 @@ contains
         character(len=*) :: name, mtype, units
         character(len=*) :: filename  
         character(len=*), optional :: planet
+        real(dp), optional :: dx, dy 
         logical,  optional :: lon180
         real(dp), optional :: lambda, phi, alpha, x_e, y_n 
         logical,  optional :: latlon 
@@ -546,6 +551,7 @@ contains
         character(len=10)  :: tmp_char 
         real(dp) :: x_in(nmax), y_in(nmax)
         real(dp), allocatable :: x(:), y(:)
+        real(dp), allocatable :: dx_vec(:), dy_vec(:)
 
         nskip = 0 
         if (present(skip)) nskip = skip 
@@ -571,8 +577,15 @@ contains
         write(*,*) "points_init_from_file: ", minval(x), maxval(x)
         write(*,*) "points_init_from_file: ", minval(y), maxval(y)
         
+        ! Set dx, dy according to input option 
+        allocate(dx_vec(n),dy_vec(n))
+        dx_vec = 0.0_dp
+        dy_vec = 0.0_dp 
+        if (present(dx)) dx_vec = dx 
+        if (present(dy)) dy_vec = dy 
+         
         call points_init_from_opts(pts,name,mtype,units,planet,lon180, &
-                         x,y,lambda,phi,alpha,x_e,y_n,latlon)
+                         x,y,dx_vec,dy_vec,lambda,phi,alpha,x_e,y_n,latlon)
 
         write(*,*) "points_init_from_file: ", minval(pts%lon), maxval(pts%lon)
         write(*,*) "points_init_from_file: ", minval(pts%lat), maxval(pts%lat)
@@ -581,7 +594,7 @@ contains
 
     end subroutine points_init_from_file
 
-    subroutine points_init_from_opts(pts,name,mtype,units,planet,lon180,x,y, &
+    subroutine points_init_from_opts(pts,name,mtype,units,planet,lon180,x,y,dx,dy, &
                                      lambda,phi,alpha,x_e,y_n,latlon)
 
         use oblimap_projection_module 
@@ -590,6 +603,7 @@ contains
 
         type(points_class) :: pts 
         real(dp)           :: x(:), y(:)
+        real(dp), optional :: dx(:), dy(:) 
         character(len=*) :: name, mtype, units 
         character(len=*), optional :: planet
         character(len=256) :: planet_name
@@ -673,11 +687,22 @@ contains
         allocate(pts%border(pts%npts))
         allocate(pts%area(pts%npts))
 
+        if (allocated(pts%dx))      deallocate(pts%dx)
+        if (allocated(pts%dy))      deallocate(pts%dy)
+        allocate(pts%dx(pts%npts),pts%dy(pts%npts))
+
         ! Careful here: if the argument x = pts%x, the reallocation
         ! causes a memory gap sometimes. Is there a check for this?
         ! (ajr, 2013-09-28)
         pts%x = x 
         pts%y = y 
+
+        ! Set dx/dy to zero for now, without additional information 
+        ! (if it is a grid, info will be provided in grid_init)
+        pts%dx = 0.0_dp 
+        pts%dy = 0.0_dp 
+        if (present(dx)) pts%dx = dx 
+        if (present(dy)) pts%dy = dy 
 
         ! For now set points cell areas to 1
         ! (if it is a grid, area will be calculated afterwards in grid_init)
@@ -802,6 +827,8 @@ contains
             if (allocated(pts%x))      deallocate(pts%x)
             if (allocated(pts%y))      deallocate(pts%y)
             if (allocated(pts%area))   deallocate(pts%area)
+            if (allocated(pts%dx))     deallocate(pts%dx)
+            if (allocated(pts%dy))     deallocate(pts%dy)
             if (allocated(pts%border)) deallocate(pts%border)
             if (allocated(pts%lon))    deallocate(pts%lon)
             if (allocated(pts%lat))    deallocate(pts%lat)
@@ -819,6 +846,11 @@ contains
         ! Store border 
         if (define_fields) allocate(pts%border(pts%npts))
         pts%border = pack(grid%border,maski==1)
+
+        ! Store dx, dy 
+        if (define_fields) allocate(pts%dx(pts%npts),pts%dy(pts%npts))
+        pts%dx = grid%G%dx 
+        pts%dy = grid%G%dy 
 
         ! If lon,lat points exist on grid, store them too
         if (allocated(grid%lon) .and. allocated(grid%lat)) then 

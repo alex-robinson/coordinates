@@ -20,6 +20,7 @@ program test
     double precision, parameter :: missing_value = -9999.d0 
 
     type(grid_class) :: grid, gridlo, gridhi 
+    type(map_class)  :: map_lohi, map_hilo 
     double precision, dimension(:), allocatable   :: x, y
     double precision, dimension(:,:), allocatable :: var, varlo, varhi
     integer, dimension(:,:), allocatable :: mask, masklo, maskhi 
@@ -29,6 +30,8 @@ program test
 
     real(4), dimension(:,:), allocatable :: vargauss
     real, dimension(:, :), allocatable :: kernel
+    real(8) :: target_val, current_val, err_percent 
+    real(8) :: xlim(2), ylim(2) 
 
     outfldr = "output/interp/"
     file_input   = trim(outfldr)//"GRL-50KM_TOPO.nc"
@@ -129,6 +132,44 @@ program test
 !     call convolve(real(varhi), kernel, vargauss, mask=maskhi.eq.1)
 
 !     call nc_write(file_outhi,"zs_gauss",vargauss,dim1="xc",dim2="yc")
+    
+
+    ! ===== Build map =====
+
+    write(*,*) 
+    write(*,*) "Testing conservative interpolation ..."
+    write(*,*) 
+
+    ! Re-load data to avoid missing values 
+    call nc_read(file_inputhi,"zs",varhi)
+    write(*,*) "zs range: ",minval(varhi), maxval(varhi)
+
+    ! Load low resolution variable for comparison 
+    call nc_read(file_input,"zs",var)
+    write(*,*) "zs range: ",minval(var), maxval(var)
+
+    ! Write file 
+    call grid_write(grid,file_outlo,xnm="xc",ynm="yc",create=.TRUE.)
+    call nc_write(file_outlo,"zs",var,dim1="xc",dim2="yc")
+
+    call map_init(map_hilo,gridhi,grid,max_neighbors=50,lat_lim=1.0d0,dist_max=100d3,fldr="maps",load=.FALSE.)
+
+    call map_field_conservative_map1(map_hilo%map,"zs",varhi,var)
+    call nc_write(file_outlo,"zs_con",var,dim1="xc",dim2="yc")
+
+    xlim = [minval(gridhi%G%x+gridhi%G%dx/2.d0),maxval(gridhi%G%x-gridhi%G%dx/2.d0)]
+    ylim = [minval(gridhi%G%y+gridhi%G%dy/2.d0),maxval(gridhi%G%y-gridhi%G%dy/2.d0)]
+    target_val = calc_grid_total(gridhi%G%x,gridhi%G%y,varhi,xlim=xlim,ylim=ylim)
+    
+    ! Calculate the current conservation value for the whole domain
+    current_val = calc_grid_total(grid%G%x,grid%G%y,var,xlim=xlim,ylim=ylim)
+    err_percent = (current_val-target_val) / target_val * 100.d0 
+
+    write(*,"(a,3g11.2)") "map_field_conservative:: target, current, err_percent: ", &
+                            target_val, current_val, err_percent
+
+
+    stop 
 
 
     ! ===== TEST CONSERVATIVE INTERPOLATION  =====

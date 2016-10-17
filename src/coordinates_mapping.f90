@@ -4,6 +4,7 @@ module coordinates_mapping
 
     use oblimap_projection_module
     use planet 
+    use polygons 
     use ncio
 
     use gaussian_filter  
@@ -21,11 +22,12 @@ module coordinates_mapping
     real(dp), parameter :: ERR_DIST = 1E8_dp 
     integer,  parameter :: ERR_IND  = -1 
 
-    type map_helper_class 
-        real(dp), dimension(:), allocatable   :: var, weight
-        real(dp), dimension(:), allocatable   :: var_tmp 
-        integer,  dimension(:), allocatable   :: mask2
-        logical,  dimension(:), allocatable   :: maskp 
+    type pt_wts_class 
+        integer :: n  
+        integer,  allocatable :: i(:)               ! Length of pts1/grid1 neighbors
+        real(sp), allocatable :: x(:), y(:)
+        real(sp), allocatable :: dist(:), weight(:), area(:)
+        integer,  allocatable :: quadrant(:), border(:) 
     end type 
 
     type map_class
@@ -55,9 +57,8 @@ module coordinates_mapping
         integer,  dimension(:,:), allocatable :: i, quadrant, border
         real(sp), dimension(:,:), allocatable :: dist, weight
 
-        ! Helper arrays for map_field
-        ! (preallocating here saves time during mapping)
-!         type(map_helper_class) :: tmp   
+        ! Neighbor info (allocate to size npts)
+        type(pt_wts_class), allocatable :: map(:)
 
     end type
 
@@ -80,10 +81,11 @@ module coordinates_mapping
     private 
     public :: compare_map
     public :: map_class, map_init, map_field, map_print
+    public :: map_field_conservative_map1
 
 contains 
 
-    subroutine map_init_grid_grid(map,grid1,grid2,max_neighbors,lat_lim,fldr,load,save)
+    subroutine map_init_grid_grid(map,grid1,grid2,max_neighbors,lat_lim,dist_max,fldr,load,save)
         ! Generate mapping weights from grid1 to grid2
 
         implicit none 
@@ -93,30 +95,24 @@ contains
         type(map_class) :: map 
         integer :: max_neighbors                 ! maximum number of neighbors to allocate 
         real(dp), optional :: lat_lim            ! Latitude limit to search for neighbors
+        real(dp), optional :: dist_max           ! maximum distance within which to include neighbors
         character(len=*), optional :: fldr       ! Directory in which to save/load map
         logical, optional :: load                ! Whether loading is desired if map exists already
         logical, optional :: save                ! Whether to save map to file after it's generated
 
         ! Initialize map grid axis info (since mapping to grid2)
         map%is_grid = .TRUE. 
-!         map%G%nx    = grid2%G%nx 
-!         map%G%ny    = grid2%G%ny 
-!         if (allocated(map%G%x)) deallocate(map%G%x)
-!         if (allocated(map%G%y)) deallocate(map%G%y)
-!         allocate(map%G%x(map%G%nx),map%G%y(map%G%ny))
-!         map%G%x = grid2%G%x 
-!         map%G%y = grid2%G%y 
-        map%G = grid2%G 
+        map%G       = grid2%G 
 
         call grid_to_points(grid1,pts1)
         call grid_to_points(grid2,pts2)
-        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,dist_max,fldr,load,save)
 
         return 
 
     end subroutine map_init_grid_grid
 
-    subroutine map_init_grid_points(map,grid1,pts2,max_neighbors,lat_lim,fldr,load,save)
+    subroutine map_init_grid_points(map,grid1,pts2,max_neighbors,lat_lim,dist_max,fldr,load,save)
         ! Generate mapping weights from grid to set of points
 
         implicit none 
@@ -126,19 +122,20 @@ contains
         type(map_class) :: map 
         integer :: max_neighbors                 ! maximum number of neighbors to allocate 
         real(dp), optional :: lat_lim            ! Latitude limit to search for neighbors
+        real(dp), optional :: dist_max           ! maximum distance within which to include neighbors
         character(len=*), optional :: fldr       ! Directory in which to save/load map
         logical, optional :: load                ! Whether loading is desired if map exists already
         logical, optional :: save                ! Whether to save map to file after it's generated
 
         map%is_grid = .FALSE. 
         call grid_to_points(grid1,pts1)
-        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,dist_max,fldr,load,save)
 
         return 
 
     end subroutine map_init_grid_points
 
-    subroutine map_init_points_grid(map,pts1,grid2,max_neighbors,lat_lim,fldr,load,save)
+    subroutine map_init_points_grid(map,pts1,grid2,max_neighbors,lat_lim,dist_max,fldr,load,save)
         ! Generate mapping weights from set of points to grid
 
         implicit none 
@@ -148,30 +145,24 @@ contains
         type(map_class) :: map 
         integer :: max_neighbors                 ! maximum number of neighbors to allocate 
         real(dp), optional :: lat_lim            ! Latitude limit to search for neighbors
+        real(dp), optional :: dist_max           ! maximum distance within which to include neighbors
         character(len=*), optional :: fldr       ! Directory in which to save/load map
         logical, optional :: load                ! Whether loading is desired if map exists already
         logical, optional :: save                ! Whether to save map to file after it's generated
 
         ! Initialize map grid axis info (since mapping to grid2)
-        map%is_grid = .TRUE. 
-!         map%G%nx    = grid2%G%nx 
-!         map%G%ny    = grid2%G%ny 
-!         if (allocated(map%G%x)) deallocate(map%G%x)
-!         if (allocated(map%G%y)) deallocate(map%G%y)
-!         allocate(map%G%x(map%G%nx),map%G%y(map%G%ny))
-!         map%G%x = grid2%G%x 
-!         map%G%y = grid2%G%y 
-        map%G = grid2%G 
+        map%is_grid = .TRUE.  
+        map%G       = grid2%G 
 
         ! Convert grid2 to points for map initialization
         call grid_to_points(grid2,pts2)
-        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,dist_max,fldr,load,save)
 
         return 
 
     end subroutine map_init_points_grid 
 
-    subroutine map_init_points_points(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+    subroutine map_init_points_points(map,pts1,pts2,max_neighbors,lat_lim,dist_max,fldr,load,save)
         ! Generate mapping weights from set of points to another set of points
 
         implicit none 
@@ -180,18 +171,19 @@ contains
         type(map_class) :: map 
         integer :: max_neighbors                 ! maximum number of neighbors to allocate 
         real(dp), optional :: lat_lim            ! Latitude limit to search for neighbors
+        real(dp), optional :: dist_max           ! maximum distance within which to include neighbors
         character(len=*), optional :: fldr       ! Directory in which to save/load map
         logical, optional :: load                ! Whether loading is desired if map exists already
         logical, optional :: save                ! Whether to save map to file after it's generated
 
         map%is_grid = .FALSE. 
-        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+        call map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,dist_max,fldr,load,save)
 
         return 
 
     end subroutine map_init_points_points
 
-    subroutine map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,fldr,load,save)
+    subroutine map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,dist_max,fldr,load,save)
         ! Generate mapping weights between sets of pointss
 
         implicit none 
@@ -200,11 +192,18 @@ contains
         type(map_class) :: map 
         integer :: max_neighbors                 ! maximum number of neighbors to allocate 
         real(dp), optional :: lat_lim            ! Latitude limit to search for neighbors
+        real(dp), optional :: dist_max           ! maximum distance within which to include neighbors
         character(len=*), optional :: fldr       ! Directory in which to save/load map
         logical, optional :: load                ! Whether loading is desired if map exists already
         logical, optional :: save                ! Whether to save map to file after it's generated
         logical :: load_file, save_file, fldr_exists, file_exists 
         character(len=256) :: mapfldr 
+
+        integer :: i 
+        integer, allocatable :: ii(:) 
+        logical :: pts_is_latlon  
+
+        pts_is_latlon = (.not. pts1%is_cartesian .and. .not. pts2%is_cartesian)
 
         ! Load file if it exists by default
         load_file = .TRUE. 
@@ -277,8 +276,42 @@ contains
             allocate(map%quadrant(map%npts,map%nmax))
             allocate(map%border(map%npts,map%nmax))
 
+            allocate(map%map(map%npts))
+
             ! Calculate map weights (time consuming!)
-            call map_calc_weights(map,pts1,pts2,lat_lim,2.0_dp)
+            call map_calc_weights(map,pts1,pts2,2.0_dp,lat_lim,dist_max)
+
+            ! If the grids are compatible, calculate area weighting too
+            if (same_projection(pts1%proj,pts2%proj) .and. .not. pts_is_latlon) then 
+                ! Only valid for cartesian grids on the same projection right now 
+
+                write(*,*) "Calculating conservative weights ..."
+                do i = 1, pts2%npts
+                    if (map%map(i)%dist(1) .lt. ERR_DIST) then 
+                        ii = map%map(i)%i 
+                        map%map(i)%area = calc_weights_interpconserv1(x=real(pts1%x(ii)*pts1%xy_conv), &
+                                            y=real(pts1%y(ii)*pts1%xy_conv), &
+                                            dx=real(pts1%dx(ii)*pts1%xy_conv),dy=real(pts1%dy(ii)*pts1%xy_conv), &
+                                            xout=real(pts2%x(i)*pts2%xy_conv),yout=real(pts2%y(i)*pts2%xy_conv), &
+                                            dxout=real(pts2%dx(i)*pts2%xy_conv),dyout=real(pts2%dy(i)*pts2%xy_conv))
+                        map%map(i)%area = map%map(i)%area / (pts1%xy_conv*pts1%xy_conv)   ! Convert back to axis-units of pts1
+                        
+!                         map%map(i)%area = calc_weights_interpconserv1(x=real(pts1%x(ii)), &
+!                                             y=real(pts1%y(ii)), &
+!                                             dx=real(pts1%dx(ii)),dy=real(pts1%dy(ii)), &
+!                                             xout=real(pts2%x(i)),yout=real(pts2%y(i)), &
+!                                             dxout=real(pts2%dx(i)),dyout=real(pts2%dy(i)))
+!                         map%map(i)%area = map%map(i)%area
+                    
+                    end if 
+                    
+                    ! Check progress
+                    if (mod(i,100)==0) write(*,"(a,i10,a3,i12,a5,2g12.3)")  &
+                                "  ",i, " / ",pts2%npts,"   : ", sum(map%map(i)%area), pts2%dx(i)*pts2%dy(i)
+                end do 
+
+            end if 
+
 
             ! Write new map to file
             if (save_file) call map_write(map,mapfldr) 
@@ -292,29 +325,70 @@ contains
 
     end subroutine map_init_internal
 
-    subroutine map_calc_weights(map,pts1,pts2,lat_lim,shepard_exponent)
+    subroutine map_allocate_map(mp,n)
+
+        implicit none 
+
+        type(pt_wts_class), intent(INOUT) :: mp 
+        integer, intent(IN) :: n  
+
+        mp%n = n  
+
+        ! First deallocate if needed 
+        if (allocated(mp%i))        deallocate(mp%i) 
+        if (allocated(mp%x))        deallocate(mp%x) 
+        if (allocated(mp%y))        deallocate(mp%y)  
+        if (allocated(mp%dist))     deallocate(mp%dist) 
+        if (allocated(mp%weight))   deallocate(mp%weight) 
+        if (allocated(mp%area))     deallocate(mp%area) 
+        if (allocated(mp%quadrant)) deallocate(mp%quadrant) 
+        if (allocated(mp%border))   deallocate(mp%border) 
+        
+        allocate(mp%i(n))
+        allocate(mp%x(n),mp%y(n))
+        allocate(mp%dist(n), mp%weight(n), mp%area(n))
+        allocate(mp%quadrant(n), mp%border(n))
+
+        return 
+
+    end subroutine map_allocate_map
+
+    subroutine map_calc_weights(map,pts1,pts2,shepard_exponent,lat_lim,dist_max)
         implicit none 
 
         type(map_class) :: map 
         type(points_class),   intent(IN)  :: pts1, pts2 
         real(dp),             intent(IN)  :: shepard_exponent
-        real(dp), optional :: lat_lim 
+        real(dp),             intent(IN), optional :: lat_lim 
+        real(dp),             intent(IN), optional :: dist_max 
 
         real(dp), parameter :: DIST_ZERO_OFFSET = 1.0_dp  ! Change dist of zero to 1 m
-        integer :: i, i1, kc, k
+        integer :: i, i1, kc, k, n, n_tot  
         real(dp) :: x, y, lon, lat
-        real(dp) :: dist, lat_limit
+        real(dp) :: dist, lat_limit, dist_maximum 
+
+        integer, parameter :: map_nmax = 100   ! No more than 1000 neighbors 
+        real(dp) :: map_x(map_nmax), map_y(map_nmax), map_dist(map_nmax)
+        integer  :: map_i(map_nmax), map_quadrant(map_nmax), map_border(map_nmax)
 
         real :: start, finish
+
+        n_tot = 0 
 
         map%i        = ERR_IND 
         map%dist     = ERR_DIST  
         map%quadrant = 0 
         map%border   = 0 
 
+        ! Limit neighborhood to search 
         lat_limit = 5.0_dp 
-        if (present(lat_lim)) lat_limit = lat_lim 
-        write(*,"(a,i12,a,f6.2)") "Total points to calculate=",pts2%npts,"  lat_lim=",lat_limit
+        if (present(lat_lim)) lat_limit = lat_lim
+
+        dist_maximum = ERR_DIST 
+        if (present(dist_max)) dist_maximum = dist_max 
+
+        write(*,"(a,i12,a,f6.2,a,g12.3)") "Total points to calculate=",pts2%npts, &
+                    "  lat_lim=",lat_limit, "  dist_max=",dist_maximum 
 
         ! For each grid point in the new grid,
         ! Find points within a rough radius,
@@ -328,6 +402,14 @@ contains
             y   = pts2%y(i)*pts2%xy_conv
             lon = pts2%lon(i)
             lat = pts2%lat(i)
+
+            ! Reset temp map values 
+            map_i        = ERR_IND
+            map_x        = 0.0_dp 
+            map_y        = 0.0_dp 
+            map_dist     = ERR_DIST 
+            map_quadrant = 0 
+            map_border   = 0 
 
             ! Get distance in meters to current point on grid2
             ! for each point on grid1
@@ -349,30 +431,34 @@ contains
                     ! Make sure no zero distances exist!
                     if (dist .lt. DIST_ZERO_OFFSET) dist = DIST_ZERO_OFFSET
 
-                    do kc = 1, map%nmax
-                        if (dist .lt. map%dist(i,kc)) exit
+                    do kc = 1, map_nmax
+                        if (dist .lt. map_dist(kc)) exit
                     end do 
 
-                    if (kc .le. map%nmax) then 
+                    if (kc .le. map%nmax .and. dist .lt. dist_maximum) then 
 
                         if (kc .le. map%nmax-1) then 
-                            map%dist(i,kc:map%nmax)     = cshift(map%dist(i,kc:map%nmax),-1)
-                            map%i(i,kc:map%nmax)        = cshift(map%i(i,kc:map%nmax),-1)
-                            map%quadrant(i,kc:map%nmax) = cshift(map%quadrant(i,kc:map%nmax),-1)
-                            map%border(i,kc:map%nmax)   = cshift(map%border(i,kc:map%nmax),-1)
+                            map_i(kc:map_nmax)        = cshift(map_i(kc:map_nmax),-1)
+                            map_x(kc:map_nmax)        = cshift(map_x(kc:map_nmax),-1)
+                            map_y(kc:map_nmax)        = cshift(map_y(kc:map_nmax),-1)
+                            map_dist(kc:map_nmax)     = cshift(map_dist(kc:map_nmax),-1)
+                            map_quadrant(kc:map_nmax) = cshift(map_quadrant(kc:map_nmax),-1)
+                            map_border(kc:map_nmax)   = cshift(map_border(kc:map_nmax),-1)
                         end if 
 
-                        map%dist(i,kc)   = dist 
-                        map%i(i,kc)      = i1 
-                        map%border(i,kc) = pts1%border(i1)
+                        map_i(kc)      = i1 
+                        map_x(kc)      = pts1%x(i1)
+                        map_y(kc)      = pts1%y(i1) 
+                        map_dist(kc)   = dist 
+                        map_border(kc) = pts1%border(i1)
 
                         ! Get quadrants of neighbors
                         if (map%is_same_map .and. map%is_cartesian) then
                             ! Use cartesian points to determine quadrants
-                            map%quadrant(i,kc) = quadrant_cartesian(x,y,pts1%x(i1)*pts1%xy_conv,pts1%y(i1)*pts1%xy_conv)
+                            map_quadrant(kc) = quadrant_cartesian(x,y,pts1%x(i1)*pts1%xy_conv,pts1%y(i1)*pts1%xy_conv)
                         else
                             ! Use planetary (latlon) points
-                            map%quadrant(i,kc) = quadrant_latlon(lon,lat,pts1%lon(i1),pts1%lat(i1))
+                            map_quadrant(kc) = quadrant_latlon(lon,lat,pts1%lon(i1),pts1%lat(i1))
                         end if 
 
                     end if 
@@ -380,19 +466,126 @@ contains
 
             end do
 
+            ! Store in main map now 
+            map%i(i,:)        = map_i(1:map%nmax)
+            map%dist(i,:)     = map_dist(1:map%nmax)
+            map%weight(i,:)   = 1.0_dp / (map%dist(i,:)**shepard_exponent)
+            map%quadrant(i,:) = map_quadrant(1:map%nmax)
+            map%border(i,:)   = map_border(1:map%nmax)
+
+            ! Store in new main map now 
+            n=count(map_i .ne. ERR_IND)
+            if (n .gt. 0) then 
+                n = min(n,map%nmax)   ! Limit neighbors to max_neighbors specified if needed
+                call map_allocate_map(map%map(i),n=n)
+                map%map(i)%i        = map_i(1:n)
+                map%map(i)%x        = map_x(1:n)
+                map%map(i)%y        = map_y(1:n)
+                map%map(i)%dist     = map_dist(1:n)
+                map%map(i)%weight   = 1.0_dp / (map%map(i)%dist**shepard_exponent)
+                map%map(i)%quadrant = map_quadrant(1:n)
+                map%map(i)%border   = map_border(1:n) 
+                map%map(i)%area     = 0.0_dp 
+
+            else 
+                ! Store filler index
+                n = 1 
+                call map_allocate_map(map%map(i),n=n)
+                map%map(i)%i        = ERR_IND 
+                map%map(i)%x        = 0.0_dp 
+                map%map(i)%y        = 0.0_dp 
+                map%map(i)%dist     = ERR_DIST
+                map%map(i)%weight   = 0.0_dp 
+                map%map(i)%quadrant = 1
+                map%map(i)%border   = 0
+                map%map(i)%area     = 0.0_dp
+ 
+            end if 
+
+            n_tot = n_tot + n 
+
             ! Output every 1000 rows to check progress
-            if (mod(i,1000)==0) write(*,*) "  ",i, " / ",pts2%npts,"   : ",map%dist(i,1)
+            if (mod(i,1000)==0) write(*,*) "  ",i, " / ",pts2%npts,"   : ",map%dist(i,1), " : ", n
         end do
 
         call cpu_time(finish)
         write(*,"(a,a,f7.2)") "map_calc_weights:: "//trim(map%name1)//" => "//trim(map%name2)//": ", &
                               "Calculation time (min.) =", (finish-start)/60.0_dp
 
-        ! Also calculate shephard weights
-        map%weight = 1.0_dp / (map%dist**shepard_exponent)
+        write(*,*) "map sizes (old, new): ", size(map%i,1)*size(map%i,2), n_tot 
 
         return
+
     end subroutine map_calc_weights
+
+    function calc_weights_interpconserv1(x,y,dx,dy,xout,yout,dxout,dyout,latlon) result(area)
+        ! Calculate 1st order conservative interpolation for a 
+        ! point given a vector of its neighbors (x,y)
+
+        real(sp), intent(IN) :: x(:), y(:), dx(:), dy(:) 
+        real(sp), intent(IN) :: xout, yout, dxout, dyout 
+        logical,  intent(IN), optional :: latlon  
+        real(sp) :: area(size(x,1))
+
+        ! Local variables
+        logical  :: is_latlon 
+        type(polygon)       :: pol  
+!         integer, parameter :: nx = 31, ny = 31, npts = nx*ny
+        integer :: nx, ny, npts 
+        real(sp) :: x1, y1
+        integer  :: npts_in  
+        integer :: i, j, now  
+        real(sp) :: missing_val
+        real(sp) :: area_target 
+
+        is_latlon = .FALSE. 
+        if (present(latlon)) is_latlon = latlon 
+
+        if (is_latlon) then 
+            ! Latlon is currently not yet supported, set area to 0 
+            area = 0.d0 
+
+        else 
+            ! Calculate cartesian area of points inside of target point 
+
+            ! Generate polygon representing boundaries of target point 
+            pol = create_polygon(real([xout-dxout/2.d0,xout-dxout/2.d0,xout+dxout/2.d0,xout+dxout/2.d0]), &
+                                 real([yout-dyout/2.d0,yout+dyout/2.d0,yout+dyout/2.d0,yout-dyout/2.d0]))
+
+            ! Loop over source points and get the area of each source
+            ! polygon that is inside of the target polygon 
+            ! - Save the area (absolute area, not fraction)
+            area_target = dxout*dyout 
+            area        = 0.d0 
+
+            do now = 1, size(x) 
+                
+                nx = max(1,int(dx(now)/dxout))
+                ny = max(1,int(dy(now)/dyout))
+                npts = nx*ny 
+
+                npts_in   = 0
+
+                do j = 1, ny 
+                    do i = 1, nx 
+                        x1 = (x(now)-dx(now)/2.d0) + (dx(now))*dble(i-1)/dble(nx) + 0.5d0*1.d0/dble(nx)
+                        y1 = (y(now)-dy(now)/2.d0) + (dy(now))*dble(j-1)/dble(ny) + 0.5d0*1.d0/dble(ny) 
+                        if (point_in_polygon(real(x1),real(y1),pol)) npts_in = npts_in+1
+                    end do
+                end do 
+                
+                area(now) = dble(npts_in)/dble(npts) * dx(now)*dy(now) 
+
+                ! If the source points area adds up to the target cell area, exit loop
+                if (sum(area) .ge. area_target) exit 
+            end do 
+
+        end if 
+
+
+        return 
+
+    end function calc_weights_interpconserv1
 
     function compare_map_map_grid(map1,grid2) result(same_map)
 
@@ -712,6 +905,163 @@ contains
         return
     end subroutine map_print
 
+
+    ! === CONSERVATIVE FIELD MAPPING SUBROUTINES === 
+
+    subroutine map_field_conservative_map1(mp,varname,var1,var2,fill,missing_value,mask_pack)
+        ! Map a field from grid1 to grid2 using a predefined map of neighbor weights
+        ! generated using `map_conserv_init` 
+
+        implicit none 
+
+        type(pt_wts_class), intent(IN)    :: mp(:)          ! Map values grid1=>grid2
+        character(len=*),   intent(IN)    :: varname        ! Name of the variable being mapped
+        double precision,   intent(IN)    :: var1(:,:)      ! Input variable
+        double precision,   intent(INOUT) :: var2(:,:)      ! Output variable
+        logical,  optional :: fill
+        double precision, intent(IN), optional :: missing_value  ! Points not included in mapping
+        logical,          intent(IN), optional :: mask_pack(:,:)
+
+        ! Local variables
+        integer :: npts1
+        integer :: npts2
+        logical          :: fill_pts
+        double precision :: missing_val 
+        integer :: i, j 
+        logical, allocatable  :: maskp(:)
+        integer, allocatable :: ii(:) 
+        real(dp), allocatable :: area(:)
+
+        real(dp), allocatable :: var1_vec(:), var2_vec(:) 
+
+        npts1 = size(var1,1)*size(var1,2)
+        npts2 = size(var2,1)*size(var2,2)
+
+        ! By default, fill in target grid points with missing values
+        fill_pts = .TRUE. 
+        if (present(fill)) fill_pts = fill 
+
+        missing_val = mv 
+        if (present(missing_value)) missing_val = missing_value
+
+        ! By default, all var2 points are interpolated
+        allocate(maskp(npts2))
+        maskp = .TRUE. 
+        if (present(mask_pack)) maskp = reshape(mask_pack,[npts2])
+
+        ! Store var1 in vector format
+        allocate(var1_vec(npts1)) 
+        var1_vec = reshape(var1,[npts1])
+
+        ! Store var2 in vector format
+        allocate(var2_vec(npts2))
+        var2_vec = reshape(var2,[npts2])
+
+        ! If fill is desired, initialize output points to missing values
+        if (fill_pts) var2_vec = missing_val 
+
+        ! Loop over target points
+        do i = 1, npts2
+
+            if (maskp(i)) then 
+                ! Only interpolate for desired target points 
+
+                ii = mp(i)%i  
+                area = mp(i)%area 
+                where (var1_vec(ii) .eq. missing_val) area = 0.d0 
+
+                if (sum(area) .gt. 0.d0) then 
+                    ! If an interpolation point was found, calculate interpolation 
+
+                    var2_vec(i) = sum(var1_vec(ii)*area,mask=area.gt.0.d0) &
+                                  / sum(area,mask=area.gt.0.d0)
+
+                end if 
+
+            end if 
+
+        end do 
+
+        ! Send back to 2D array 
+        var2 = reshape(var2_vec,[size(var2,1),size(var2,2)])
+
+        if (fill_pts) then 
+            call fill_nearest(var2,missing_value=missing_val)
+        end if 
+
+        return 
+
+    end subroutine map_field_conservative_map1 
+
+    function calc_grid_total(x,y,var,xlim,ylim) result(tot)
+
+        implicit none 
+
+        double precision, intent(IN)  :: x(:), y(:), var(:,:)
+        double precision, intent(IN)  :: xlim(2), ylim(2)   ! Extent over which to calculate total
+        double precision :: tot 
+
+        double precision :: dx, dy, d_extra 
+        double precision :: weight(size(var,1),size(var,2))
+        double precision :: xwt, ywt 
+        integer :: i, j 
+
+        ! Determine the resolution of the grid 
+        dx = abs(x(2)-x(1)) 
+        dy = abs(y(2)-y(1))
+
+        ! Initially set weight to zero 
+        weight = 0.d0 
+
+        ! Find weights over the whole domain 
+        do j = 1, size(y)
+            do i = 1, size(x)
+
+                if (x(i)-dx/2.d0 .le. xlim(1) .and. x(i)+dx/2.d0 .gt. xlim(1)) then 
+                    xwt = ( (x(i)+dx/2.d0) - xlim(1) ) / dx 
+                else if (x(i)-dx/2.d0 .lt. xlim(2) .and. x(i)+dx/2.d0 .ge. xlim(2)) then 
+                    xwt = ( xlim(2) - (x(i)-dx/2.d0) ) / dx 
+                else if (x(i)-dx/2.d0 .ge. xlim(1) .and. x(i)+dx/2.d0 .le. xlim(2)) then 
+                    xwt = 1.d0 
+                else 
+                    xwt = 0.d0 
+                end if 
+
+                if (y(j)-dy/2.d0 .le. ylim(1) .and. y(j)+dy/2.d0 .gt. ylim(1)) then 
+                    ywt = ( (y(j)+dy/2.d0) - ylim(1) ) / dy 
+                else if (y(j)-dy/2.d0 .lt. ylim(2) .and. y(j)+dy/2.d0 .ge. ylim(2)) then 
+                    ywt = ( ylim(2) - (y(j)-dy/2.d0) ) / dy 
+                else if (y(j)-dy/2.d0 .ge. ylim(1) .and. y(j)+dy/2.d0 .le. ylim(2)) then 
+                    ywt = 1.d0 
+                else 
+                    ywt = 0.d0 
+                end if 
+                
+                if (xwt*ywt .gt. 0.d0) weight(i,j) = xwt*ywt 
+            end do 
+        end do 
+
+        ! Check that weights are within range 0:1 
+        if (minval(weight) .lt. 0.d0 .or. maxval(weight) .gt. 1.d0) then 
+            write(*,*) "calc_grid_total:: error: weights less than 0 or greater than 1!"
+            write(*,*) "weight: ", minval(weight), maxval(weight)
+            stop 
+        end if 
+
+!         do i = 1, size(x)
+!             write(*,"(5f10.2)") x(i), weight(i,1:4)
+!         end do 
+
+!         do j = 1, size(y)
+!             write(*,"(5f10.2)") y(j), weight(1:4,j)
+!         end do 
+        
+        ! Calculate grid total 
+        tot = sum(var*weight*dx*dy)
+
+        return 
+
+    end function calc_grid_total
 
     ! === FIELD MAPPING SUBROUTINES === 
 
