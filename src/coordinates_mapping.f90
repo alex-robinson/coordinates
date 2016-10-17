@@ -560,8 +560,8 @@ contains
 
             do now = 1, size(x) 
                 
-                nx = max(1,int(dx(now)/dxout))
-                ny = max(1,int(dy(now)/dyout))
+                nx = max(5,int(dx(now)/dxout))
+                ny = max(5,int(dy(now)/dyout))
                 npts = nx*ny 
 
                 npts_in   = 0
