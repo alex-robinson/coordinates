@@ -336,19 +336,18 @@ contains
 
         ! First deallocate if needed 
         if (allocated(mp%i))        deallocate(mp%i) 
+        if (allocated(mp%quadrant)) deallocate(mp%quadrant) 
+        if (allocated(mp%border))   deallocate(mp%border) 
         if (allocated(mp%x))        deallocate(mp%x) 
         if (allocated(mp%y))        deallocate(mp%y)  
         if (allocated(mp%dist))     deallocate(mp%dist) 
         if (allocated(mp%weight))   deallocate(mp%weight) 
         if (allocated(mp%area))     deallocate(mp%area) 
-        if (allocated(mp%quadrant)) deallocate(mp%quadrant) 
-        if (allocated(mp%border))   deallocate(mp%border) 
         
-        allocate(mp%i(n))
+        allocate(mp%i(n),mp%quadrant(n), mp%border(n))
         allocate(mp%x(n),mp%y(n))
         allocate(mp%dist(n), mp%weight(n), mp%area(n))
-        allocate(mp%quadrant(n), mp%border(n))
-
+        
         return 
 
     end subroutine map_allocate_map
@@ -707,21 +706,17 @@ contains
 
         end if 
 
-        write(*,*) "Writing mp_vec..."
-        write(*,*) "size(mp_vec%nn): ", size(mp_vec%nn), minval(mp_vec%nn), maxval(mp_vec%nn)
-        write(*,*) "size(mp_vec%i):  ", size(mp_vec%i),  minval(mp_vec%i),  maxval(mp_vec%i)
-        
         ! Write neighborhood information 
         call nc_write(fnm,"mp_vec_nn",      mp_vec%nn,      dim1="point")
         call nc_write(fnm,"mp_vec_i",       mp_vec%i,       dim1="neighbor_vec")
+        call nc_write(fnm,"mp_vec_quadrant",mp_vec%quadrant,dim1="neighbor_vec")
+        call nc_write(fnm,"mp_vec_border",  mp_vec%border,  dim1="neighbor_vec")
         call nc_write(fnm,"mp_vec_x",       mp_vec%x,       dim1="neighbor_vec")
         call nc_write(fnm,"mp_vec_y",       mp_vec%y,       dim1="neighbor_vec")
         call nc_write(fnm,"mp_vec_dist",    mp_vec%dist,    dim1="neighbor_vec")
         call nc_write(fnm,"mp_vec_weight",  mp_vec%weight,  dim1="neighbor_vec")
-        call nc_write(fnm,"mp_vec_quadrant",mp_vec%quadrant,dim1="neighbor_vec")
-        call nc_write(fnm,"mp_vec_border",  mp_vec%border,  dim1="neighbor_vec")
-
-
+        call nc_write(fnm,"mp_vec_area",    mp_vec%area,    dim1="neighbor_vec")
+        
         ! Write generic map parameters
         call nc_write(fnm,"mtype",        map%mtype)
         call nc_write(fnm,"units",        map%units)
@@ -777,11 +772,6 @@ contains
         if (allocated(map%y))        deallocate(map%y) 
         if (allocated(map%lon))      deallocate(map%lon) 
         if (allocated(map%lat))      deallocate(map%lat) 
-        if (allocated(map%i))        deallocate(map%i) 
-        if (allocated(map%dist))     deallocate(map%dist) 
-        if (allocated(map%weight))   deallocate(map%weight) 
-        if (allocated(map%quadrant)) deallocate(map%quadrant) 
-        if (allocated(map%border))   deallocate(map%border) 
 
         ! Read generic map parameters
         call nc_read(fnm,"mtype",        map%mtype        )
@@ -817,7 +807,8 @@ contains
         ! Allocate the nn vector to the length of points being mapped to 
         allocate(mp_vec%nn(map%npts))
         
-        n_vec = nc_size(fnm,"mp_vec_i")
+        ! Determine mp_vector length
+        n_vec = nc_size(fnm,"neighbor_vec")
 
         ! Allocate remaining vectors to correct length
         allocate(mp_vec%i(n_vec))
@@ -830,6 +821,7 @@ contains
         allocate(mp_vec%area(n_vec))
         
         ! Load neighborhood vectors 
+        call nc_read(fnm,"mp_vec_nn",       mp_vec%nn)
         call nc_read(fnm,"mp_vec_i",        mp_vec%i)
         call nc_read(fnm,"mp_vec_quadrant", mp_vec%quadrant)
         call nc_read(fnm,"mp_vec_border",   mp_vec%border)
@@ -839,16 +831,14 @@ contains
         call nc_read(fnm,"mp_vec_weight",   mp_vec%weight)
         call nc_read(fnm,"mp_vec_area",     mp_vec%area)
         
+        write(*,*) "Loaded mp_vec." 
+
+        ! Allocate map%map 
+        if (allocated(map%map)) deallocate(map%map)
+        allocate(map%map(map%npts))
+        
         ! Unpack neighbor vectors 
         call unpack_neighbors(mp_vec,map%map)
-
-
-!         ! Allocate map fields 
-!         allocate(map%x(map%npts),map%y(map%npts))
-!         allocate(map%lon(map%npts),map%lat(map%npts))
-!         allocate(map%i(map%npts,map%nmax),map%dist(map%npts,map%nmax))
-!         allocate(map%weight(map%npts,map%nmax),map%quadrant(map%npts,map%nmax))
-!         allocate(map%border(map%npts,map%nmax))
 
         ! Read grid/vector specific dimensions and variables
         if (map%is_grid) then
@@ -905,24 +895,29 @@ contains
         implicit none 
 
         type(map_class), intent(IN) :: map 
+        integer :: i, n_vec 
+
+        n_vec = 0
+        do i = 1, map%npts 
+            n_vec = n_vec + size(map%map(i)%i)
+        end do 
 
         write(*,*) "== Mapping summary ========================="
         write(*,*) trim(map%name1)," => ",trim(map%name2)
         write(*,"(a16,g12.5)")     "             a = ",map%planet%a
         write(*,"(a16,g12.5)")     "             f = ",map%planet%f
-        write(*,"(a16,i8,i6)")    "     npts,nmax = ",map%npts,map%nmax 
+        write(*,"(a16,i8,i6)")     "     npts,nvec = ",map%npts,n_vec 
         if (map%is_grid) then
             write(*,*) "  Grid axis information"
             write(*,"(a16,i8,i6)") "         nx,ny = ",map%G%nx, map%G%ny 
         end if 
 
         write(*,"(a,g11.4,a)") " ** Size in memory ~", &
-                   ( (map%npts*map%nmax)*2.d0*4.d0 + (map%npts*map%nmax)*3.d0*4.d0 + &
-                     (map%npts)*2.d0*8.d0 )  *7.6294d-6,"Mb"
-        ! 2 real arrays (4 bytes per value): dist, weight
-        ! 3 integer array (4 bytes per value): i, quadrant, border
+            ( 4.d0*(map%npts*8.d0) + 2.d0*(n_vec*4.d0) + 5.d0*(n_vec*8.d0) ) *7.6294d-6, "Mb"      
         ! 4 real arrays (8 bytes per value): x, y, lon, lat
-
+        ! 3 integer array (4 bytes per value): i, quadrant, border
+        ! 5 real arrays (8 bytes per value): x, y, dist, weight, area
+        
         write(*,*)
         write(*,*) 
 
@@ -1639,7 +1634,7 @@ contains
             call map_allocate_map(map(i),map_vec%nn(i))
 
             k1 = k + map_vec%nn(i) - 1
-            
+                 
             map(i)%i        = map_vec%i(k:k1)
             map(i)%quadrant = map_vec%quadrant(k:k1)
             map(i)%border   = map_vec%border(k:k1)
