@@ -24,11 +24,10 @@ module coordinates_mapping
     integer,  parameter :: ERR_IND  = -1 
 
     type pt_wts_class 
-        integer :: n  
-        integer,  allocatable :: i(:)               ! Length of pts1/grid1 neighbors
-        real(sp), allocatable :: x(:), y(:)
-        real(sp), allocatable :: dist(:), weight(:), area(:)
-        integer,  allocatable :: quadrant(:), border(:) 
+        integer :: n
+        integer,  allocatable :: nn(:)                        ! Only used for combining multiple pt_wts_class objects
+        integer,  allocatable :: i(:), quadrant(:), border(:) ! Length of pts1/grid1 neighbors
+        real(sp), allocatable :: x(:), y(:), dist(:), weight(:), area(:)
     end type 
 
     type map_class
@@ -369,9 +368,9 @@ contains
         real(dp) :: dist, lat_limit, dist_maximum 
 
         integer, parameter :: map_nmax = 100   ! No more than 1000 neighbors 
-        real(dp) :: map_x(map_nmax), map_y(map_nmax), map_dist(map_nmax)
         integer  :: map_i(map_nmax), map_quadrant(map_nmax), map_border(map_nmax)
-
+        real(dp) :: map_x(map_nmax), map_y(map_nmax), map_dist(map_nmax)
+        
         real :: start, finish
 
         n_tot = 0 
@@ -406,12 +405,12 @@ contains
 
             ! Reset temp map values 
             map_i        = ERR_IND
+            map_quadrant = 0 
+            map_border   = 0 
             map_x        = 0.0_dp 
             map_y        = 0.0_dp 
             map_dist     = ERR_DIST 
-            map_quadrant = 0 
-            map_border   = 0 
-
+            
             ! Get distance in meters to current point on grid2
             ! for each point on grid1
             do i1 = 1, pts1%npts
@@ -492,7 +491,7 @@ contains
                 ! Store filler index
                 n = 1 
                 call map_allocate_map(map%map(i),n=n)
-                map%map(i)%i        = ERR_IND 
+                map%map(i)%i        = 1 
                 map%map(i)%x        = 0.0_dp 
                 map%map(i)%y        = 0.0_dp 
                 map%map(i)%dist     = ERR_DIST
@@ -652,6 +651,15 @@ contains
         character(len=256) :: fnm 
         character(len=128) :: dim1, dim2 
 
+        type(pt_wts_class) :: mp_vec 
+        integer :: n_vec 
+
+        ! Pack the neighborhood map into vector format for writing 
+        write(*,*) "Packing mp_vec..."
+        call pack_neighbors(map%map,mp_vec)
+        n_vec = size(mp_vec%i)
+
+        ! Determine the filename automatically
         fnm = map_filename(map,fldr)
 
         ! Create the netcdf file and the dimension variables
@@ -659,12 +667,12 @@ contains
         call nc_write_attr(fnm,"title","Mapping "//trim(map%name1)//" => "//trim(map%name2))
 
         ! Write generic dimensions
-        call nc_write_dim(fnm,"point",    x=1,nx=map%npts,units="n")
-        call nc_write_dim(fnm,"neighbor", x=1,nx=map%nmax,units="n")
-        call nc_write_dim(fnm,"parameter",x=1,units="")
-        call nc_write_dim(fnm,"planetpar",x=1,nx=3,units="")
-        call nc_write_dim(fnm,"projpar",  x=1,nx=5,units="")
-
+        call nc_write_dim(fnm,"point",       x=1,nx=map%npts,units="n")
+        call nc_write_dim(fnm,"parameter",   x=1,units="")
+        call nc_write_dim(fnm,"planetpar",   x=1,nx=3,units="")
+        call nc_write_dim(fnm,"projpar",     x=1,nx=5,units="")
+        call nc_write_dim(fnm,"neighbor_vec",x=1,nx=n_vec,units="n")
+        
         ! Write grid/vector specific dimensions and variables
         if (map%is_grid) then
             ! Write variables in a gridded format
@@ -686,37 +694,33 @@ contains
             call nc_write(fnm,"lon2D",map%lon,dim1=dim1,dim2=dim2)
             call nc_write(fnm,"lat2D",map%lat,dim1=dim1,dim2=dim2)
 
-            ! Warning about size 
-            ! size of nx*ny*nmax < 1579220 breaks on the cluster !!!!
-            if (map%G%nx*map%G%ny*map%nmax > 1500000) then 
-                write(*,*) "Warning: map size is very large (nx*ny*nmax): ",map%G%nx*map%G%ny*map%nmax 
-                write(*,*) "  It may cause a segmentation fault. If so, reduce the number of neighbors."
-            end if 
-
-            ! Write the map information (in grid format)
-            call nc_write(fnm,"i",       map%i,       dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,"dist",    map%dist,    dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,"weight",  map%weight,  dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,"quadrant",map%quadrant,dim1=dim1,dim2=dim2,dim3="neighbor")
-            call nc_write(fnm,"border",  map%border,  dim1=dim1,dim2=dim2,dim3="neighbor")
-
             ! Write grid specific parameters
             call nc_write(fnm,"nx",map%G%nx,dim1="parameter")
             call nc_write(fnm,"ny",map%G%ny,dim1="parameter")
 
         else
             ! Write variables in a vector format
-            call nc_write(fnm,"x",       map%x,       dim1="point",dim2="neighbor")
-            call nc_write(fnm,"y",       map%y,       dim1="point",dim2="neighbor")
-            call nc_write(fnm,"lon",     map%lon,     dim1="point",dim2="neighbor")
-            call nc_write(fnm,"lat",     map%lat,     dim1="point",dim2="neighbor")
-            call nc_write(fnm,"i",       map%i,       dim1="point",dim2="neighbor")
-            call nc_write(fnm,"dist",    map%dist,    dim1="point",dim2="neighbor")
-            call nc_write(fnm,"weight",  map%weight,  dim1="point",dim2="neighbor")
-            call nc_write(fnm,"quadrant",map%quadrant,dim1="point",dim2="neighbor")
-            call nc_write(fnm,"border",  map%border,  dim1="point",dim2="neighbor")
+            call nc_write(fnm,"x",       map%x,       dim1="point")
+            call nc_write(fnm,"y",       map%y,       dim1="point")
+            call nc_write(fnm,"lon",     map%lon,     dim1="point")
+            call nc_write(fnm,"lat",     map%lat,     dim1="point")
 
         end if 
+
+        write(*,*) "Writing mp_vec..."
+        write(*,*) "size(mp_vec%nn): ", size(mp_vec%nn), minval(mp_vec%nn), maxval(mp_vec%nn)
+        write(*,*) "size(mp_vec%i):  ", size(mp_vec%i),  minval(mp_vec%i),  maxval(mp_vec%i)
+        
+        ! Write neighborhood information 
+        call nc_write(fnm,"mp_vec_nn",      mp_vec%nn,      dim1="point")
+        call nc_write(fnm,"mp_vec_i",       mp_vec%i,       dim1="neighbor_vec")
+        call nc_write(fnm,"mp_vec_x",       mp_vec%x,       dim1="neighbor_vec")
+        call nc_write(fnm,"mp_vec_y",       mp_vec%y,       dim1="neighbor_vec")
+        call nc_write(fnm,"mp_vec_dist",    mp_vec%dist,    dim1="neighbor_vec")
+        call nc_write(fnm,"mp_vec_weight",  mp_vec%weight,  dim1="neighbor_vec")
+        call nc_write(fnm,"mp_vec_quadrant",mp_vec%quadrant,dim1="neighbor_vec")
+        call nc_write(fnm,"mp_vec_border",  mp_vec%border,  dim1="neighbor_vec")
+
 
         ! Write generic map parameters
         call nc_write(fnm,"mtype",        map%mtype)
@@ -760,6 +764,10 @@ contains
         real(dp), dimension(:,:,:), allocatable :: tmpd
         real(dp) :: tmp5(5) 
 
+        type(pt_wts_class) :: mp_vec 
+        integer :: n_vec 
+
+        ! Determine filename automatically 
         fnm = map_filename(map,fldr)
 
         ! Deallocate all map fields initially
@@ -805,12 +813,42 @@ contains
             map%proj%y_n    = tmp5(5) 
         end if 
 
-        ! Allocate map fields 
-        allocate(map%x(map%npts),map%y(map%npts))
-        allocate(map%lon(map%npts),map%lat(map%npts))
-        allocate(map%i(map%npts,map%nmax),map%dist(map%npts,map%nmax))
-        allocate(map%weight(map%npts,map%nmax),map%quadrant(map%npts,map%nmax))
-        allocate(map%border(map%npts,map%nmax))
+        ! Allocate map neighborhood fields 
+        ! Allocate the nn vector to the length of points being mapped to 
+        allocate(mp_vec%nn(map%npts))
+        
+        n_vec = nc_size(fnm,"mp_vec_i")
+
+        ! Allocate remaining vectors to correct length
+        allocate(mp_vec%i(n_vec))
+        allocate(mp_vec%quadrant(n_vec))
+        allocate(mp_vec%border(n_vec))
+        allocate(mp_vec%x(n_vec))
+        allocate(mp_vec%y(n_vec))
+        allocate(mp_vec%dist(n_vec))
+        allocate(mp_vec%weight(n_vec))
+        allocate(mp_vec%area(n_vec))
+        
+        ! Load neighborhood vectors 
+        call nc_read(fnm,"mp_vec_i",        mp_vec%i)
+        call nc_read(fnm,"mp_vec_quadrant", mp_vec%quadrant)
+        call nc_read(fnm,"mp_vec_border",   mp_vec%border)
+        call nc_read(fnm,"mp_vec_x",        mp_vec%x)
+        call nc_read(fnm,"mp_vec_y",        mp_vec%y)
+        call nc_read(fnm,"mp_vec_dist",     mp_vec%dist)
+        call nc_read(fnm,"mp_vec_weight",   mp_vec%weight)
+        call nc_read(fnm,"mp_vec_area",     mp_vec%area)
+        
+        ! Unpack neighbor vectors 
+        call unpack_neighbors(mp_vec,map%map)
+
+
+!         ! Allocate map fields 
+!         allocate(map%x(map%npts),map%y(map%npts))
+!         allocate(map%lon(map%npts),map%lat(map%npts))
+!         allocate(map%i(map%npts,map%nmax),map%dist(map%npts,map%nmax))
+!         allocate(map%weight(map%npts,map%nmax),map%quadrant(map%npts,map%nmax))
+!         allocate(map%border(map%npts,map%nmax))
 
         ! Read grid/vector specific dimensions and variables
         if (map%is_grid) then
@@ -847,17 +885,6 @@ contains
             if (allocated(tmpd)) deallocate(tmpd)
             allocate(tmpi(map%G%nx,map%G%ny,map%nmax),tmpd(map%G%nx,map%G%ny,map%nmax))
 
-            call nc_read(fnm,"i",tmpi)
-            map%i = reshape(tmpi,(/map%npts,map%nmax/))
-            call nc_read(fnm,"dist",tmpd)
-            map%dist = reshape(tmpd,(/map%npts,map%nmax/))
-            call nc_read(fnm,"weight",tmpd)
-            map%weight = reshape(tmpd,(/map%npts,map%nmax/))
-            call nc_read(fnm,"quadrant",tmpd)
-            map%quadrant = reshape(tmpd,(/map%npts,map%nmax/))
-            call nc_read(fnm,"border",tmpi)
-            map%border = reshape(tmpi,(/map%npts,map%nmax/))
-            
         else
             ! Read variables in a vector format
 
@@ -865,11 +892,6 @@ contains
             call nc_read(fnm,       "y",map%y)
             call nc_read(fnm,     "lon",map%lon)
             call nc_read(fnm,     "lat",map%lat)
-            call nc_read(fnm,       "i",map%i)
-            call nc_read(fnm,    "dist",map%dist)
-            call nc_read(fnm,  "weight",map%weight)
-            call nc_read(fnm,"quadrant",map%quadrant)
-            call nc_read(fnm,  "border",map%border)
 
         end if 
 
@@ -1546,7 +1568,104 @@ contains
 
     ! === HELPER SUBROUTINES === 
 
+    subroutine pack_neighbors(map,map_vec)
 
+        implicit none 
+
+        type(pt_wts_class),     intent(IN)  :: map(:) 
+        type(pt_wts_class), intent(OUT) :: map_vec 
+
+        integer :: ntot, i, k, k1
+
+        ! Deallocate map_vec vectors 
+        if (allocated(map_vec%nn))       deallocate(map_vec%nn)
+        if (allocated(map_vec%i))        deallocate(map_vec%i)
+        if (allocated(map_vec%quadrant)) deallocate(map_vec%quadrant)
+        if (allocated(map_vec%border))   deallocate(map_vec%border)
+        if (allocated(map_vec%x))        deallocate(map_vec%x)
+        if (allocated(map_vec%y))        deallocate(map_vec%y)
+        if (allocated(map_vec%dist))     deallocate(map_vec%dist)
+        if (allocated(map_vec%weight))   deallocate(map_vec%weight)
+        if (allocated(map_vec%area))     deallocate(map_vec%area)
+        
+        ! Allocate the nn vector to the length of points being mapped to 
+        allocate(map_vec%nn(size(map)))
+
+        ! Determine length of storage vectors 
+        ntot = 0 
+
+        do i = 1, size(map)
+            map_vec%nn(i) = size(map(i)%i,1)
+            ntot = ntot + map_vec%nn(i)
+        end do 
+
+        ! Allocate remaining vectors
+        call map_allocate_map(map_vec,ntot)
+        
+        k = 1 
+        do i = 1, size(map)
+
+            k1 = k + map_vec%nn(i) - 1
+
+            map_vec%i(k:k1)        = map(i)%i 
+            map_vec%quadrant(k:k1) = map(i)%quadrant 
+            map_vec%border(k:k1)   = map(i)%border 
+            map_vec%x(k:k1)        = map(i)%x 
+            map_vec%y(k:k1)        = map(i)%y 
+            map_vec%dist(k:k1)     = map(i)%dist 
+            map_vec%weight(k:k1)   = map(i)%weight 
+            map_vec%area(k:k1)     = map(i)%area 
+            
+            k = k1 + 1
+        end do 
+
+        return 
+
+    end subroutine pack_neighbors 
+
+    subroutine unpack_neighbors(map_vec,map)
+
+        implicit none 
+
+        type(pt_wts_class), intent(INOUT) :: map_vec 
+        type(pt_wts_class), intent(OUT)   :: map(:) 
+        
+        integer :: i, k, k1
+
+        k = 1 
+        do i = 1, size(map)
+
+            ! Allocate current map object to right length  
+            call map_allocate_map(map(i),map_vec%nn(i))
+
+            k1 = k + map_vec%nn(i) - 1
+            
+            map(i)%i        = map_vec%i(k:k1)
+            map(i)%quadrant = map_vec%quadrant(k:k1)
+            map(i)%border   = map_vec%border(k:k1)
+            map(i)%x        = map_vec%x(k:k1)
+            map(i)%y        = map_vec%y(k:k1)
+            map(i)%dist     = map_vec%dist(k:k1)
+            map(i)%weight   = map_vec%weight(k:k1)
+            map(i)%area     = map_vec%area(k:k1)
+            
+            k = k1 + 1
+        end do 
+
+        ! Deallocate map_vec vectors 
+        if (allocated(map_vec%nn))       deallocate(map_vec%nn)
+        if (allocated(map_vec%i))        deallocate(map_vec%i)
+        if (allocated(map_vec%quadrant)) deallocate(map_vec%quadrant)
+        if (allocated(map_vec%border))   deallocate(map_vec%border)
+        if (allocated(map_vec%x))        deallocate(map_vec%x)
+        if (allocated(map_vec%y))        deallocate(map_vec%y)
+        if (allocated(map_vec%dist))     deallocate(map_vec%dist)
+        if (allocated(map_vec%weight))   deallocate(map_vec%weight)
+        if (allocated(map_vec%area))     deallocate(map_vec%area)
+        
+        return 
+
+    end subroutine unpack_neighbors 
 
     subroutine quadrant_search(dist,quadrant,max_distance)
         ! Set distances to max distance if a neighbor in a given quadrant
@@ -1642,242 +1761,5 @@ contains
 
 
 
-
-
-    ! EXTRA - UNUSED (BUGGY??)
-    subroutine map_field_points_points_double1(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
-        ! Methods include "radius", "nn" (nearest neighbor) and "quadrant"
-        
-        implicit none 
-
-        type(map_class), intent(IN)           :: map 
-        real(dp), dimension(:), intent(IN)    :: var1
-        real(dp), dimension(:), intent(INOUT) :: var2
-        integer,  dimension(:), intent(OUT), optional :: mask2
-        logical,  dimension(:), intent(IN),  optional :: mask_pack 
-        logical,  dimension(:), allocatable   :: maskp 
-        character(len=*) :: name, method
-        real(dp), optional :: radius, missing_value 
-        logical,  optional :: fill, border 
-        logical            :: fill_pts, fill_border
-        real(dp) :: shepard_exponent
-        real(dp) :: max_distance, missing_val 
-
-        type map_local_type
-            integer :: npts 
-            real(dp), dimension(:,:), allocatable :: var
-            integer,  dimension(:,:), allocatable :: i, quadrant, border  
-            real(sp), dimension(:,:), allocatable :: dist, weight
-            logical,  dimension(:), allocatable   :: is_border 
-            real(sp), dimension(:), allocatable   :: num, denom 
-            real(sp), dimension(:), allocatable   :: var2, field
-            integer,  dimension(:), allocatable   :: mask2, fieldm 
-        end type 
-        real(dp), dimension(:), allocatable :: tmp1 
-
-        type(map_local_type) :: maplocal
-
-        integer :: i, k, q, j, ntot, check  
-        logical :: found 
-
-        ! Set neighborhood radius to very large value (to include all neighbors)
-        ! or to radius specified by user
-        max_distance = 1E7_dp
-        if (present(radius)) max_distance = radius 
-
-        ! Set grid missing value by default or that that specified by user
-        missing_val  = MISSING_VALUE_DEFAULT
-        if (present(missing_value)) missing_val = missing_val 
-
-        ! By default, grid points with missing values will not be filled in
-        fill_pts = .TRUE. 
-        if (present(fill)) fill_pts = fill 
-
-        ! By default, border points will not be filled in 
-        fill_border = .FALSE. 
-        if (present(border)) fill_border = border 
-
-        ! By default, all var2 points are interpolated
-        allocate(maskp(size(var2)))
-        maskp = .TRUE. 
-        if (present(mask_pack)) maskp = mask_pack 
-
-        ! If fill is desired, initialize output points to missing values
-        if (fill_pts) var2 = missing_val 
-
-        ! Check to make sure map is the right size
-        if (maxval(map%i(1,:)) .gt. size(var1,1)) then
-            write(*,*) "Problem! Indices get too big."
-            write(*,*) maxval(map%i(1,:)), size(var1,1)
-        end if 
-
-        ! ## Eliminate unwanted neighbors ##
-
-        ! Allocate and populated local map
-        maplocal%npts = count(maskp)  
-        allocate(maplocal%i(maplocal%npts,map%nmax))
-        allocate(maplocal%dist(maplocal%npts,map%nmax))
-        allocate(maplocal%weight(maplocal%npts,map%nmax))
-        allocate(maplocal%var(maplocal%npts,map%nmax))
-        allocate(maplocal%quadrant(maplocal%npts,map%nmax))
-        allocate(maplocal%border(maplocal%npts,map%nmax))
-
-        allocate(maplocal%is_border(maplocal%npts))
-        allocate(maplocal%num(maplocal%npts))
-        allocate(maplocal%denom(maplocal%npts))
-
-        do i = 1, map%nmax 
-            maplocal%i(:,i)        = pack(map%i(:,i),maskp)
-            maplocal%dist(:,i)     = pack(map%dist(:,i),maskp)
-            maplocal%weight(:,i)   = pack(map%weight(:,i),maskp)
-            maplocal%quadrant(:,i) = pack(map%quadrant(:,i),maskp)
-            maplocal%border(:,i)   = pack(map%border(:,i),maskp)
-        end do 
-
-        ! Eliminate missing indices
-!         maplocal%i        = map%i
-!         maplocal%dist     = map%dist         
-        where (maplocal%i .eq. ERR_IND) 
-            maplocal%i    = 1               ! Set dummy accessible index > 0
-            maplocal%dist = max_distance 
-        end where 
-
-!         ! Eliminate points that shouldn't be interpolated 
-!         do i = 1, map%nmax 
-!             where (.not. maskp) maplocal%dist(:,i) = max_distance 
-!         end do 
-        
-!         ! Eliminate neighbors outside of distance limit (in meters)
-!         where(maplocal%dist .gt. max_distance) maplocal%dist = max_distance
-
-        ! Eliminate border points 
-        maplocal%is_border = .FALSE. 
-        if ( (.not. fill_border) ) then 
-            where ( sum(maplocal%border,dim=2) .gt. 0.25_dp ) maplocal%is_border = .TRUE. 
-            do i = 1, map%nmax
-                where (maplocal%is_border) maplocal%dist(:,i) = max_distance 
-            end do 
-        end if 
-
-        ! Eliminate extra neighbors depending on interpolation method
-        if (method .eq. "nn") then 
-            maplocal%dist(:,2:map%nmax) = max_distance 
-        else if (method .eq. "quadrant") then 
-            call quadrant_search(maplocal%dist,maplocal%quadrant,max_distance)
-        end if 
-
-        write(*,*) "maskp: ",count(maskp), size(maplocal%var,1), size(maplocal%var,2)
-
-        ! Populate new local var1 with neighbors and weights
-!         allocate(tmp1(size(var1,1)))
-        maplocal%var = missing_val 
-        do i = 1, map%nmax
-            tmp1 = var1(maplocal%i(:,i))
-            maplocal%var(:,i) = pack(tmp1,maskp)
-!             maplocal%var(:,i) = pack(var1(maplocal%i(:,i)),maskp)
-            write(*,*) i, "tmp1: ",minval(tmp1),maxval(tmp1)
-            write(*,*) i, "var: ",minval(maplocal%var(:,i)),maxval(maplocal%var(:,i))
-            
-        end do  
-
-!         maplocal%weight = map%weight 
-        where (maplocal%dist .ge. max_distance .or. maplocal%var .eq. missing_val) 
-            maplocal%weight = 0.d0 
-            maplocal%var    = 1.d0 
-        end where 
-
-!         write(*,*) "Ready to interpolate..."
-!         write(*,*) "var:        ", minval(maplocal%var),maxval(maplocal%var)
-!         write(*,*) "weight:     ", minval(maplocal%weight),maxval(maplocal%weight)
-!         write(*,*) "var*weight: ", minval(maplocal%var*maplocal%weight), &
-!                                    maxval(maplocal%var*maplocal%weight)
-!         stop 
-
-        write(*,*) "count maskp: ",count(maskp)
-        write(*,*) "range weight: ",minval(maplocal%weight), maxval(maplocal%weight)
-        write(*,*) "range var:    ",minval(maplocal%var), maxval(maplocal%var)
-        write(*,*) "dim : ", size(sum( maplocal%var*maplocal%weight, dim=2 ),1)
-
-!         maplocal%num   = 0.d0 
-!         maplocal%denom = 0.d0 
-!         do i = 1, map%nmax 
-!             maplocal%num   = maplocal%num   + maplocal%var(:,i)*maplocal%weight(:,i)
-!             maplocal%denom = maplocal%denom + maplocal%weight(:,i)
-!         end do
-!         maplocal%num   = sum( maplocal%var*maplocal%weight, dim=2 ) 
-!         maplocal%denom = sum( maplocal%weight, dim=2 ) 
-        maplocal%num   = sum( maplocal%var, dim=2 ) 
-        maplocal%denom = 1.d0 !sum( maplocal%weight, dim=2 ) 
-
-        where(abs(maplocal%num)   .lt. 1d-20) maplocal%num   = 0.d0 
-        where(abs(maplocal%denom) .lt. 1d-20) maplocal%denom = 0.d0 
-             
-!         write(*,*) "num:   ",minval(maplocal%num,maplocal%denom .gt. 0.d0), maxval(maplocal%num,maplocal%denom .gt. 0.d0)
-!         write(*,*) "denom: ",minval(maplocal%denom,maplocal%denom .gt. 0.d0), maxval(maplocal%denom,maplocal%denom .gt. 0.d0)
-
-        allocate(maplocal%var2(maplocal%npts))
-        allocate(maplocal%mask2(maplocal%npts))
-        allocate(maplocal%field(size(var2,1)))
-        allocate(maplocal%fieldm(size(var2,1)))
-        maplocal%field  = missing_val  
-        maplocal%fieldm = nint(missing_val) 
-
-        maplocal%var2  = pack(var2,maskp)
-        maplocal%mask2 = 0 
-        where (maplocal%denom .gt. 0.d0) 
-            maplocal%var2  = maplocal%num / maplocal%denom
-            maplocal%mask2 = 1 
-        end where 
-
-        var2  = unpack(maplocal%var2, maskp, maplocal%field  ) 
-        if (present(mask2)) mask2 = unpack(maplocal%mask2,maskp, maplocal%fieldm )
-        
-!         if (maxval(maplocal%var2) > 3000d0) then 
-!             write(*,*) "Weighted interp finished: "
-!             write(*,*) trim(name)," :", minval(var1), maxval(var1)
-!             write(*,*) trim(name)," :", minval(maplocal%var2), maxval(maplocal%var2)
-!             write(*,*) trim(name)," :", minval(var2), maxval(var2)
-!             stop
-!         end if  
-
-!         ! Perform weighted interpolations 
-!         do i = 1, map%npts 
-
-!             ntot = count(maplocal%weight .gt. 0.d0)
-
-!             if ( ntot .ge. 1) then 
-
-!                 ! Calculate the weighted average
-!                 var2(i)  = weighted_ave(var1(maplocal%i(i,:)),dble(maplocal%weight(i,:)))
-!                 mask2(i) = 1
-
-!             else
-!                 ! If no neighbors exist, field not mapped here.
-!                 mask2(i) = 0 
-
-!             end if 
-
-!             write(*,*) i 
-!         end do 
-
-!         write(*,*) "Done allocating."
-!         stop 
-
-!         ! Fill missing points with nearest neighbor if desired
-!         ! Note, will not necessarily fill ALL points, if 
-!         ! no neighbor within nmax can be found without a missing value
-!         if ( fill_pts .and. var2(i) .eq. missing_val) then  
-!             do k = 1, map%nmax 
-!                 if (var1(map%i(i,k)) .ne. missing_val) then
-!                     var2(i)  = var1(map%i(i,k))
-!                     mask2(i) = 2 
-!                     exit 
-!                 end if 
-!             end do 
-!         end if 
-
-        return 
-
-    end subroutine map_field_points_points_double1
 
 end module coordinates_mapping 
