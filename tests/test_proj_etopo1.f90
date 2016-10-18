@@ -69,13 +69,15 @@ program test_etopo
 
     table(1,:) = test_mapping(var0,grid0,grid1,niter=100,lat_lim=0.5d0)
     table(2,:) = test_mapping(var0,grid0,grid2,niter=100,lat_lim=0.5d0)
-    table(3,:) = test_mapping(var0,grid0,grid3,niter=100,lat_lim=0.5d0)
-    table(4,:) = test_mapping(var0,grid0,grid4,niter=100,lat_lim=0.5d0)
+!     table(3,:) = test_mapping(var0,grid0,grid3,niter=100,lat_lim=0.5d0)
+!     table(4,:) = test_mapping(var0,grid0,grid4,niter=100,lat_lim=0.5d0)
 
     write(*,*)
     write(*,*) "Mapping/interpolation summary"
-    do i = 1, 4 
-        write(*,"(f10.1,f10.3,f5.1,f10.5)") table(i,:)
+    write(*,"(5a14)") "npts", "map_time", "n_iter", "interp_time", "   (min.)"
+
+    do i = 1, 2!4 
+        write(*,"(f14.1,f14.3,f14.1,f14.5)") table(i,:)
     end do 
 
 
@@ -117,7 +119,8 @@ contains
         call cpu_time(start)
 
         ! Create a map object for grid0=>grid1 mapping
-        call map_init(map,grid0,grid1,max_neighbors=10,lat_lim=lat_lim,fldr="maps",load=.FALSE.)
+        call map_init(map,grid0,grid1,max_neighbors=20,lat_lim=lat_lim,dist_max=1000d3, &
+                        fldr="maps",load=.FALSE.)
     
         call cpu_time(finish)
         mapping_time = (finish-start)/60.0d0

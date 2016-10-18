@@ -52,10 +52,8 @@ module coordinates_mapping
         real(dp), allocatable, dimension(:) :: x, y, lon, lat
         real(dp) :: xy_conv
 
-        ! Neighbor arrays (will be allocated to size npts,nmax)
+        ! Maximum number of neighbors to be stored for each point
         integer :: nmax 
-        integer,  dimension(:,:), allocatable :: i, quadrant, border
-        real(sp), dimension(:,:), allocatable :: dist, weight
 
         ! Neighbor info (allocate to size npts)
         type(pt_wts_class), allocatable :: map(:)
@@ -264,18 +262,7 @@ contains
             map%lon = pts2%lon
             map%lat = pts2%lat
 
-            ! Reallocate map neighborhood arrays
-            if (allocated(map%i)) deallocate(map%i)
-            if (allocated(map%dist)) deallocate(map%dist)
-            if (allocated(map%weight)) deallocate(map%weight)
-            if (allocated(map%quadrant)) deallocate(map%quadrant)
-            if (allocated(map%border)) deallocate(map%border)
-            allocate(map%i(map%npts,map%nmax))
-            allocate(map%dist(map%npts,map%nmax))
-            allocate(map%weight(map%npts,map%nmax))
-            allocate(map%quadrant(map%npts,map%nmax))
-            allocate(map%border(map%npts,map%nmax))
-
+            ! Allocate the neighborhood object
             allocate(map%map(map%npts))
 
             ! Calculate map weights (time consuming!)
@@ -362,22 +349,15 @@ contains
         real(dp),             intent(IN), optional :: dist_max 
 
         real(dp), parameter :: DIST_ZERO_OFFSET = 1.0_dp  ! Change dist of zero to 1 m
-        integer :: i, i1, kc, k, n, n_tot  
+        integer :: i, i1, kc, k, n 
         real(dp) :: x, y, lon, lat
         real(dp) :: dist, lat_limit, dist_maximum 
 
-        integer, parameter :: map_nmax = 100   ! No more than 1000 neighbors 
+        integer, parameter :: map_nmax = 1000   ! No more than 1000 neighbors 
         integer  :: map_i(map_nmax), map_quadrant(map_nmax), map_border(map_nmax)
         real(dp) :: map_x(map_nmax), map_y(map_nmax), map_dist(map_nmax)
         
         real :: start, finish
-
-        n_tot = 0 
-
-        map%i        = ERR_IND 
-        map%dist     = ERR_DIST  
-        map%quadrant = 0 
-        map%border   = 0 
 
         ! Limit neighborhood to search 
         lat_limit = 5.0_dp 
@@ -465,14 +445,7 @@ contains
 
             end do
 
-            ! Store in main map now 
-            map%i(i,:)        = map_i(1:map%nmax)
-            map%dist(i,:)     = map_dist(1:map%nmax)
-            map%weight(i,:)   = 1.0_dp / (map%dist(i,:)**shepard_exponent)
-            map%quadrant(i,:) = map_quadrant(1:map%nmax)
-            map%border(i,:)   = map_border(1:map%nmax)
-
-            ! Store in new main map now 
+            ! Store in neighborhood map now 
             n=count(map_i .ne. ERR_IND)
             if (n .gt. 0) then 
                 n = min(n,map%nmax)   ! Limit neighbors to max_neighbors specified if needed
@@ -501,17 +474,13 @@ contains
  
             end if 
 
-            n_tot = n_tot + n 
-
             ! Output every 1000 rows to check progress
-            if (mod(i,1000)==0) write(*,*) "  ",i, " / ",pts2%npts,"   : ",map%dist(i,1), " : ", n
+            if (mod(i,1000)==0) write(*,*) "  ",i, " / ",pts2%npts,"   : ",map%map(i)%dist(1)
         end do
 
         call cpu_time(finish)
         write(*,"(a,a,f7.2)") "map_calc_weights:: "//trim(map%name1)//" => "//trim(map%name2)//": ", &
                               "Calculation time (min.) =", (finish-start)/60.0_dp
-
-        write(*,*) "map sizes (old, new): ", size(map%i,1)*size(map%i,2), n_tot 
 
         return
 
@@ -654,7 +623,6 @@ contains
         integer :: n_vec 
 
         ! Pack the neighborhood map into vector format for writing 
-        write(*,*) "Packing mp_vec..."
         call pack_neighbors(map%map,mp_vec)
         n_vec = size(mp_vec%i)
 
@@ -831,8 +799,6 @@ contains
         call nc_read(fnm,"mp_vec_weight",   mp_vec%weight)
         call nc_read(fnm,"mp_vec_area",     mp_vec%area)
         
-        write(*,*) "Loaded mp_vec." 
-
         ! Allocate map%map 
         if (allocated(map%map)) deallocate(map%map)
         allocate(map%map(map%npts))

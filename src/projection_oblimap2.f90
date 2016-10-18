@@ -182,9 +182,9 @@ CONTAINS
         proj%alpha = 90.0_dp - proj%phi 
 
         if (present(alpha)) then 
-            write(*,*) "oblimap_projection_module:: ", &
-            "Note: for polar grids, alpha is determined via the specified phi, &
-            &while the user-specified alpha is ignored."
+            write(*,*) "oblimap_projection_module:: Note: for polar grids, "
+            write(*,*) "alpha is determined via the specified phi, "
+            write(*,*) "while the user-specified alpha is ignored."
         end if 
 
     else if ( present(alpha) ) then    
