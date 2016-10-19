@@ -339,7 +339,7 @@ contains
         type(points_class),   intent(IN)  :: pts1, pts2 
         real(dp),             intent(IN)  :: shepard_exponent
         real(dp),             intent(IN), optional :: lat_lim 
-        real(dp),             intent(IN), optional :: dist_max 
+        real(dp),             intent(IN), optional :: dist_max   ! in units of pts2 axes!!
 
         real(dp), parameter :: DIST_ZERO_OFFSET = 1.0_dp  ! Change dist of zero to 1 m
         integer :: i, i1, kc, k, n 
@@ -357,10 +357,10 @@ contains
         if (present(lat_lim)) lat_limit = lat_lim
 
         dist_maximum = ERR_DIST 
-        if (present(dist_max)) dist_maximum = dist_max 
+        if (present(dist_max)) dist_maximum = dist_max*pts2%xy_conv
 
         write(*,"(a,i12,a,f6.2,a,g12.3)") "Total points to calculate=",pts2%npts, &
-                    "  lat_lim=",lat_limit, "  dist_max=",dist_maximum 
+                    "  lat_lim=",lat_limit, "  dist_max=",dist_maximum/pts2%xy_conv
 
         ! For each grid point in the new grid,
         ! Find points within a rough radius,
@@ -468,7 +468,7 @@ contains
             end if 
 
             ! Output every 1000 rows to check progress
-            if (mod(i,1000)==0) write(*,*) "  ",i, " / ",pts2%npts,"   : ",map%map(i)%dist(1)
+            if (mod(i,1000)==0) write(*,*) "  ",i, " / ",pts2%npts,"   : ",map%map(i)%dist(1)/pts2%xy_conv
         end do
 
         call cpu_time(finish)
