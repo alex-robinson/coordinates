@@ -179,7 +179,11 @@ CONTAINS
 
     if ( trim(proj%name) .eq. "polar_stereographic" ) then 
 
-        proj%alpha = 90.0_dp - proj%phi 
+        if (proj%phi .ge. 0.d0) then            ! North polar stereographic
+            proj%alpha = 90.0_dp - proj%phi 
+        else                                    ! South polar stereographic
+            proj%alpha = -90.0_dp - proj%phi 
+        end if 
 
         if (present(alpha)) then 
             write(*,*) "oblimap_projection_module:: Note: for polar grids, "
