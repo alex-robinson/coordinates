@@ -192,7 +192,7 @@ contains
                                                         vertlon(q),vertlat(q),grid%proj)
                     end do 
 
-                    ! Calculate latlon area 
+                    ! Calculate latlon area
                     grid%area(i,j) = planet_area(grid%planet%a,grid%planet%f,vertlon,vertlat)
 
                 else 

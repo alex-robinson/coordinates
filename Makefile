@@ -54,7 +54,7 @@ else
 	SFLAGS       = 
 
 	ifeq ($(debug), 1)
-	    DFLAGS   = -w -p -g -ggdb -ffpe-trap=invalid,zero,overflow,underflow \
+	    DFLAGS   = -w -pg -ggdb -ffpe-trap=invalid,zero,overflow,underflow \
 	               -fbacktrace -fcheck=all -fbackslash
 	else
 	    DFLAGS   = -O3 -fbackslash

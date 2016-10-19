@@ -252,6 +252,7 @@ contains
       phi = lat1 * degree
 ! Ensure cbet1 = +dbleps at poles
       sbet1 = f1 * sin(phi)
+      if (dabs(sbet1) .lt. 1d-20) sbet1 = 0.d0         ! ajr: to avoid underflow
       cbet1 = csmgt(tiny, cos(phi), abs(lat1) .eq. 90)
       call Norm(sbet1, cbet1)
       dn1 = sqrt(1 + ep2 * sbet1**2)
@@ -385,7 +386,7 @@ contains
       sbet2 = calp0 * ssig2
 ! Alt: cbet2 = hypot(csig2, salp0 * ssig2)
       cbet2 = hypotx(salp0, calp0 * csig2)
-      if (cbet2 .eq. 0) then
+      if (cbet2 .eq. 0d0) then
 ! I.e., salp0 = 0, csig2 = 0.  Break the degeneracy in this case
         cbet2 = tiny
         csig2 = cbet2
@@ -543,12 +544,12 @@ contains
 
       if (.not.init) call geoini()
 
-      f1 = 1 - f
-      e2 = f * (2 - f)
+      f1 = 1.d0 - f
+      e2 = f * (2d0 - f)
       ep2 = e2 / f1**2
-      n = f / ( 2 - f)
+      n = f / ( 2d0 - f)
       b = a * f1
-      c2 = 0
+      c2 = 0d0
 
       arcp  = mod(omask/1, 2) == 1
       redlp = mod(omask/2, 2) == 1
@@ -556,12 +557,12 @@ contains
       areap = mod(omask/8, 2) == 1
 
       if (areap) then
-        if (e2 .eq. 0) then
+        if (e2 .eq. 0d0) then
           c2 = a**2
-        else if (e2 .gt. 0) then
-          c2 = (a**2 + b**2 * atanhx(sqrt(e2)) / sqrt(e2)) / 2
+        else if (e2 .gt. 0d0) then
+          c2 = (a**2 + b**2 * atanhx(sqrt(e2)) / sqrt(e2)) / 2d0
         else
-          c2 = (a**2 + b**2 * atan(sqrt(abs(e2))) / sqrt(abs(e2))) / 2
+          c2 = (a**2 + b**2 * atan(sqrt(abs(e2))) / sqrt(abs(e2))) / 2d0
         end if
       end if
 
@@ -576,10 +577,10 @@ contains
 ! If very close to being on the same half-meridian, then make it so.
       lon12 = AngRnd(lon12)
 ! Make longitude difference positive.
-      if (lon12 .ge. 0) then
-        lonsgn = 1
+      if (lon12 .ge. 0d0) then
+        lonsgn =  1d0
       else
-        lonsgn = -1
+        lonsgn = -1d0
       end if
       lon12 = lon12 * lonsgn
 ! If really close to the equator, treat as on equator.
@@ -587,27 +588,27 @@ contains
       lat2x = AngRnd(lat2)
 ! Swap points so that point with higher (abs) latitude is point 1
       if (abs(lat1x) .ge. abs(lat2x)) then
-        swapp = 1
+        swapp =  1d0
       else
-        swapp = -1
+        swapp = -1d0
       end if
-      if (swapp .lt. 0) then
+      if (swapp .lt. 0d0) then
         lonsgn = -lonsgn
         call swap(lat1x, lat2x)
       end if
 ! Make lat1 <= 0
-      if (lat1x .lt. 0) then
-        latsgn = 1
+      if (lat1x .lt. 0d0) then
+        latsgn =  1d0
       else
-        latsgn = -1
+        latsgn = -1d0
       end if
       lat1x = lat1x * latsgn
       lat2x = lat2x * latsgn
 ! Now we have
 !
-!     0 <= lon12 <= 180
-!     -90 <= lat1 <= 0
-!     lat1 <= lat2 <= -lat1
+!        0 <= lon12 <= 180
+!      -90 <= lat1  <=   0
+!     lat1 <= lat2  <= -lat1
 !
 ! longsign, swapp, latsgn register the transformation to bring the
 ! coordinates to this canonical form.  In all cases, 1 means no change
@@ -1794,6 +1795,8 @@ contains
 ! input
       double precision x, y
 
+      if (dabs(x) .lt. 1d-20) x = 0.d0 ! ajr: to prevent an underflow exception
+      if (dabs(y) .lt. 1d-20) y = 0.d0 ! ajr: to prevent an underflow exception
       hypotx = sqrt(x**2 + y**2)
 
       return
