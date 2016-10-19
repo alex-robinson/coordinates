@@ -1364,6 +1364,8 @@ contains
         integer :: i, k, q, j, ntot, check, n1  
         logical :: found 
 
+        character(len=56) :: method_now 
+
         real(dp), allocatable :: map_now_var(:), map_now_dist(:), map_now_weight(:)
         integer,  allocatable :: map_now_quadrant(:), map_now_border(:)
 
@@ -1411,8 +1413,11 @@ contains
                 ! Get size of neighborhood 
                 n1 = size(map_now_var)
 
+                method_now = method 
+                if (n1 .eq. 1) method_now = "nn" 
+
                 ! Determine interpolation value based on method
-                select case(trim(method))
+                select case(trim(method_now))
 
                     case("nn","nearest")
 
@@ -1424,7 +1429,7 @@ contains
 
                     case("quadrant","radius","shepard") 
 
-                        if (trim(method) .eq. "quadrant") then 
+                        if (trim(method_now) .eq. "quadrant") then 
                             ! For quadrant method, limit the number of neighbors to 
                             ! 4 points in different quadrants
                             do q = 1, 4
@@ -1443,10 +1448,11 @@ contains
                         else 
 
                             ! Eliminate neighbors outside of distance limit
-                            where(map_now_dist .gt. max_distance) 
-                                map_now_var = missing_val
-                                map_now_dist = ERR_DIST
-                            end where
+                            where(map_now_dist .gt. max_distance) map_now_var = missing_val
+
+                            ! Set all missing values to maximum distance
+                            where(map_now_var .eq. missing_val) map_now_dist  = ERR_DIST
+
 
                             ! Check number of neighbors available for calculations
                             ntot = count(map_now_var .ne. missing_val)
@@ -1460,6 +1466,8 @@ contains
 
                             ! Apply appropriate interpolation calculation
                             if ( ntot .gt. 1) then 
+
+!                                 write(*,*) n1, ntot, map_now_var(n1) 
 
                                 ! Calculate the weighted average (using distance weighting)
                                 var2(i)        = weighted_ave_shepard(map_now_var,map_now_dist,shepard_exponent=2.d0)
