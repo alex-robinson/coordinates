@@ -468,7 +468,8 @@ contains
             end if 
 
             ! Output every 1000 rows to check progress
-            if (mod(i,1000)==0) write(*,*) "  ",i, " / ",pts2%npts,"   : ",map%map(i)%dist(1)/pts2%xy_conv
+            if (mod(i,1000)==0) write(*,"(a,i10,a3,i12,a5,g12.3)")  &
+                                    "  ",i, " / ",pts2%npts,"   : ",map%map(i)%dist(1)/pts2%xy_conv
         end do
 
         call cpu_time(finish)
@@ -1363,9 +1364,8 @@ contains
         integer :: i, k, q, j, ntot, check, n1  
         logical :: found 
 
-        type(pt_wts_class)    :: map_now 
-        real(dp), allocatable :: map_now_var(:) 
-        integer,  allocatable :: ii(:) 
+        real(dp), allocatable :: map_now_var(:), map_now_dist(:), map_now_weight(:)
+        integer,  allocatable :: map_now_quadrant(:), map_now_border(:)
 
         ! Set neighborhood radius to very large value (to include all neighbors)
         ! or to radius specified by user
@@ -1401,117 +1401,108 @@ contains
 
             if (maskp(i)) then ! Only perform calculations for packing mask points
 
-                ! Get current map and size of neighborhood
-                map_now = map%map(i) 
-                n1      = size(map_now%i)
+                ! Get current neighborhood values
+                map_now_var      = var1(map%map(i)%i)
+                map_now_dist     = map%map(i)%dist
+                map_now_weight   = map%map(i)%weight
+                map_now_quadrant = map%map(i)%quadrant
+                map_now_border   = map%map(i)%border
 
-!                 write(*,*) "range(var1): ", minval(var1), maxval(var1)
-!                 write(*,*) "map_i: ", map_now%i 
-!                 stop 
-                
-                ! Get current variable values 
-                map_now_var = var1(map_now%i)
+                ! Get size of neighborhood 
+                n1 = size(map_now_var)
 
-!                 if (maxval(map_now_var) .gt. 0.d0) then 
-!                     write(*,"(a,50g11.2)") "var  = ", map_now_var 
-!                     write(*,"(a,50g11.2)") "dist = ", map_now%dist 
-!                     stop
-!                 end if 
+                ! Determine interpolation value based on method
+                select case(trim(method))
 
-                ! Eliminate neighbors outside of distance limit
-                where(map_now%dist .gt. max_distance) map_now_var = missing_val
+                    case("nn","nearest")
 
-                ! Skip remaining calculations if no neighbors are found
-                check = count(.not. map_now_var .eq. missing_val) 
-                if (check .gt. 0) then 
+                        k = minloc(map_now_dist,mask=map_now_var.ne.missing_val,dim=1)
+                        if (map_now_dist(k) .lt. max_distance) then
+                            var2(i)        = map_now_var(k) 
+                            mask2_local(i) = 1
+                        end if 
 
-                    ! If method == nn (nearest neighbor), limit neighbors to 1
-                    if (trim(method) .eq. "nn") then
+                    case("quadrant","radius","shepard") 
 
-                        found = .FALSE. 
-                        do k = 1, n1 
-                            if (map_now_var(k) .ne. missing_val) then 
-                                if (found) then 
-                                    map_now_var(k) = missing_val 
-                                else
-                                    found = .TRUE. 
-                                end if 
-                            end if 
-                        end do
-
-                    else if (trim(method) .eq. "quadrant") then 
-                        ! For quadrant method, limit the number of neighbors to 
-                        ! 4 points in different quadrants
-                        do q = 1, 4
-                            found = .FALSE. 
-                            do k = 1, n1 
-                                if (map_now_var(k) .ne. missing_val .and. map_now%quadrant(k) .eq. q) then 
-                                    if (found) then 
-                                        map_now_var(k) = missing_val 
-                                    else
-                                        found = .TRUE. 
+                        if (trim(method) .eq. "quadrant") then 
+                            ! For quadrant method, limit the number of neighbors to 
+                            ! 4 points in different quadrants
+                            do q = 1, 4
+                                found = .FALSE. 
+                                do k = 1, n1 
+                                    if (map_now_var(k) .ne. missing_val .and. map_now_quadrant(k) .eq. q) then 
+                                        if (found) then 
+                                            map_now_var(k) = missing_val 
+                                        else
+                                            found = .TRUE. 
+                                        end if 
                                     end if 
-                                end if 
+                                end do 
                             end do 
-                        end do 
 
-                    end if 
+                        else 
 
-                    ! Check number of neighbors available for calculations
-!                     call which(map_now_var .ne. missing_val,ii)
-!                     ntot = size(ii,1)
+                            ! Eliminate neighbors outside of distance limit
+                            where(map_now_dist .gt. max_distance) 
+                                map_now_var = missing_val
+                                map_now_dist = ERR_DIST
+                            end where
 
-                    ntot = count(map_now_var .ne. missing_val)
+                            ! Check number of neighbors available for calculations
+                            ntot = count(map_now_var .ne. missing_val)
 
-                    ! Check if a large fraction of neighbors are border points
-                    ! (if so, do not interpolate here)
-                    if ( (.not. fill_border) .and. ntot .gt. 0) then 
-!                         if ( sum(map_now%border(ii))/dble(ntot) .gt. 0.25_dp ) ntot = 0
-                        if ( sum(map_now%border,mask=map_now_var.ne.missing_val)/dble(ntot) .gt. 0.25_dp ) ntot = 0
-                    end if 
+                            ! Check if a large fraction of neighbors are border points
+                            ! (if so, do not interpolate here)
+                            if ( (.not. fill_border) .and. ntot .gt. 0) then 
+                                if ( sum(map_now_border,mask=map_now_var.ne.missing_val)/dble(ntot) .gt. 0.25_dp ) &
+                                        ntot = 0
+                            end if 
 
-                    ! Reset weights according to missing values 
-                    where (map_now_var .eq. missing_val) 
-                        map_now%weight = 0.0_dp 
-                        map_now%dist   = ERR_DIST
-                        map_now%area   = 0.0_dp 
-                    end where 
+                            ! Apply appropriate interpolation calculation
+                            if ( ntot .gt. 1) then 
 
-                    if ( ntot .gt. 1) then 
+                                ! Calculate the weighted average (using distance weighting)
+                                var2(i)        = weighted_ave_shepard(map_now_var,map_now_dist,shepard_exponent=2.d0)
+                                mask2_local(i) = 1
 
-                        ! Calculate the weighted average (using distance weighting)
-                        var2(i)        = weighted_ave(map_now_var,dble(map_now%weight))
-    !                   var2(i)        = weighted_ave_shepard(map_now_var,map_now%dist,shephard_exponent=2.d0)
-                        mask2_local(i) = 1
+                            else if (ntot .eq. 1) then
+                                k = minloc(map_now_dist,1)
+                                var2(i)        = map_now_var(k)
+                                mask2_local(i) = 1 
+                            else
+                                ! If no neighbors exist, field not mapped here.
+                                mask2_local(i) = 0  
 
-                    else if (ntot .eq. 1) then
-                        k = maxloc(map_now%weight,1)
-                        var2(i)        = map_now_var(k)
-                        mask2_local(i) = 1 
-                    else
-                        ! If no neighbors exist, field not mapped here.
-                        mask2_local(i) = 0  
+                            end if 
 
-                    end if 
+                        end if
 
-                    ! Fill missing points with nearest neighbor if desired
-                    ! Note, will not necessarily fill ALL points, if 
-                    ! no neighbor can be found without a missing value
-                    if ( fill_pts .and. (var2(i) .eq. missing_val)) then
-                        do k = 1, n1  
-                            if (var1(map_now%i(k)) .ne. missing_val) then
-                                var2(i)  = var1(map_now%i(k))
-                                mask2_local(i) = 2 
-                                exit 
-                            end if
-                        end do 
-                    end if 
+                    case DEFAULT 
 
-                end if ! End of neighbor checking if-statement 
+                        write(*,*) "map_field:: method not recognized: "//trim(method)
+                        stop 
+
+                end select
+
+                    
+                ! Fill missing points with nearest neighbor if desired
+                ! Note, will not necessarily fill ALL points, if 
+                ! no neighbor can be found without a missing value
+                if ( fill_pts .and. (var2(i) .eq. missing_val)) then
+                    do k = 1, n1  
+                        if (var1(map%map(i)%i(k)) .ne. missing_val) then
+                            var2(i)  = var1(map%map(i)%i(k))
+                            mask2_local(i) = 2 
+                            exit 
+                        end if
+                    end do 
+                end if 
+
             end if ! End packing mask check if-statement 
 
         end do 
 
+        ! Avoid underflow errors
         where (dabs(var2) .lt. 1d-12) var2 = 0.d0 
 
 !         write(*,*) "Mapped field: "//trim(name)

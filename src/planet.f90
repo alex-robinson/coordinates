@@ -226,16 +226,16 @@ contains
     
     end function cartesian_area 
 
-    elemental function shepard_weight(dist,shephard_exponent)
+    elemental function shepard_weight(dist,shepard_exponent)
         implicit none 
 
         real(dp), intent(IN) :: dist 
-        real(dp), intent(IN), optional :: shephard_exponent
+        real(dp), intent(IN), optional :: shepard_exponent
         real(dp) :: shep_e
         real(dp) :: shepard_weight
 
         shep_e = 2.0_dp 
-        if (present(shephard_exponent)) shep_e = shephard_exponent
+        if (present(shepard_exponent)) shep_e = shepard_exponent
 
         shepard_weight = 1.0_dp / (dist**shep_e)
 
@@ -267,18 +267,18 @@ contains
 
     end function weighted_ave
 
-    function weighted_ave_shepard(var,dist,shephard_exponent)
+    function weighted_ave_shepard(var,dist,shepard_exponent)
 
         implicit none
 
         real(dp) :: var(:), dist(:)
-        real(dp), optional :: shephard_exponent
+        real(dp), optional :: shepard_exponent
         real(dp) :: shep_e, weight, numerator, denominator
         real(dp) :: weighted_ave_shepard
         integer :: i, n
 
         shep_e = 2.0_dp 
-        if (present(shephard_exponent)) shep_e = shephard_exponent
+        if (present(shepard_exponent)) shep_e = shepard_exponent
 
         numerator            = 0.0_dp
         denominator          = 0.0_dp
