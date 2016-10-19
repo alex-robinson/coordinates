@@ -44,22 +44,19 @@ program test_etopo
     ! =========================================================
 
     call grid_init(grid1,name="ANT-40KM",mtype="polar_stereographic",units="kilometers", &
-                   lon180=.TRUE.,dx=40.d0,nx=156,dy=40.d0,ny=146, &
-                   lambda=0.d0,phi=-90.d0,alpha=22.1d0)
+                   lon180=.TRUE.,dx=40.d0,nx=156,dy=40.d0,ny=146,lambda=0.d0,phi=-90.d0)
 
-        stop 
-    
-    call grid_init(grid2,name="ANT-20KM",mtype="polar_stereographic",units="kilometers", &
-                   lon180=.TRUE.,dx=20.d0,nx=311,dy=20.d0,ny=291, &
-                   lambda=0.d0,phi=-90.d0,alpha=22.1d0)
+!     call grid_init(grid2,name="ANT-40KMb",mtype="polar_stereographic",units="kilometers", &
+!                    lon180=.TRUE.,dx=40.d0,nx=156,dy=40.d0,ny=146,lambda=0.d0,phi=-90.d0,alpha=29.d0)
 
-    call grid_init(grid3,name="ANT-10KM",mtype="polar_stereographic",units="kilometers", &
-                   lon180=.TRUE.,dx=10.d0,nx=621,dy=10.d0,ny=581, &
-                   lambda=0.d0,phi=-90.d0,alpha=22.1d0)
+!     call grid_init(grid2,name="ANT-20KM",mtype="polar_stereographic",units="kilometers", &
+!                    lon180=.TRUE.,dx=20.d0,nx=311,dy=20.d0,ny=291,lambda=0.d0,phi=-71.d0)
 
-    call grid_init(grid4,name="ANT-5KM",mtype="polar_stereographic",units="kilometers", &
-                   lon180=.TRUE.,dx=10.d0,nx=1241,dy=10.d0,ny=1161, &
-                   lambda=0.d0,phi=-90.d0,alpha=22.1d0)
+!     call grid_init(grid3,name="ANT-10KM",mtype="polar_stereographic",units="kilometers", &
+!                    lon180=.TRUE.,dx=10.d0,nx=621,dy=10.d0,ny=581,lambda=0.d0,phi=-71.d0)
+
+!     call grid_init(grid4,name="ANT-5KM",mtype="polar_stereographic",units="kilometers", &
+!                    lon180=.TRUE.,dx=5.d0,nx=1241,dy=5.d0,ny=1161,lambda=0.d0,phi=-71.d0)
 
 
     ! =========================================================
@@ -121,7 +118,7 @@ contains
         call cpu_time(start)
 
         ! Create a map object for grid0=>grid1 mapping
-        call map_init(map,grid0,grid1,max_neighbors=20,lat_lim=lat_lim, &
+        call map_init(map,grid0,grid1,max_neighbors=20,lat_lim=lat_lim,dist_max=200d3, &
                         fldr="maps",load=.FALSE.)
     
         call cpu_time(finish)

@@ -1405,18 +1405,18 @@ contains
                 map_now = map%map(i) 
                 n1      = size(map_now%i)
 
-                write(*,*) "range(var1): ", minval(var1), maxval(var1)
-                write(*,*) "map_i: ", map_now%i 
-                stop 
+!                 write(*,*) "range(var1): ", minval(var1), maxval(var1)
+!                 write(*,*) "map_i: ", map_now%i 
+!                 stop 
                 
                 ! Get current variable values 
                 map_now_var = var1(map_now%i)
 
-                if (maxval(map_now_var) .gt. 0.d0) then 
-                    write(*,"(a,50g11.2)") "var  = ", map_now_var 
-                    write(*,"(a,50g11.2)") "dist = ", map_now%dist 
-                    stop
-                end if 
+!                 if (maxval(map_now_var) .gt. 0.d0) then 
+!                     write(*,"(a,50g11.2)") "var  = ", map_now_var 
+!                     write(*,"(a,50g11.2)") "dist = ", map_now%dist 
+!                     stop
+!                 end if 
 
                 ! Eliminate neighbors outside of distance limit
                 where(map_now%dist .gt. max_distance) map_now_var = missing_val

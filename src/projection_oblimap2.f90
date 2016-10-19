@@ -154,7 +154,6 @@ CONTAINS
     ! Determine actual method to use based on user input if given
     if (present(method)) proj%method = trim(method)
 
-    
 !     proj%R            = 6.371221E6_dp ! Radius of the planet (for now it's Earth)
 !     proj%earth_radius = 6.371221E6_dp ! redundant def of Earth radius (why not use generic R?)
 
@@ -177,36 +176,55 @@ CONTAINS
     if (present(x_e))    proj%x_e    = x_e 
     if (present(y_n))    proj%y_n    = y_n 
 
-    if ( trim(proj%name) .eq. "polar_stereographic" ) then 
-
-        if (proj%phi .ge. 0.d0) then            ! North polar stereographic
-            proj%alpha = 90.0_dp - proj%phi 
-        else                                    ! South polar stereographic
-            proj%alpha = -90.0_dp - proj%phi 
-        end if 
+    if (trim(proj%method) .ne. "Undefined") then 
 
         if (present(alpha)) then 
-            write(*,*) "oblimap_projection_module:: Note: for polar grids, "
-            write(*,*) "alpha is determined via the specified phi, "
-            write(*,*) "while the user-specified alpha is ignored."
-        end if 
+            ! Use user-determined alpha
 
-    else if ( present(alpha) ) then    
+            if ( alpha .gt. 0.0_dp ) then 
 
-        if ( alpha .gt. 0.0_dp ) then 
+                proj%alpha  = alpha 
 
-            proj%alpha  = alpha 
+            else 
 
-        else
+                write(*,*) "oblimap_projection_module::"
+                write(*,*) "alpha must be greater than zero, alpha = ", alpha
+                stop 
+            
+            end if 
+
+        else if ( trim(proj%name) .eq. "polar_stereographic" ) then 
+            ! Use alpha determined from phi directly 
+
+            ! Make sure alpha is non-zero
+            ! But small, if desired phi = 90 or -90
+            proj%alpha = max(90.0_dp - dabs(proj%phi),0.0001_dp) 
+
+            write(*,*) "Note alpha set to small, but non-zero value to avoid"
+            write(*,*) "errors. This should introduce no noticable errors in projection."
+            
+        else 
+            ! Use optimal alpha 
+
             write(*,*) "oblimap_projection_module::"
-            write(*,*) "    Optimal alpha calculation not yet developed."
-            write(*,*) "    Instead, please specify a positive value for alpha."
+            write(*,*) "    Optimal alpha calculation not active."
+            write(*,*) "    Please specify a positive value for alpha."
             write(*,*)
             stop
 
         end if 
 
-    end if
+        ! Make sure phi matches 90/-90 in polar case 
+        ! (since this argument can also be used to prescribe the standard latitude in this case)
+        if ( trim(proj%name) .eq. "polar_stereographic" ) then
+            if (proj%phi .lt. 0.d0) then 
+                proj%phi = -90.d0 
+            else
+                proj%phi = 90.d0 
+            end if 
+        end if 
+
+    end if 
 
     proj%phi_M               = degrees_to_radians * proj%phi
     proj%lambda_M            = degrees_to_radians * proj%lambda
@@ -220,9 +238,9 @@ CONTAINS
       proj%chi_M  = 2._dp * ATAN(DSQRT(((1._dp +       SIN(proj%phi_M)) / (1._dp -       SIN(proj%phi_M))) * &
                            ((1._dp - proj%e * SIN(proj%phi_M)) / (1._dp + proj%e * SIN(proj%phi_M)))**(proj%e))) - 0.5_dp * pi
     else if (proj%phi .eq. 90.0_dp) then 
-      proj%chi_M = pi/2.0_dp 
+      proj%chi_M = pi/2.0_dp   ! North Pole
     else
-      proj%chi_M = -pi/2.0_dp 
+      proj%chi_M = -pi/2.0_dp  ! South Pole
     end if
 
     ! See equation (3-12) on page 187 in Snyder (1987):
@@ -1020,7 +1038,7 @@ CONTAINS
     IF(proj%alpha_stereographic == 0.0_dp) THEN
      ! This variant is only considered for the case that proj%alpha_stereographic = 0, i.e. k0 = 1, for which the else-option does not work).
      ! The POLAR ASPECT WITH KNOWN k0 case:
-     k0  = 0.5_dp * (1.0_dp + COS(proj%alpha_stereographic))                                                                                                     ! in fact it will be always 1 because it is only used for proj%alpha_stereographic = 0
+     k0  = 0.5_dp * (1.0_dp + COS(proj%alpha_stereographic))                                                                                                    ! in fact it will be always 1 because it is only used for proj%alpha_stereographic = 0
      t_P = rho * ( (1.0_dp + proj%e)**(1.0_dp + proj%e) * (1.0_dp - proj%e)**(1.0_dp - proj%e) )**0.5_dp / (2.0_dp * proj%a * k0)                                            ! (21-39) on page 162 in Snyder (1987)
     ELSE
      ! The POLAR ASPECT WITH KNOWN STANDARD PARALLEL NOT AT POLE case:
