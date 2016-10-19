@@ -204,6 +204,9 @@ contains
             end do 
         end do 
 
+        ! Return grid area in same units as axes
+        if (.not. grid%xy_conv .eq. 0.d0) grid%area = grid%area / (grid%xy_conv*grid%xy_conv) 
+
         return
 
     end subroutine grid_area 

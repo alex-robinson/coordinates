@@ -47,6 +47,8 @@ program test_etopo
                    lon180=.TRUE.,dx=40.d0,nx=156,dy=40.d0,ny=146, &
                    lambda=0.d0,phi=-90.d0,alpha=22.1d0)
 
+        stop 
+    
     call grid_init(grid2,name="ANT-20KM",mtype="polar_stereographic",units="kilometers", &
                    lon180=.TRUE.,dx=20.d0,nx=311,dy=20.d0,ny=291, &
                    lambda=0.d0,phi=-90.d0,alpha=22.1d0)
@@ -68,7 +70,7 @@ program test_etopo
     table = 0.d0 
 
     table(1,:) = test_mapping(var0,grid0,grid1,niter=100,lat_lim=0.5d0)
-    table(2,:) = test_mapping(var0,grid0,grid2,niter=100,lat_lim=0.5d0)
+!     table(2,:) = test_mapping(var0,grid0,grid2,niter=100,lat_lim=0.5d0)
 !     table(3,:) = test_mapping(var0,grid0,grid3,niter=100,lat_lim=0.5d0)
 !     table(4,:) = test_mapping(var0,grid0,grid4,niter=100,lat_lim=0.5d0)
 
@@ -119,7 +121,7 @@ contains
         call cpu_time(start)
 
         ! Create a map object for grid0=>grid1 mapping
-        call map_init(map,grid0,grid1,max_neighbors=20,lat_lim=lat_lim,dist_max=1000d3, &
+        call map_init(map,grid0,grid1,max_neighbors=20,lat_lim=lat_lim, &
                         fldr="maps",load=.FALSE.)
     
         call cpu_time(finish)

@@ -283,18 +283,11 @@ contains
                                             dxout=real(pts2%dx(i)*pts2%xy_conv),dyout=real(pts2%dy(i)*pts2%xy_conv))
                         map%map(i)%area = map%map(i)%area / (pts1%xy_conv*pts1%xy_conv)   ! Convert back to axis-units of pts1
                         
-!                         map%map(i)%area = calc_weights_interpconserv1(x=real(pts1%x(ii)), &
-!                                             y=real(pts1%y(ii)), &
-!                                             dx=real(pts1%dx(ii)),dy=real(pts1%dy(ii)), &
-!                                             xout=real(pts2%x(i)),yout=real(pts2%y(i)), &
-!                                             dxout=real(pts2%dx(i)),dyout=real(pts2%dy(i)))
-!                         map%map(i)%area = map%map(i)%area
-                    
                     end if 
                     
                     ! Check progress
                     if (mod(i,100)==0) write(*,"(a,i10,a3,i12,a5,2g12.3)")  &
-                                "  ",i, " / ",pts2%npts,"   : ", sum(map%map(i)%area), pts2%dx(i)*pts2%dy(i)
+                                "  ",i, " / ",pts2%npts,"   : ", sum(map%map(i)%area), pts2%area(i) ! pts2%dx(i)*pts2%dy(i)
                 end do 
 
             end if 
@@ -872,7 +865,7 @@ contains
         write(*,*) trim(map%name1)," => ",trim(map%name2)
         write(*,"(a16,g12.5)")     "             a = ",map%planet%a
         write(*,"(a16,g12.5)")     "             f = ",map%planet%f
-        write(*,"(a16,i8,i6)")     "     npts,nvec = ",map%npts,n_vec 
+        write(*,"(a16,i11,i11)")   "    npts, nvec = ",map%npts,n_vec 
         if (map%is_grid) then
             write(*,*) "  Grid axis information"
             write(*,"(a16,i8,i6)") "         nx,ny = ",map%G%nx, map%G%ny 
@@ -1412,8 +1405,18 @@ contains
                 map_now = map%map(i) 
                 n1      = size(map_now%i)
 
+                write(*,*) "range(var1): ", minval(var1), maxval(var1)
+                write(*,*) "map_i: ", map_now%i 
+                stop 
+                
                 ! Get current variable values 
                 map_now_var = var1(map_now%i)
+
+                if (maxval(map_now_var) .gt. 0.d0) then 
+                    write(*,"(a,50g11.2)") "var  = ", map_now_var 
+                    write(*,"(a,50g11.2)") "dist = ", map_now%dist 
+                    stop
+                end if 
 
                 ! Eliminate neighbors outside of distance limit
                 where(map_now%dist .gt. max_distance) map_now_var = missing_val
@@ -1455,13 +1458,16 @@ contains
                     end if 
 
                     ! Check number of neighbors available for calculations
-                    call which(map_now_var .ne. missing_val,ii)
-                    ntot = size(ii,1)
+!                     call which(map_now_var .ne. missing_val,ii)
+!                     ntot = size(ii,1)
+
+                    ntot = count(map_now_var .ne. missing_val)
 
                     ! Check if a large fraction of neighbors are border points
                     ! (if so, do not interpolate here)
                     if ( (.not. fill_border) .and. ntot .gt. 0) then 
-                        if ( sum(map_now%border(ii))/dble(ntot) .gt. 0.25_dp ) ntot = 0
+!                         if ( sum(map_now%border(ii))/dble(ntot) .gt. 0.25_dp ) ntot = 0
+                        if ( sum(map_now%border,mask=map_now_var.ne.missing_val)/dble(ntot) .gt. 0.25_dp ) ntot = 0
                     end if 
 
                     ! Reset weights according to missing values 
@@ -1474,15 +1480,14 @@ contains
                     if ( ntot .gt. 1) then 
 
                         ! Calculate the weighted average (using distance weighting)
-                        var2(i)        = weighted_ave(map_now_var(ii),dble(map_now%weight(ii)))
-    !                   var2(i)        = weighted_ave_shepard(map_now_var(ii),map_now%dist(ii),shephard_exponent=2.d0)
+                        var2(i)        = weighted_ave(map_now_var,dble(map_now%weight))
+    !                   var2(i)        = weighted_ave_shepard(map_now_var,map_now%dist,shephard_exponent=2.d0)
                         mask2_local(i) = 1
 
                     else if (ntot .eq. 1) then
-                        call which(map_now%weight .ge. maxval(map_now%weight)*0.9999_dp,ii)
-                        var2(i)        = map_now_var(ii(1))
+                        k = maxloc(map_now%weight,1)
+                        var2(i)        = map_now_var(k)
                         mask2_local(i) = 1 
-
                     else
                         ! If no neighbors exist, field not mapped here.
                         mask2_local(i) = 0  

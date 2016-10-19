@@ -148,7 +148,7 @@ CONTAINS
         end if 
         
     else
-        proj%method = "No projection method for: "//trim(proj%name)
+        proj%method = "Undefined"
     end if 
 
     ! Determine actual method to use based on user input if given
