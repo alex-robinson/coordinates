@@ -62,7 +62,7 @@ program test_etopo
     table = 0.d0 
 
     table(1,:) = test_mapping(var0,grid0,grid1,niter=100,lat_lim=0.5d0)
-    table(2,:) = test_mapping(var0,grid0,grid2,niter=100,lat_lim=0.5d0)
+!     table(2,:) = test_mapping(var0,grid0,grid2,niter=100,lat_lim=0.5d0)
 !     table(3,:) = test_mapping(var0,grid0,grid3,niter=100,lat_lim=0.5d0)
 !     table(4,:) = test_mapping(var0,grid0,grid4,niter=100,lat_lim=0.5d0)
 

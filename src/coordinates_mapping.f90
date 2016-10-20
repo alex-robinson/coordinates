@@ -54,6 +54,7 @@ module coordinates_mapping
 
         ! Maximum number of neighbors to be stored for each point
         integer :: nmax 
+        integer,  allocatable :: nn(:)
 
         ! Neighbor info (allocate to size npts)
         type(pt_wts_class), allocatable :: map(:)
@@ -264,6 +265,8 @@ contains
 
             ! Allocate the neighborhood object
             allocate(map%map(map%npts))
+            if (allocated(map%nn)) deallocate(map%nn)
+            allocate(map%nn(map%npts))
 
             ! Calculate map weights (time consuming!)
             call map_calc_weights(map,pts1,pts2,2.0_dp,lat_lim,dist_max)
@@ -442,6 +445,7 @@ contains
             n=count(map_i .ne. ERR_IND)
             if (n .gt. 0) then 
                 n = min(n,map%nmax)   ! Limit neighbors to max_neighbors specified if needed
+                map%nn(i) = n         ! Store neighbor count
                 call map_allocate_map(map%map(i),n=n)
                 map%map(i)%i        = map_i(1:n)
                 map%map(i)%x        = map_x(1:n)
@@ -455,6 +459,7 @@ contains
             else 
                 ! Store filler index
                 n = 1 
+                map%nn(i) = n 
                 call map_allocate_map(map%map(i),n=n)
                 map%map(i)%i        = 1 
                 map%map(i)%x        = 0.0_dp 
@@ -796,7 +801,12 @@ contains
         ! Allocate map%map 
         if (allocated(map%map)) deallocate(map%map)
         allocate(map%map(map%npts))
-        
+            
+        ! Store neighbor counts
+        if (allocated(map%nn)) deallocate(map%nn)
+        allocate(map%nn(map%npts))
+        map%nn = mp_vec%nn 
+
         ! Unpack neighbor vectors 
         call unpack_neighbors(mp_vec,map%map)
 
@@ -1349,7 +1359,8 @@ contains
     subroutine map_field_points_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
         ! Methods include "radius", "nn" (nearest neighbor), "quadrant"
         ! See `map_field_conservative_map` for 1st order conservative mapping
-        
+        ! This is `map_field_internal` basically 
+
         implicit none 
 
         type(map_class), intent(IN)           :: map 
@@ -1370,13 +1381,13 @@ contains
 
         character(len=56) :: method_now 
 
-!         real(dp), allocatable :: map_now_var(:), map_now_dist(:), map_now_weight(:)
-!         integer,  allocatable :: map_now_quadrant(:), map_now_border(:)
-!         integer,  allocatable :: ii(:) 
+        integer :: nmax   ! Max of all neighbors
+        real(dp), allocatable :: map_now_var(:), map_now_dist(:), map_now_weight(:)
+        integer,  allocatable :: map_now_quadrant(:), map_now_border(:)
     
-        integer, parameter :: nmax = 100
-        real(dp) :: map_now_var(nmax), map_now_dist(nmax), map_now_weight(nmax)
-        integer  :: map_now_quadrant(nmax), map_now_border(nmax)
+!         integer :: nmax   ! Max of all neighbors
+!         real(dp) :: map_now_var(nmax), map_now_dist(nmax), map_now_weight(nmax)
+!         integer  :: map_now_quadrant(nmax), map_now_border(nmax)
 
         ! Set neighborhood radius to very large value (to include all neighbors)
         ! or to radius specified by user
@@ -1407,6 +1418,14 @@ contains
         ! If fill is desired, initialize output points to missing values
         if (fill_pts) var2 = missing_val 
 
+        ! Determine max neighborhood 
+        nmax = maxval(map%nn)
+        allocate(map_now_var(nmax))
+        allocate(map_now_dist(nmax))
+        allocate(map_now_weight(nmax))
+        allocate(map_now_quadrant(nmax))
+        allocate(map_now_border(nmax))
+
         ! Loop over the new grid points and perform mapping
         do i = 1, map%npts 
 
@@ -1415,22 +1434,12 @@ contains
                 ! Get size of neighborhood 
                 n1 = size(map%map(i)%i)
 
-!                 if (allocated(map_now_var))      deallocate(map_now_var)
-!                 if (allocated(map_now_dist))     deallocate(map_now_dist)
-!                 if (allocated(map_now_weight))   deallocate(map_now_weight)
-!                 if (allocated(map_now_quadrant)) deallocate(map_now_quadrant)
-!                 if (allocated(map_now_border))   deallocate(map_now_border)
-
-!                 allocate(map_now_var(n1))
-!                 allocate(map_now_dist(n1))
-!                 allocate(map_now_weight(n1))
-!                 allocate(map_now_quadrant(n1))
-!                 allocate(map_now_border(n1))
-                
                 map_now_var  = missing_val 
                 map_now_dist = missing_val 
+                map_now_quadrant = 1
+                map_now_border   = 0
 
-                ! Get current neighborhood values
+                ! Get current neighborhood values (won't fill the whole `now` vector necesarrily)
                 map_now_var(1:n1)      = var1(map%map(i)%i)
                 map_now_dist(1:n1)     = map%map(i)%dist
                 map_now_weight(1:n1)   = map%map(i)%weight
