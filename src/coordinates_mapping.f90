@@ -1368,6 +1368,7 @@ contains
 
         real(dp), allocatable :: map_now_var(:), map_now_dist(:), map_now_weight(:)
         integer,  allocatable :: map_now_quadrant(:), map_now_border(:)
+        integer,  allocatable :: ii(:) 
 
         ! Set neighborhood radius to very large value (to include all neighbors)
         ! or to radius specified by user
@@ -1445,45 +1446,43 @@ contains
                                 end do 
                             end do 
 
-                        else 
+                        end if  
 
-                            ! Eliminate neighbors outside of distance limit
-                            where(map_now_dist .gt. max_distance) map_now_var = missing_val
+                        ! Eliminate neighbors outside of distance limit
+                        where(map_now_dist .gt. max_distance) map_now_var = missing_val
 
-                            ! Set all missing values to maximum distance
-                            where(map_now_var .eq. missing_val) map_now_dist  = ERR_DIST
+                        ! Set all missing values to maximum distance
+                        where(map_now_var .eq. missing_val) map_now_dist  = ERR_DIST
 
+                        ! Check number of neighbors available for calculations
+                        ntot = count(map_now_var .ne. missing_val)
 
-                            ! Check number of neighbors available for calculations
-                            ntot = count(map_now_var .ne. missing_val)
+                        ! Check if a large fraction of neighbors are border points
+                        ! (if so, do not interpolate here)
+                        if ( (.not. fill_border) .and. ntot .gt. 0) then 
+                            if ( sum(map_now_border,mask=map_now_var.ne.missing_val)/dble(ntot) .gt. 0.25_dp ) &
+                                    ntot = 0
+                        end if 
 
-                            ! Check if a large fraction of neighbors are border points
-                            ! (if so, do not interpolate here)
-                            if ( (.not. fill_border) .and. ntot .gt. 0) then 
-                                if ( sum(map_now_border,mask=map_now_var.ne.missing_val)/dble(ntot) .gt. 0.25_dp ) &
-                                        ntot = 0
-                            end if 
+                        ! Apply appropriate interpolation calculation
+                        if ( ntot .gt. 1) then 
 
-                            ! Apply appropriate interpolation calculation
-                            if ( ntot .gt. 1) then 
+                            ! Determine indices of points to use for weighting
+                            call which(map_now_var .ne. missing_val,ii)
 
-!                                 write(*,*) n1, ntot, map_now_var(n1) 
+                            ! Calculate the weighted average (using distance weighting)
+                            var2(i)        = weighted_ave_shepard(map_now_var(ii),map_now_dist(ii),shepard_exponent=2.d0)
+                            mask2_local(i) = 1
 
-                                ! Calculate the weighted average (using distance weighting)
-                                var2(i)        = weighted_ave_shepard(map_now_var,map_now_dist,shepard_exponent=2.d0)
-                                mask2_local(i) = 1
+                        else if (ntot .eq. 1) then
+                            k = minloc(map_now_dist,1)
+                            var2(i)        = map_now_var(k)
+                            mask2_local(i) = 1 
+                        else
+                            ! If no neighbors exist, field not mapped here.
+                            mask2_local(i) = 0  
 
-                            else if (ntot .eq. 1) then
-                                k = minloc(map_now_dist,1)
-                                var2(i)        = map_now_var(k)
-                                mask2_local(i) = 1 
-                            else
-                                ! If no neighbors exist, field not mapped here.
-                                mask2_local(i) = 0  
-
-                            end if 
-
-                        end if
+                        end if 
 
                     case DEFAULT 
 
