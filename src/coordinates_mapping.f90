@@ -1204,6 +1204,7 @@ contains
         real(dp), dimension(:), allocatable   :: var2_vec
         integer,  dimension(:), allocatable   :: mask2_vec
         logical,  dimension(:), allocatable   :: mask_pack_vec 
+        real(dp) :: missing_val 
         integer :: nx2, ny2, npts2, npts1 
         character(len=24) :: method_local 
         real(dp), dimension(:,:), allocatable :: var2tmp 
@@ -1211,6 +1212,9 @@ contains
         method_local = trim(method)
         if (method .eq. "nng") method_local = "nn" 
         
+        missing_val = MISSING_VALUE_DEFAULT
+        if (present(missing_value)) missing_val = missing_value 
+
         nx2   = size(var2,1)
         ny2   = size(var2,2)
         npts2  = nx2*ny2 
@@ -1222,7 +1226,7 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2_vec,mask2_vec, &
-                                     method_local,radius,fill,border,missing_value, &
+                                     method_local,radius,fill,border,missing_val, &
                                      mask_pack_vec)
     
         var2  = reshape(var2_vec, [nx2,ny2])
@@ -1236,13 +1240,13 @@ contains
             end if 
 
             if (present(fill)) then 
-                if (fill) call fill_nearest(var2,missing_value=missing_value)
+                if (fill) call fill_nearest(var2,missing_value=missing_val)
             end if 
 
             allocate(var2tmp(nx2,ny2))
             var2tmp = var2 
             call filter_gaussian(input=var2tmp,output=var2,sigma=sigma,dx=map%G%dx,&
-                        mask=reshape(mask_pack_vec,[nx2,ny2]) .and. var2tmp .ne. missing_value)
+                        mask=reshape(mask_pack_vec,[nx2,ny2]) .and. var2tmp .ne. missing_val)
         
         end if 
 
@@ -1404,6 +1408,21 @@ contains
 
             if (maskp(i)) then ! Only perform calculations for packing mask points
 
+                ! Get size of neighborhood 
+                n1 = size(map%map(i)%i)
+
+                if (allocated(map_now_var))      deallocate(map_now_var)
+                if (allocated(map_now_dist))     deallocate(map_now_dist)
+                if (allocated(map_now_weight))   deallocate(map_now_weight)
+                if (allocated(map_now_quadrant)) deallocate(map_now_quadrant)
+                if (allocated(map_now_border))   deallocate(map_now_border)
+
+                allocate(map_now_var(n1))
+                allocate(map_now_dist(n1))
+                allocate(map_now_weight(n1))
+                allocate(map_now_quadrant(n1))
+                allocate(map_now_border(n1))
+                
                 ! Get current neighborhood values
                 map_now_var      = var1(map%map(i)%i)
                 map_now_dist     = map%map(i)%dist
@@ -1468,10 +1487,12 @@ contains
                         if ( ntot .gt. 1) then 
 
                             ! Determine indices of points to use for weighting
-                            call which(map_now_var .ne. missing_val,ii)
+!                             call which(map_now_var .ne. missing_val,ii)
 
                             ! Calculate the weighted average (using distance weighting)
-                            var2(i)        = weighted_ave_shepard(map_now_var(ii),map_now_dist(ii),shepard_exponent=2.d0)
+!                             var2(i)        = weighted_ave_shepard(map_now_var(ii),map_now_dist(ii),shepard_exponent=2.d0)
+                            var2(i)        = weighted_ave_shepard(map_now_var,map_now_dist,shepard_exponent=2.d0, &
+                                                                  mask=map_now_var .ne. missing_val)
                             mask2_local(i) = 1
 
                         else if (ntot .eq. 1) then

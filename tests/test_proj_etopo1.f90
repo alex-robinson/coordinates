@@ -1,10 +1,8 @@
 
 program test_etopo
 
-    use ncio 
-    use coordinates
-    use coordinates_mapping 
-    
+    use coord 
+
     implicit none
 
     type(grid_class) :: grid0, grid1, grid2, grid3, grid4
@@ -116,7 +114,7 @@ contains
 
         ! Create a map object for grid0=>grid1 mapping
         call map_init(map,grid0,grid1,max_neighbors=20,lat_lim=lat_lim,dist_max=200d0, &
-                        fldr="maps",load=.FALSE.)
+                        fldr="maps",load=.TRUE.)
     
         call cpu_time(finish)
         mapping_time = (finish-start)/60.0d0

@@ -154,24 +154,28 @@ coord0_obj = $(objdir)/ncio.o \
 		    $(objdir)/subset.o \
 		    $(objdir)/grid_gen.o 
 
+# The final library wrapper 
+$(objdir)/coord.o: $(srcdir)/coord.f90 $(coord_obj)
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
+
 ## Complete programs
 
 # coordinates static library - using subset2
-coord-static: $(coord_obj)
+coord-static: $(objdir)/coord.o $(coord_obj)
 	ar rc libcoordinates.a $^
 	@echo " "
 	@echo "    libcoordinates.a is ready."
 	@echo " "
 
 # coordinates shared library - using subset2
-coord-shared: $(coord_obj)
+coord-shared: $(objdir)/coord.o $(coord_obj)
 	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates.so $^ $(LFLAGS)
 	@echo " "
 	@echo "    libcoordinates.so is ready."
 	@echo " "
 
 # coordinates shared library - using subset
-coord0-shared: $(coord0_obj)
+coord0-shared: $(objdir)/coord.o $(coord0_obj)
 	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates0.so $^ $(LFLAGS)
 	@echo " "
 	@echo "    libcoordinates0.so is ready."

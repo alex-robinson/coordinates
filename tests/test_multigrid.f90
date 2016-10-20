@@ -1,13 +1,9 @@
 
 
 program test
-
-    use coordinates 
+ 
 !     use interp2D_conservative
-    use interp2D
-    use grid_gen 
-
-    use ncio 
+    use coord 
 
     implicit none
 

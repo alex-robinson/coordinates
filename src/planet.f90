@@ -267,34 +267,47 @@ contains
 
     end function weighted_ave
 
-    function weighted_ave_shepard(var,dist,shepard_exponent)
+    function weighted_ave_shepard(var,dist,shepard_exponent,mask)
 
         implicit none
 
         real(dp) :: var(:), dist(:)
         real(dp), optional :: shepard_exponent
+        logical,  optional :: mask(:) 
         real(dp) :: shep_e, weight, numerator, denominator
         real(dp) :: weighted_ave_shepard
         integer :: i, n
+
+        logical :: msk(size(var)) 
+
+        msk = .TRUE. 
+        if (present(mask)) msk = mask 
 
         shep_e = 2.0_dp 
         if (present(shepard_exponent)) shep_e = shepard_exponent
 
         numerator            = 0.0_dp
         denominator          = 0.0_dp
+        weight               = 0.0_dp 
 
         n = size(var)
 
         do i = 1, n
 
-            ! See denominator in equation (2.17) and equation (2.19) in Reerink et al. (2010):
-            weight = 1.0_dp / (dist(i)**shep_e)
-            numerator   = numerator + var(i) * weight
-            denominator = denominator + weight
+            if (msk(i)) then   ! If not a missing point 
+                ! See denominator in equation (2.17) and equation (2.19) in Reerink et al. (2010):
+                weight = 1.0_dp / (dist(i)**shep_e)
+                numerator   = numerator + var(i) * weight
+                denominator = denominator + weight
+            end if 
 
         end do 
 
-        weighted_ave_shepard = numerator / denominator
+        if (denominator .gt. 0.0_dp) then 
+            weighted_ave_shepard = numerator / denominator
+        else 
+            weighted_ave_shepard = 0.0_dp 
+        end if 
 
         return
 
