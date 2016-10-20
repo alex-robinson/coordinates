@@ -1370,9 +1370,13 @@ contains
 
         character(len=56) :: method_now 
 
-        real(dp), allocatable :: map_now_var(:), map_now_dist(:), map_now_weight(:)
-        integer,  allocatable :: map_now_quadrant(:), map_now_border(:)
-        integer,  allocatable :: ii(:) 
+!         real(dp), allocatable :: map_now_var(:), map_now_dist(:), map_now_weight(:)
+!         integer,  allocatable :: map_now_quadrant(:), map_now_border(:)
+!         integer,  allocatable :: ii(:) 
+    
+        integer, parameter :: nmax = 100
+        real(dp) :: map_now_var(nmax), map_now_dist(nmax), map_now_weight(nmax)
+        integer  :: map_now_quadrant(nmax), map_now_border(nmax)
 
         ! Set neighborhood radius to very large value (to include all neighbors)
         ! or to radius specified by user
@@ -1411,24 +1415,27 @@ contains
                 ! Get size of neighborhood 
                 n1 = size(map%map(i)%i)
 
-                if (allocated(map_now_var))      deallocate(map_now_var)
-                if (allocated(map_now_dist))     deallocate(map_now_dist)
-                if (allocated(map_now_weight))   deallocate(map_now_weight)
-                if (allocated(map_now_quadrant)) deallocate(map_now_quadrant)
-                if (allocated(map_now_border))   deallocate(map_now_border)
+!                 if (allocated(map_now_var))      deallocate(map_now_var)
+!                 if (allocated(map_now_dist))     deallocate(map_now_dist)
+!                 if (allocated(map_now_weight))   deallocate(map_now_weight)
+!                 if (allocated(map_now_quadrant)) deallocate(map_now_quadrant)
+!                 if (allocated(map_now_border))   deallocate(map_now_border)
 
-                allocate(map_now_var(n1))
-                allocate(map_now_dist(n1))
-                allocate(map_now_weight(n1))
-                allocate(map_now_quadrant(n1))
-                allocate(map_now_border(n1))
+!                 allocate(map_now_var(n1))
+!                 allocate(map_now_dist(n1))
+!                 allocate(map_now_weight(n1))
+!                 allocate(map_now_quadrant(n1))
+!                 allocate(map_now_border(n1))
                 
+                map_now_var  = missing_val 
+                map_now_dist = missing_val 
+
                 ! Get current neighborhood values
-                map_now_var      = var1(map%map(i)%i)
-                map_now_dist     = map%map(i)%dist
-                map_now_weight   = map%map(i)%weight
-                map_now_quadrant = map%map(i)%quadrant
-                map_now_border   = map%map(i)%border
+                map_now_var(1:n1)      = var1(map%map(i)%i)
+                map_now_dist(1:n1)     = map%map(i)%dist
+                map_now_weight(1:n1)   = map%map(i)%weight
+                map_now_quadrant(1:n1) = map%map(i)%quadrant
+                map_now_border(1:n1)   = map%map(i)%border
 
                 ! Get size of neighborhood 
                 n1 = size(map_now_var)
