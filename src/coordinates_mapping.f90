@@ -1502,13 +1502,10 @@ contains
                         ! Apply appropriate interpolation calculation
                         if ( ntot .gt. 1) then 
 
-                            ! Determine indices of points to use for weighting
-!                             call which(map_now_var .ne. missing_val,ii)
-
                             ! Calculate the weighted average (using distance weighting)
-!                             var2(i)        = weighted_ave_shepard(map_now_var(ii),map_now_dist(ii),shepard_exponent=2.d0)
-                            var2(i)        = weighted_ave_shepard(map_now_var,map_now_dist,shepard_exponent=2.d0, &
-                                                                  mask=map_now_var .ne. missing_val)
+                            var2(i)        = weighted_ave(map_now_var,map_now_weight,mask=map_now_var .ne. missing_val)
+!                             var2(i)        = weighted_ave_shepard(map_now_var,map_now_dist,shepard_exponent=2.d0, &
+!                                                                   mask=map_now_var .ne. missing_val)
                             mask2_local(i) = 1
 
                         else if (ntot .eq. 1) then

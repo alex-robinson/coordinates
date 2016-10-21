@@ -243,17 +243,23 @@ contains
     end function shepard_weight 
 
 
-    function weighted_ave(var,weight)
+    function weighted_ave(var,weight,mask)
 
         implicit none
 
         real(dp) :: var(:), weight(:)
+        logical,  optional :: mask(:) 
         real(dp) :: weighted_ave
         real(dp) :: numerator, denominator
         integer :: i, n
 
-        numerator            = sum( var*weight ) 
-        denominator          = sum( weight ) 
+        logical :: msk(size(var)) 
+
+        msk = .TRUE. 
+        if (present(mask)) msk = mask 
+
+        numerator            = sum( var*weight, mask=msk ) 
+        denominator          = sum( weight,     mask=msk ) 
 
         if (denominator .gt. 0.0_dp) then
             weighted_ave = numerator / denominator
