@@ -2,10 +2,9 @@
 
 module mod_toms526
 
-    implicit none 
+    use coord_constants
 
-    integer, parameter :: sp    = kind(1.0)
-    integer, parameter :: dp    = kind(1.0d0)
+    implicit none 
 
     interface interp2D_akima
         module procedure interp2D_akima_grid_grid

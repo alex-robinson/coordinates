@@ -1,5 +1,6 @@
 module coordinates_mapping 
     
+    use coord_constants 
     use coordinates 
 
     use oblimap_projection_module
@@ -13,15 +14,6 @@ module coordinates_mapping
     use mod_toms526 
 
     implicit none 
-
-    ! Internal constants
-    integer,  parameter :: dp  = kind(1.d0)
-    integer,  parameter :: sp  = kind(1.0)
-    real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
-    real(dp), parameter :: mv = -9999.0_dp 
-    
-    real(dp), parameter :: ERR_DIST = 1E8_dp 
-    integer,  parameter :: ERR_IND  = -1 
 
     type pt_wts_class 
         integer :: n
@@ -81,7 +73,7 @@ module coordinates_mapping
     public :: compare_map
     public :: map_class, map_init, map_field, map_print
     public :: pt_wts_class 
-    
+
 contains 
 
     subroutine map_init_grid_grid(map,grid1,grid2,max_neighbors,lat_lim,dist_max,fldr,load,save)

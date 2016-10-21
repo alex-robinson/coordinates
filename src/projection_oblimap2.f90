@@ -46,12 +46,10 @@
 
 MODULE oblimap_projection_module
 
+    use coord_constants
     use planet 
 
     implicit none 
-
-    !! real(dp) definition
-    integer, parameter :: dp    = kind(1.0d0)
 
     ! Mathematical constants
     real(dp), parameter  :: pi  = 2._dp*acos(0._dp)

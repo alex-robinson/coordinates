@@ -1,5 +1,6 @@
 module interp2D_conservative
     
+    use coord_constants 
     use coordinates 
 
     use planet 
@@ -10,12 +11,6 @@ module interp2D_conservative
     use interp2D 
 
     implicit none 
-
-    ! Internal constants
-    integer,  parameter :: dp  = kind(1.d0)
-    integer,  parameter :: sp  = kind(1.0)
-    real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
-    real(dp), parameter :: mv = MISSING_VALUE_DEFAULT
 
     type pt_wts_class 
         integer :: n  

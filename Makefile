@@ -65,6 +65,9 @@ endif
 $(objdir)/ncio.o: $(srcdir)/ncio.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
+$(objdir)/coord_constants.o: $(srcdir)/coord_constants.f90
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
+
 $(objdir)/index.o: $(srcdir)/index.f90
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
@@ -123,7 +126,8 @@ $(objdir)/grid_gen.o: $(srcdir)/grid_gen.f90 $(objdir)/coordinates.o $(objdir)/i
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 
-coord_obj = $(objdir)/ncio.o \
+coord_obj = $(objdir)/coord_constants.o \
+			$(objdir)/ncio.o \
 		    $(objdir)/index.o \
 		    $(objdir)/interp1D.o \
 		    $(objdir)/interp2D.o \
@@ -142,7 +146,8 @@ coord_obj = $(objdir)/ncio.o \
 		    $(objdir)/grid_gen.o \
 		    $(objdir)/interp2D_conservative.o
 
-coord0_obj = $(objdir)/ncio.o \
+coord0_obj = $(objdir)/coord_constants.o \
+			$(objdir)/ncio.o \
 		    $(objdir)/index.o \
 		    $(objdir)/interp1D.o \
 		    $(objdir)/interp2D.o \

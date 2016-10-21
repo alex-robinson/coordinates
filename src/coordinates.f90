@@ -12,6 +12,8 @@
 !! ####################################################################
 module coordinates
 
+    use coord_constants 
+
     use oblimap_projection_module
     use planet 
     use ncio
@@ -22,11 +24,6 @@ module coordinates
 !     use mod_toms526 
 
     implicit none 
-
-    ! Internal constants
-    integer,  parameter :: dp  = kind(1.d0)
-    integer,  parameter :: sp  = kind(1.0)
-    real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
 
     type points_class 
 

@@ -3,15 +3,11 @@ module grid_gen
     ! versions of the same grid, with interpolation between 
     ! them, including staggered grids
 
+    use coord_constants
     use coordinates 
     use interp2D_conservative 
 
     implicit none 
-
-    ! Internal constants
-    integer,  parameter :: dp  = kind(1.d0)
-    integer,  parameter :: sp  = kind(1.0)
-    real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
 
     type multigrid_class 
         integer :: n

@@ -1,11 +1,9 @@
 module planet
 
+    use coord_constants
     use geodesic
 
     implicit none 
-
-    !! real(dp) definition
-    integer, parameter :: dp  = kind(1.0d0)
 
     ! Mathematical constants
     real(dp), parameter  :: pi  = 2._dp*acos(0._dp)

@@ -1,13 +1,11 @@
 
 module loess 
 
+    use coord_constants
     use interp1D 
     use index 
 
     implicit none 
-
-    integer, parameter :: sp  = kind(1.0)
-    integer, parameter :: dp  = kind(1.0d0)
 
     ! Define the default missing value 
     real(sp), parameter :: LOESS_MISSING_VALUE = -9999.0 

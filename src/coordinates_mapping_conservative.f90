@@ -1,5 +1,6 @@
 module coordinates_mapping_conservative
 
+    use coord_constants
     use coordinates 
     use coordinates_mapping 
     use interp2D 
@@ -7,15 +8,6 @@ module coordinates_mapping_conservative
     use planet
 
     implicit none 
-
-    ! Internal constants
-    integer,  parameter :: dp  = kind(1.d0)
-    integer,  parameter :: sp  = kind(1.0)
-    real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
-    real(dp), parameter :: mv = -9999.0_dp 
-    
-    real(dp), parameter :: ERR_DIST = 1E8_dp 
-    integer,  parameter :: ERR_IND  = -1 
 
     private
     public :: map_field_conservative_map1
