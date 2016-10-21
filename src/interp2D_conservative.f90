@@ -1,7 +1,6 @@
 module interp2D_conservative
     
     use coordinates 
-    use coordinates_mapping 
 
     use planet 
     use oblimap_projection_module
@@ -23,6 +22,8 @@ module interp2D_conservative
         integer,  allocatable :: x(:), y(:), i(:)               ! Length of pts1/grid1 neighbors
         real(dp), allocatable :: dist(:), weight(:), area(:)
     end type 
+! ** Now also defined in coordinates_mapping - this module is 
+!    meant to stand alone though. 
 
     type map_conserv_class
 !         type(grid_class) :: grid1, grid2 
@@ -182,8 +183,11 @@ contains
             if (maxval(low_corr) .lt. 0.01d0*norm_val) exit 
         end do 
 
+        ! Apply the last correction field to the high resolution field before output
+        call map_field_conservative(map,varname,low_corr,high_corr,fill,missing_val,mask_pack)
+        
         ! After iterations store smooth high resolution grid for output 
-        var2 = high 
+        var2 = high - high_corr 
 
             
         return 
@@ -245,14 +249,6 @@ contains
             stop 
         end if 
 
-!         do i = 1, size(x)
-!             write(*,"(5f10.2)") x(i), weight(i,1:4)
-!         end do 
-
-!         do j = 1, size(y)
-!             write(*,"(5f10.2)") y(j), weight(1:4,j)
-!         end do 
-        
         ! Calculate grid total 
         tot = sum(var*weight*dx*dy)
 

@@ -2,8 +2,8 @@
 
 program test
  
-!     use interp2D_conservative
     use coord 
+    use interp2D_conservative
 
     implicit none
 

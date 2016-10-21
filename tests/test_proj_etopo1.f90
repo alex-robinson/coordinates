@@ -70,7 +70,7 @@ program test_etopo
     write(*,*) "Mapping/interpolation summary"
     write(*,"(5a14)") "npts", "map_time", "n_iter", "interp_time", "   (min.)"
 
-    do i = 1, 2!4 
+    do i = 1, 4 
         write(*,"(f14.1,f14.3,f14.1,f14.5)") table(i,:)
     end do 
 
