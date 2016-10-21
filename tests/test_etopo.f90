@@ -1,9 +1,7 @@
 
 program test_etopo
 
-    use ncio 
-    use coordinates
-    use coordinates_mapping 
+    use coord 
     use mod_toms526 
 
     implicit none

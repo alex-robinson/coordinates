@@ -126,9 +126,9 @@ $(objdir)/grid_gen.o: $(srcdir)/grid_gen.f90 $(objdir)/coordinates.o $(objdir)/i
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 
-coord_obj = $(objdir)/coord_constants.o \
-			$(objdir)/ncio.o \
-		    $(objdir)/index.o \
+coord_obj = $(objdir)/ncio.o \
+		    $(objdir)/coord_constants.o \
+			$(objdir)/index.o \
 		    $(objdir)/interp1D.o \
 		    $(objdir)/interp2D.o \
 		    $(objdir)/loess.o \
@@ -146,9 +146,9 @@ coord_obj = $(objdir)/coord_constants.o \
 		    $(objdir)/grid_gen.o \
 		    $(objdir)/interp2D_conservative.o
 
-coord0_obj = $(objdir)/coord_constants.o \
-			$(objdir)/ncio.o \
-		    $(objdir)/index.o \
+coord0_obj = $(objdir)/ncio.o \
+		    $(objdir)/coord_constants.o \
+			$(objdir)/index.o \
 		    $(objdir)/interp1D.o \
 		    $(objdir)/interp2D.o \
 		    $(objdir)/loess.o \

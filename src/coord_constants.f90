@@ -5,6 +5,10 @@ module coord_constants
     ! Internal constants
     integer,  parameter :: dp  = kind(1.d0)
     integer,  parameter :: sp  = kind(1.0)
+
+    ! Choose the precision of the coord library (sp,dp)
+    integer,  parameter :: prec = sp 
+
     
     ! Missing value and aliases
     real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 

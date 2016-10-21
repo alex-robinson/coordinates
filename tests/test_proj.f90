@@ -2,7 +2,7 @@
 
 program test_proj 
 
-    use coordinates 
+    use coord 
 
     implicit none 
 

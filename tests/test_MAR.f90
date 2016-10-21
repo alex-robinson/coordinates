@@ -6,9 +6,7 @@
 
 program test_MAR
 
-    use ncio 
-    use coordinates
-    use coordinates_mapping 
+    use coord 
     use interp2D_conservative
 
     implicit none

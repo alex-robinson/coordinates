@@ -2,14 +2,9 @@
 
 program test
 
-    use interp1D
-    use interp2D
-    use interp_time
-    use coordinates 
-    use coordinates_mapping 
+    use coord 
+    
     use interp2D_conservative 
-
-    use ncio 
 
     use gaussian_filter 
 

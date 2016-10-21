@@ -6,10 +6,7 @@
 
 program test_coordinates
 
-    use ncio 
-    use coordinates
-    use coordinates_mapping 
-    use planet 
+    use coord 
 
     implicit none
 
