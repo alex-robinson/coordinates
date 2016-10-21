@@ -1358,7 +1358,7 @@ contains
 
     subroutine map_field_points_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
         ! Methods include "radius", "nn" (nearest neighbor), "quadrant"
-        ! See `map_field_conservative_map` for 1st order conservative mapping
+        ! See `map_field_conservative_map1` for 1st order conservative mapping
         ! This is `map_field_internal` basically 
 
         implicit none 

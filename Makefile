@@ -105,6 +105,10 @@ $(objdir)/coordinates.o: $(srcdir)/coordinates.f90 $(objdir)/ncio.o $(objdir)/pl
 $(objdir)/coordinates_mapping.o: $(srcdir)/coordinates_mapping.f90 $(objdir)/coordinates.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
+$(objdir)/coordinates_mapping_conservative.o: $(srcdir)/coordinates_mapping_conservative.f90 \
+								 $(objdir)/coordinates.o $(objdir)/coordinates_mapping.o
+	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
+
 $(objdir)/interp2D_conservative.o: $(srcdir)/interp2D_conservative.f90 \
 								   $(objdir)/coordinates.o $(objdir)/coordinates_mapping.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
@@ -133,6 +137,7 @@ coord_obj = $(objdir)/ncio.o \
 		    $(objdir)/projection_oblimap2.o \
 		    $(objdir)/coordinates.o \
 		    $(objdir)/coordinates_mapping.o \
+		    $(objdir)/coordinates_mapping_conservative.o \
 		    $(objdir)/subset2.o \
 		    $(objdir)/grid_gen.o \
 		    $(objdir)/interp2D_conservative.o
@@ -151,6 +156,7 @@ coord0_obj = $(objdir)/ncio.o \
 		    $(objdir)/projection_oblimap2.o \
 		    $(objdir)/coordinates.o \
 		    $(objdir)/coordinates_mapping.o \
+		    $(objdir)/coordinates_mapping_conservative.o \
 		    $(objdir)/subset.o \
 		    $(objdir)/grid_gen.o 
 

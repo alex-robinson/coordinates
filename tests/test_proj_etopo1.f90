@@ -47,8 +47,8 @@ program test_etopo
     call grid_init(grid2,name="ANT-20KM",mtype="polar_stereographic",units="kilometers", &
                    lon180=.TRUE.,dx=20.d0,nx=311,dy=20.d0,ny=291,lambda=0.d0,phi=-71.d0)
 
-!     call grid_init(grid3,name="ANT-10KM",mtype="polar_stereographic",units="kilometers", &
-!                    lon180=.TRUE.,dx=10.d0,nx=621,dy=10.d0,ny=581,lambda=0.d0,phi=-71.d0)
+    call grid_init(grid3,name="ANT-10KM",mtype="polar_stereographic",units="kilometers", &
+                   lon180=.TRUE.,dx=10.d0,nx=621,dy=10.d0,ny=581,lambda=0.d0,phi=-71.d0)
 
 !     call grid_init(grid4,name="ANT-5KM",mtype="polar_stereographic",units="kilometers", &
 !                    lon180=.TRUE.,dx=5.d0,nx=1241,dy=5.d0,ny=1161,lambda=0.d0,phi=-71.d0)
@@ -62,8 +62,8 @@ program test_etopo
     table = 0.d0 
 
     table(1,:) = test_mapping(var0,grid0,grid1,niter=100,lat_lim=0.5d0)
-!     table(2,:) = test_mapping(var0,grid0,grid2,niter=100,lat_lim=0.5d0)
-!     table(3,:) = test_mapping(var0,grid0,grid3,niter=100,lat_lim=0.5d0)
+    table(2,:) = test_mapping(var0,grid0,grid2,niter=100,lat_lim=0.5d0)
+    table(3,:) = test_mapping(var0,grid0,grid3,niter=100,lat_lim=0.5d0)
 !     table(4,:) = test_mapping(var0,grid0,grid4,niter=100,lat_lim=0.5d0)
 
     write(*,*)
