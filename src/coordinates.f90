@@ -1278,7 +1278,7 @@ contains
         end if 
 
         if (pts%is_projection) then 
-            write(*,*) "Projection information"
+!             write(*,*) "Projection information"
             write(*,"(a16,a)")         "proj method = ", trim(pts%proj%method)
             write(*,"(a16,g12.5)")     "a = ",     pts%proj%a
             write(*,"(a16,g12.5)")     "f = ",     pts%proj%f
@@ -1289,7 +1289,7 @@ contains
             write(*,"(a16,g12.5)")     "y_n = ",   pts%proj%y_n
         end if 
         
-        write(*,*)
+!         write(*,*)
 
         return
     end subroutine points_print

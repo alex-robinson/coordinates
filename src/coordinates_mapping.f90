@@ -866,16 +866,15 @@ contains
 
         write(*,*) "== Mapping summary ========================="
         write(*,*) trim(map%name1)," => ",trim(map%name2)
-        write(*,"(a16,g12.5)")     "             a = ",map%planet%a
-        write(*,"(a16,g12.5)")     "             f = ",map%planet%f
-        write(*,"(a16,i11,i11)")   "    npts, nvec = ",map%npts,n_vec 
         if (map%is_grid) then
-            write(*,*) "  Grid axis information"
-            write(*,"(a16,i8,i6)") "         nx,ny = ",map%G%nx, map%G%ny 
+!             write(*,*) "  Grid axis information"
+            write(*,"(a17,i11,i11)") "nx,ny = ", map%G%nx, map%G%ny 
         end if 
+        write(*,"(a17,i11,i11)")     "npts, nvec = ", map%npts, n_vec 
+        
 
-        write(*,"(a,g11.4,a)") " ** Size in memory ~", &
-            ( 4.d0*(map%npts*8.d0) + 2.d0*(n_vec*4.d0) + 5.d0*(n_vec*8.d0) ) *7.6294d-6, "Mb"      
+        write(*,"(a17,g9.4,a3)")   "Size in memory ~ ", &
+            ( 4.d0*(map%npts*8.d0) + 2.d0*(n_vec*4.d0) + 5.d0*(n_vec*8.d0) ) *7.6294d-6, " Mb"      
         ! 4 real arrays (8 bytes per value): x, y, lon, lat
         ! 3 integer array (4 bytes per value): i, quadrant, border
         ! 5 real arrays (8 bytes per value): x, y, dist, weight, area

@@ -256,7 +256,7 @@ CONTAINS
     ! See equation (24-20) on page 187 in Snyder (1987):
     proj%D         = proj%am / (proj%R_q_polar * COS(proj%phi_M))
 
-    call projection_print(proj)
+!     if (trim(proj%method) .ne. "Undefined") call projection_print(proj)
 
     return
 
