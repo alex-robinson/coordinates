@@ -50,12 +50,7 @@ MODULE oblimap_projection_module
     use planet 
 
     implicit none 
-
-    ! Mathematical constants
-    real(dp), parameter  :: pi  = 2._dp*acos(0._dp)
-    real(dp), parameter  :: degrees_to_radians = pi / 180._dp  ! Conversion factor between radians and degrees
-    real(dp), parameter  :: radians_to_degrees = 180._dp / pi  ! Conversion factor between degrees and radians
-        
+   
     type projection_class
 
         character(len=256) :: name, method  
@@ -93,7 +88,6 @@ MODULE oblimap_projection_module
     end type 
 
     private
-    public :: pi, degrees_to_radians, radians_to_degrees
     public :: projection_class, projection_init, same_projection
     public :: optimal_alpha
     public :: oblimap_projection, oblimap_projection_inverse

@@ -18,6 +18,11 @@ module coord_constants
     real(dp), parameter :: ERR_DIST = 1E8_dp 
     integer,  parameter :: ERR_IND  = -1 
 
+    ! Mathematical constants
+    real(dp), parameter  :: pi  = 2._dp*acos(0._dp)
+    real(dp), parameter  :: degrees_to_radians = pi / 180._dp  ! Conversion factor between radians and degrees
+    real(dp), parameter  :: radians_to_degrees = 180._dp / pi  ! Conversion factor between degrees and radians
+     
     public 
 
 contains 
