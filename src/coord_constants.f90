@@ -9,7 +9,7 @@ module coord_constants
     ! Choose the precision of the coord library (sp,dp)
     integer,  parameter :: prec = sp 
 
-    
+
     ! Missing value and aliases
     real(dp), parameter :: MISSING_VALUE_DEFAULT = -9999.0_dp 
     real(dp), parameter :: mv = MISSING_VALUE_DEFAULT
@@ -19,5 +19,19 @@ module coord_constants
     integer,  parameter :: ERR_IND  = -1 
 
     public 
+
+contains 
+
+    function get_coord_precision() result(coord_prec)
+
+        implicit none 
+
+        integer :: coord_prec 
+
+        coord_prec = kind(prec)
+
+        return 
+
+    end function get_coord_precision
 
 end module coord_constants 

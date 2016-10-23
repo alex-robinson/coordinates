@@ -4,7 +4,8 @@ module coord
     ! have access to all public functions and subroutines defined
     ! in the modules included below. 
 
-    use ncio 
+!     use ncio 
+
     use index 
     use interp1D 
     use interp2D 
