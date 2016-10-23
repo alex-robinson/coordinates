@@ -198,9 +198,12 @@ CONTAINS
             ! But small, if desired phi = 90 or -90
             proj%alpha = max(90.0_dp - dabs(proj%phi),0.0001_dp) 
 
-            write(*,*) "Note alpha set to small, but non-zero value to avoid"
-            write(*,*) "errors. This should introduce no noticable errors in projection."
-            
+            if (dabs(proj%phi) .eq. 90.0_dp) then 
+                write(*,*) "oblimap_projection_module::"
+                write(*,*) "    Note alpha set to small, but non-zero value to avoid"
+                write(*,*) "    errors. This should introduce no noticable errors in projection."
+            end if 
+
         else 
             ! Use optimal alpha 
 
