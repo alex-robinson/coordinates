@@ -873,7 +873,7 @@ contains
         write(*,"(a17,i11,i11)")     "npts, nvec = ", map%npts, n_vec 
         
 
-        write(*,"(a17,g9.4,a3)")   "Size in memory ~ ", &
+        write(*,"(a17,g11.4,a3)")   "Size in memory ~ ", &
             ( 4.d0*(map%npts*8.d0) + 2.d0*(n_vec*4.d0) + 5.d0*(n_vec*8.d0) ) *7.6294d-6, " Mb"      
         ! 4 real arrays (8 bytes per value): x, y, lon, lat
         ! 3 integer array (4 bytes per value): i, quadrant, border
