@@ -1,5 +1,8 @@
 module coordinates_mapping_conservative
-
+    ! This module will eventually replace interp2D_conservative, 
+    ! to handle generic cases of conservative mapping within the
+    ! standard `map_class` framework. 
+    
     use coord_constants
     use coordinates 
     use coordinates_mapping 

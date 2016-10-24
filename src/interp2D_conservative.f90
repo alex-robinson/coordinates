@@ -29,7 +29,7 @@ module interp2D_conservative
         ! Projection info 
         logical  :: is_cartesian, is_projection, is_same_map
         logical  :: is_lon180
-        logical :: is_grid
+        logical  :: is_grid
 
     end type
 

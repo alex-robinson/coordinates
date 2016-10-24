@@ -270,6 +270,8 @@ contains
                 write(*,*) "Calculating conservative weights ..."
                 do i = 1, pts2%npts
                     if (map%map(i)%dist(1) .lt. ERR_DIST) then 
+
+!                         if (allocated(ii))
                         ii = map%map(i)%i 
                         map%map(i)%area = calc_weights_interpconserv1(x=real(pts1%x(ii)*pts1%xy_conv), &
                                             y=real(pts1%y(ii)*pts1%xy_conv), &
