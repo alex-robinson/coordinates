@@ -5,15 +5,17 @@ module grid_gen
 
     use coord_constants
     use coordinates 
-    use interp2D_conservative 
+    use coordinates_mapping
+!     use interp2D_conservative 
     use ncio 
-    
+
     implicit none 
 
     type multigrid_class 
         integer :: n
         type(grid_class), allocatable :: grid(:)
-        type(map_conserv_class), allocatable :: map_to(:), map_from(:)
+!         type(map_conserv_class), allocatable :: map_to(:), map_from(:)
+        type(map_class), allocatable :: map_to(:), map_from(:)
     end type 
 
     private 
@@ -112,8 +114,10 @@ contains
 
 
             ! Generate conservative maps (to, from)
-            call map_conservative_init(mgrid%map_to(q),  grid,mgrid%grid(q))
-            call map_conservative_init(mgrid%map_from(q),mgrid%grid(q),grid)
+!             call map_conservative_init(mgrid%map_to(q),  grid,mgrid%grid(q))
+!             call map_conservative_init(mgrid%map_from(q),mgrid%grid(q),grid)
+            call map_init(mgrid%map_to(q),  grid,mgrid%grid(q),max_neighbors=20,lat_lim=1.d0)
+            call map_init(mgrid%map_from(q),mgrid%grid(q),grid,max_neighbors=20,lat_lim=1.d0)
 
         end do 
 

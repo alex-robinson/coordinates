@@ -11,6 +11,7 @@ module coordinates_mapping_conservative
 
     private
     public :: map_field_conservative_map1
+    public :: calc_grid_total 
 
 contains 
 
@@ -102,6 +103,67 @@ contains
     end subroutine map_field_conservative_map1 
 
 
+    function calc_grid_total(x,y,var,xlim,ylim) result(tot)
+
+        implicit none 
+
+        double precision, intent(IN)  :: x(:), y(:), var(:,:)
+        double precision, intent(IN)  :: xlim(2), ylim(2)   ! Extent over which to calculate total
+        double precision :: tot 
+
+        double precision :: dx, dy, d_extra 
+        double precision :: weight(size(var,1),size(var,2))
+        double precision :: xwt, ywt 
+        integer :: i, j 
+
+        ! Determine the resolution of the grid 
+        dx = abs(x(2)-x(1)) 
+        dy = abs(y(2)-y(1))
+
+        ! Initially set weight to zero 
+        weight = 0.d0 
+
+        ! Find weights over the whole domain 
+        do j = 1, size(y)
+            do i = 1, size(x)
+
+                if (x(i)-dx/2.d0 .le. xlim(1) .and. x(i)+dx/2.d0 .gt. xlim(1)) then 
+                    xwt = ( (x(i)+dx/2.d0) - xlim(1) ) / dx 
+                else if (x(i)-dx/2.d0 .lt. xlim(2) .and. x(i)+dx/2.d0 .ge. xlim(2)) then 
+                    xwt = ( xlim(2) - (x(i)-dx/2.d0) ) / dx 
+                else if (x(i)-dx/2.d0 .ge. xlim(1) .and. x(i)+dx/2.d0 .le. xlim(2)) then 
+                    xwt = 1.d0 
+                else 
+                    xwt = 0.d0 
+                end if 
+
+                if (y(j)-dy/2.d0 .le. ylim(1) .and. y(j)+dy/2.d0 .gt. ylim(1)) then 
+                    ywt = ( (y(j)+dy/2.d0) - ylim(1) ) / dy 
+                else if (y(j)-dy/2.d0 .lt. ylim(2) .and. y(j)+dy/2.d0 .ge. ylim(2)) then 
+                    ywt = ( ylim(2) - (y(j)-dy/2.d0) ) / dy 
+                else if (y(j)-dy/2.d0 .ge. ylim(1) .and. y(j)+dy/2.d0 .le. ylim(2)) then 
+                    ywt = 1.d0 
+                else 
+                    ywt = 0.d0 
+                end if 
+                
+                if (xwt*ywt .gt. 0.d0) weight(i,j) = xwt*ywt 
+            end do 
+        end do 
+
+        ! Check that weights are within range 0:1 
+        if (minval(weight) .lt. 0.d0 .or. maxval(weight) .gt. 1.d0) then 
+            write(*,*) "calc_grid_total:: error: weights less than 0 or greater than 1!"
+            write(*,*) "weight: ", minval(weight), maxval(weight)
+            stop 
+        end if 
+
+        ! Calculate grid total 
+        tot = sum(var*weight*dx*dy)
+
+        return 
+
+    end function calc_grid_total
 
 
 

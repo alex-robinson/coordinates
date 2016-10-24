@@ -1246,7 +1246,7 @@ contains
         type(grid_class), intent(IN) :: grid
         type(points_class) :: pts 
 
-        write(*,*) "== Grid summary   ========================="
+        write(*,*) "== Grid summary   ====="
         write(*,"(a16,i6,i6)")     "nx,ny = ",grid%G%nx, grid%G%ny 
         write(*,"(a16,2g12.5)")    "dx,dy = ",grid%G%dx, grid%G%dy
         write(*,"(a16,2g12.5)") "range(x-axis) = ",minval(grid%G%x),maxval(grid%G%x)

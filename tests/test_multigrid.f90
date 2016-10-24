@@ -4,7 +4,8 @@ program test
  
     use coord 
     use ncio 
-    use interp2D_conservative
+    use coordinates_mapping_conservative
+!     use interp2D_conservative
 
     implicit none
 
@@ -36,7 +37,7 @@ program test
 
     ! Test multigrid initialization 
 !     call multigrid_init(mgrid,grid,dx=[10.d0,20.d0,50.d0,100.d0])
-    call multigrid_init(mgrid,grid,dx=[10.d0]) 
+    call multigrid_init(mgrid,grid,dx=[20.d0]) 
     call grid_allocate(grid,var)
     
     xlim = [ -850.d0, 850.d0]
@@ -60,7 +61,8 @@ program test
             call grid_allocate(mgrid%grid(q),var1)
 
             if (trim(varname) .ne. "mask") then 
-                call map_field_conservative(mgrid%map_to(q),varname,var,var1)
+!                 call map_field_conservative(mgrid%map_to(q),varname,var,var1)
+                call map_field_conservative_map1(mgrid%map_to(q)%map,varname,var,var1)
 
                 current_val = calc_grid_total(mgrid%grid(q)%G%x,mgrid%grid(q)%G%y,var1,xlim=xlim,ylim=ylim)
                 err_percent = 100.d0 * (current_val-target_val) / target_val
@@ -78,13 +80,17 @@ program test
             if (k.eq.1) call grid_write(mgrid%grid(q),file_out,xnm="xc",ynm="yc",create=.TRUE.)
             call nc_write(file_out,varname,var1,dim1="xc",dim2="yc")
 
+
             ! Remap to high resolution 
             call grid_allocate(grid,var2)
 
             if (trim(varname) .ne. "mask") then 
 !                call map_field_conservative(mgrid%map_from(q),varname,var1,var2)
-                call map_field_conservative_smooth(mgrid%map_from(q),mgrid%map_to(q), &
-                            mgrid%grid(q),grid,varname,var1,var2)
+
+!                 call map_field_conservative_smooth(mgrid%map_from(q),mgrid%map_to(q), &
+!                             mgrid%grid(q),grid,varname,var1,var2)
+                
+                call map_field_conservative_map1(mgrid%map_from(q)%map,varname,var1,var2)
 
                 current_val = calc_grid_total(mgrid%grid(q)%G%x,mgrid%grid(q)%G%y,var1,xlim=xlim,ylim=ylim)
                 err_percent = 100.d0 * (current_val-target_val) / target_val
