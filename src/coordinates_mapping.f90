@@ -191,7 +191,6 @@ contains
         character(len=256) :: mapfldr 
 
         integer :: i 
-        integer, allocatable :: ii(:) 
         logical :: pts_is_latlon  
 
         pts_is_latlon = (.not. pts1%is_cartesian .and. .not. pts2%is_cartesian)
@@ -271,9 +270,6 @@ contains
                 do i = 1, pts2%npts
                     if (map%map(i)%dist(1) .lt. ERR_DIST) then 
 
-!                         if (allocated(ii)) deallocate(ii)
-!                         allocate(ii(size(map%map(i)%i)))
-!                         ii = map%map(i)%i 
                         map%map(i)%area = calc_weights_interpconserv1( &
                                             x=real(pts1%x(map%map(i)%i )*pts1%xy_conv), &
                                             y=real(pts1%y(map%map(i)%i )*pts1%xy_conv), &
