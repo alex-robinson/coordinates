@@ -271,13 +271,18 @@ contains
                 do i = 1, pts2%npts
                     if (map%map(i)%dist(1) .lt. ERR_DIST) then 
 
-!                         if (allocated(ii))
-                        ii = map%map(i)%i 
-                        map%map(i)%area = calc_weights_interpconserv1(x=real(pts1%x(ii)*pts1%xy_conv), &
-                                            y=real(pts1%y(ii)*pts1%xy_conv), &
-                                            dx=real(pts1%dx(ii)*pts1%xy_conv),dy=real(pts1%dy(ii)*pts1%xy_conv), &
-                                            xout=real(pts2%x(i)*pts2%xy_conv),yout=real(pts2%y(i)*pts2%xy_conv), &
-                                            dxout=real(pts2%dx(i)*pts2%xy_conv),dyout=real(pts2%dy(i)*pts2%xy_conv))
+!                         if (allocated(ii)) deallocate(ii)
+!                         allocate(ii(size(map%map(i)%i)))
+!                         ii = map%map(i)%i 
+                        map%map(i)%area = calc_weights_interpconserv1( &
+                                            x=real(pts1%x(map%map(i)%i )*pts1%xy_conv), &
+                                            y=real(pts1%y(map%map(i)%i )*pts1%xy_conv), &
+                                            dx=real(pts1%dx(map%map(i)%i )*pts1%xy_conv), &
+                                            dy=real(pts1%dy(map%map(i)%i )*pts1%xy_conv), &
+                                            xout=real(pts2%x(i)*pts2%xy_conv), &
+                                            yout=real(pts2%y(i)*pts2%xy_conv), &
+                                            dxout=real(pts2%dx(i)*pts2%xy_conv), &
+                                            dyout=real(pts2%dy(i)*pts2%xy_conv))
                         map%map(i)%area = map%map(i)%area / (pts1%xy_conv*pts1%xy_conv)   ! Convert back to axis-units of pts1
                         
                     end if 
