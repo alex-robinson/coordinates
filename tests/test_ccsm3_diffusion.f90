@@ -7,6 +7,7 @@
 program test_ccsm3_diffusion
 
     use coord 
+    use ncio 
     use gaussian_filter 
 
     implicit none

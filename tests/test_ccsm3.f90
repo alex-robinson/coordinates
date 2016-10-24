@@ -7,7 +7,8 @@
 program test_ccsm3
 
     use coord 
-
+    use ncio 
+    
     implicit none
 
     type(grid_class) :: gCCSM3, gREG

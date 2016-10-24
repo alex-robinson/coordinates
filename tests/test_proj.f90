@@ -3,7 +3,8 @@
 program test_proj 
 
     use coord 
-
+    use ncio 
+    
     implicit none 
 
     type(points_class) :: pts 

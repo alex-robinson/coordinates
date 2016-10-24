@@ -6,7 +6,8 @@ module grid_gen
     use coord_constants
     use coordinates 
     use interp2D_conservative 
-
+    use ncio 
+    
     implicit none 
 
     type multigrid_class 

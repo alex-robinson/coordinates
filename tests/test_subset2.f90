@@ -7,7 +7,8 @@
 program test_subset
 
     use coord 
-
+    use ncio 
+    
     implicit none
 
     type(grid_class)   :: grid, gridlo

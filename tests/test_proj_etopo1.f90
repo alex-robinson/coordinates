@@ -2,7 +2,8 @@
 program test_etopo
 
     use coord 
-
+    use ncio 
+    
     implicit none
 
     type(grid_class) :: grid0, grid1, grid2, grid3, grid4

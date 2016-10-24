@@ -2,6 +2,7 @@
 program test_etopo
 
     use coord 
+    use ncio 
     use mod_toms526 
 
     implicit none

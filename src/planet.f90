@@ -5,11 +5,6 @@ module planet
 
     implicit none 
 
-    ! Mathematical constants
-    real(dp), parameter  :: pi  = 2._dp*acos(0._dp)
-    real(dp), parameter  :: degrees_to_radians = pi / 180._dp  ! Conversion factor between radians and degrees
-    real(dp), parameter  :: radians_to_degrees = 180._dp / pi  ! Conversion factor between degrees and radians
-      
     type planet_class
         character(len=256) :: name 
         logical :: is_sphere

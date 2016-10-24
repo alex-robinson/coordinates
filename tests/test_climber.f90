@@ -4,7 +4,8 @@
 program test_climber
     
     use coord 
-
+    use ncio 
+    
     use gaussian_filter 
 
     implicit none

@@ -7,7 +7,8 @@
 program test_coordinates
 
     use coord 
-
+    use ncio 
+    
     implicit none
 
     type(grid_class) :: rembo_grl_lo, rembo_grl_hi, ecmwf

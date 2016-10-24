@@ -3,7 +3,7 @@
 program test
 
     use coord 
-    
+    use ncio 
     use interp2D_conservative 
 
     use gaussian_filter 
