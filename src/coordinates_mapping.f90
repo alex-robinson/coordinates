@@ -524,6 +524,8 @@ contains
                 ny = max(5,int(dy(now)/dyout))
                 npts = nx*ny 
 
+                write(*,*) now, nx, ny, npts 
+                
                 npts_in   = 0
 
                 do j = 1, ny 
