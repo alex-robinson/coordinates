@@ -57,6 +57,7 @@ contains
         logical,          intent(IN)  :: var1(:,:)      ! Input variable
         double precision              :: var2(grid2%G%nx,grid2%G%ny)      ! Output variable
         
+        var2 = 0.d0 
 
         return 
 
@@ -73,6 +74,7 @@ contains
         character(len=*), intent(IN)  :: stat           ! Statistic to calculate (mean,min,max,sd)
         double precision              :: var2(grid2%G%nx,grid2%G%ny)      ! Output variable
         
+        var2 = 0.d0 
 
         return 
 
