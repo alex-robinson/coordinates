@@ -354,11 +354,12 @@ contains
         lat_limit = 5.0_dp 
         if (present(lat_lim)) lat_limit = lat_lim
 
+        ! Distances are handled in units of target points
         dist_maximum = ERR_DIST 
-        if (present(dist_max)) dist_maximum = dist_max*pts2%xy_conv
+        if (present(dist_max)) dist_maximum = dist_max
 
         write(*,"(a,i12,a,f6.2,a,g12.3)") "Total points to calculate=",pts2%npts, &
-                    "  lat_lim=",lat_limit, "  dist_max=",dist_maximum/pts2%xy_conv
+                    "  lat_lim=",lat_limit, "  dist_max=",dist_maximum
 
         ! For each grid point in the new grid,
         ! Find points within a rough radius,
@@ -396,7 +397,12 @@ contains
                         !dist = spherical_distance(map%planet%a,map%planet%f,lon,lat,pts1%lon(i1),pts1%lat(i1))
                         dist = planet_distance(map%planet%a,map%planet%f,lon,lat,pts1%lon(i1),pts1%lat(i1))
 
+
                     end if 
+
+                    ! Convert distance to units of target grid 
+                    ! Note: latlon grids use meters as distance unit 
+                    if (pts2%is_cartesian) dist = dist / pts2%xy_conv 
 
                     ! Make sure no zero distances exist!
                     if (dist .lt. DIST_ZERO_OFFSET) dist = DIST_ZERO_OFFSET
@@ -469,7 +475,7 @@ contains
 
             ! Output every 1000 rows to check progress
             if (mod(i,1000)==0) write(*,"(a,i10,a3,i12,a5,g12.3)")  &
-                                    "  ",i, " / ",pts2%npts,"   : ",map%map(i)%dist(1)/pts2%xy_conv
+                                    "  ",i, " / ",pts2%npts,"   : ",map%map(i)%dist(1)
         end do
 
         call cpu_time(finish)
