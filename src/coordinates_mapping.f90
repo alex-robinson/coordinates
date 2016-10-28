@@ -401,8 +401,8 @@ contains
                     end if 
 
                     ! Convert distance to units of target grid 
-                    ! Note: latlon grids use meters as distance unit 
-                    if (pts2%is_cartesian) dist = dist / pts2%xy_conv 
+                    ! Note: latlon grids use meters as distance unit (ie, pts2%xy_conv=1)
+                    dist = dist / pts2%xy_conv 
 
                     ! Make sure no zero distances exist!
                     if (dist .lt. DIST_ZERO_OFFSET) dist = DIST_ZERO_OFFSET
