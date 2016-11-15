@@ -12,6 +12,16 @@ module planet
         real(dp) :: R      ! in case of sphere (equivalent to a=R, f=1)
     end type 
 
+    interface cartesian_distance
+        module procedure cartesian_distance_float
+        module procedure cartesian_distance_dble 
+    end interface 
+
+    interface planet_distance
+        module procedure planet_distance_float
+        module procedure planet_distance_dble 
+    end interface 
+    
     private
     public :: planet_class, planet_init, planet_print 
     public :: planet_distance, cartesian_distance, weighted_ave_shepard, weighted_ave
@@ -81,38 +91,72 @@ contains
 
     end subroutine planet_print 
 
-    function planet_distance(a,f,lon1,lat1,lon2,lat2)
+    function planet_distance_float(a,f,lon1,lat1,lon2,lat2) result(dist)
 
         implicit none 
 
-        real(dp) :: planet_distance
-        real(dp) :: a, f, lon1, lat1, lon2, lat2, s12
-        real(dp) :: lat1tmp, lat2tmp
-        real(dp) :: azi1, azi2, a12, m12, MM12, MM21, SS12
+        real(dp), intent(IN) :: a, f   ! Most likely from planet object (with dp precision)
+        real(4),  intent(IN) :: lon1, lat1, lon2, lat2
+        real(4) :: dist
+        real(8) :: s12
+        real(8) :: azi1, azi2, a12, m12, MM12, MM21, SS12
+        integer omask
+        
+        call invers(a, f, dble(lat1), dble(lon1), dble(lat2), dble(lon2), &
+                    s12, azi1, azi2, omask, a12, m12, MM12, MM21, SS12)
+
+        dist = real(s12)    ! in meters
+!         dist = (/ s12, azi1 /)    ! in meters, degrees
+
+        return
+
+    end function planet_distance_float
+
+    function planet_distance_dble(a,f,lon1,lat1,lon2,lat2) result(dist)
+
+        implicit none 
+
+        real(8), intent(IN) :: a, f, lon1, lat1, lon2, lat2
+        real(8) :: dist
+        real(8) :: s12
+        real(8) :: azi1, azi2, a12, m12, MM12, MM21, SS12
         integer omask
         
         call invers(a, f, lat1, lon1, lat2, lon2, &
                     s12, azi1, azi2, omask, a12, m12, MM12, MM21, SS12)
 
-        planet_distance = s12    ! in meters
-!         planet_distance = (/ s12, azi1 /)    ! in meters, degrees
+        dist = s12    ! in meters
+!         dist = (/ s12, azi1 /)    ! in meters, degrees
 
         return
 
-    end function
+    end function planet_distance_dble
 
-    function cartesian_distance(x1,y1,x2,y2)
+    elemental function cartesian_distance_float(x1,y1,x2,y2) result(dist)
 
         implicit none 
 
-        real(dp), intent(IN) :: x1, y1, x2, y2
-        real(dp) :: cartesian_distance 
+        real(4), intent(IN) :: x1, y1, x2, y2
+        real(4) :: dist 
 
-        cartesian_distance = dsqrt( (y2-y1)**2 + (x2-x1)**2 )
+        dist = sqrt( (y2-y1)**2 + (x2-x1)**2 )
 
         return
 
-    end function cartesian_distance 
+    end function cartesian_distance_float  
+
+    elemental function cartesian_distance_dble(x1,y1,x2,y2) result(dist)
+
+        implicit none 
+
+        real(8), intent(IN) :: x1, y1, x2, y2
+        real(8) :: dist 
+
+        dist = dsqrt( (y2-y1)**2 + (x2-x1)**2 )
+
+        return
+
+    end function cartesian_distance_dble 
 
     function spherical_distance(a,f,lon1,lat1,lon2,lat2)
         ! Based on python code here:
