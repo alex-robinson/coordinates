@@ -80,6 +80,8 @@ contains
                 area = mp(i)%area 
                 where (var1_vec(mp(i)%i) .eq. missing_val) area = 0.d0 
 
+                write(*,*) i, minval(mp(i)%i), maxval(mp(i)%i), sum(mp(i)%area), sum(area)
+
                 if (sum(area) .gt. 0.d0) then 
                     ! If an interpolation point was found, calculate interpolation 
 
