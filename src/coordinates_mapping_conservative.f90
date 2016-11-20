@@ -82,6 +82,8 @@ contains
                 area = mp(i)%area 
                 where (var1_vec(ii) .eq. missing_val) area = 0.d0 
 
+                write(*,*) i, sum(mp(i)%area), sum(area), sum(var1_vec(ii))/size(ii,1), size(ii,1)
+
                 if (sum(area) .gt. 0.d0) then 
                     ! If an interpolation point was found, calculate interpolation 
 
@@ -97,9 +99,9 @@ contains
         ! Send back to 2D array 
         var2 = reshape(var2_vec,[size(var2,1),size(var2,2)])
 
-        if (fill_pts) then 
-            call fill_nearest(var2,missing_value=missing_val)
-        end if 
+!         if (fill_pts) then 
+!             call fill_nearest(var2,missing_value=missing_val)
+!         end if 
 
         return 
 
