@@ -41,7 +41,6 @@ contains
         double precision :: missing_val 
         integer :: i, j 
         logical, allocatable  :: maskp(:)
-        integer, allocatable :: ii(:) 
         real(dp), allocatable :: area(:)
 
         real(dp), allocatable :: var1_vec(:), var2_vec(:) 
@@ -77,17 +76,14 @@ contains
 
             if (maskp(i)) then 
                 ! Only interpolate for desired target points 
-
-                ii = mp(i)%i  
+ 
                 area = mp(i)%area 
-                where (var1_vec(ii) .eq. missing_val) area = 0.d0 
-
-                write(*,*) i, sum(mp(i)%area), sum(area), sum(var1_vec(ii))/size(ii,1), size(ii,1)
+                where (var1_vec(mp(i)%i) .eq. missing_val) area = 0.d0 
 
                 if (sum(area) .gt. 0.d0) then 
                     ! If an interpolation point was found, calculate interpolation 
 
-                    var2_vec(i) = sum(var1_vec(ii)*area,mask=area.gt.0.d0) &
+                    var2_vec(i) = sum(var1_vec(mp(i)%i)*area,mask=area.gt.0.d0) &
                                   / sum(area,mask=area.gt.0.d0)
 
                 end if 
