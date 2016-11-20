@@ -71,23 +71,17 @@ contains
         ! If fill is desired, initialize output points to missing values
         if (fill_pts) var2_vec = missing_val 
 
-        write(*,*) "Missing points_in: ", count(var1_vec .eq. missing_val)
-        write(*,*) "npts_in: ", size(var1_vec)
-
         ! Loop over target points
         do i = 1, npts2
 
             if (maskp(i)) then 
                 ! Only interpolate for desired target points 
- 
+    
+                if (allocated(area)) deallocate(area)
+                allocate(area(size(mp(i)%area,1)))
+                
                 area = mp(i)%area 
                 where (var1_vec(mp(i)%i) .eq. missing_val) area = 0.d0 
-
-                write(*,*) "var1_vec: ", var1_vec(mp(i)%i)
-                write(*,*) "===> ", var1_vec(mp(i)%i) .eq. missing_val
-                write(*,*) i, minval(mp(i)%i), maxval(mp(i)%i), sum(mp(i)%area), sum(area)
-
-                stop 
 
                 if (sum(area) .gt. 0.d0) then 
                     ! If an interpolation point was found, calculate interpolation 
