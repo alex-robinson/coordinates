@@ -20,7 +20,7 @@ contains
 
     ! === CONSERVATIVE FIELD MAPPING SUBROUTINES === 
 
-    subroutine map_field_conservative_map1(mp,varname,var1,var2,fill,missing_value,mask_pack)
+    subroutine map_field_conservative_map1(mp,varname,var1,var2,fill,missing_value,mask_pack,no_interp)
         ! Map a field from grid1 to grid2 using a predefined map of neighbor weights
         ! generated using `map_conserv_init` 
 
@@ -33,15 +33,17 @@ contains
         logical,  optional :: fill
         double precision, intent(IN), optional :: missing_value  ! Points not included in mapping
         logical,          intent(IN), optional :: mask_pack(:,:)
-
+        logical,          intent(IN), optional :: no_interp    ! Pick point with most area instead of weighted average
+        
         ! Local variables
         integer :: npts1
         integer :: npts2
         logical          :: fill_pts
         double precision :: missing_val 
-        integer :: i, j 
+        logical          :: fixed_values 
         logical, allocatable  :: maskp(:)
         real(dp), allocatable :: area(:)
+        integer :: i, j 
 
         real(dp), allocatable :: var1_vec(:), var2_vec(:) 
 
@@ -54,6 +56,10 @@ contains
 
         missing_val = mv 
         if (present(missing_value)) missing_val = missing_value
+
+        ! Decide whether to perform weighted mean or count values 
+        fixed_values = .FALSE.  
+        if (present(no_interp)) fixed_values = no_interp 
 
         ! By default, all var2 points are interpolated
         allocate(maskp(npts2))
@@ -86,8 +92,15 @@ contains
                 if (sum(area) .gt. 0.d0) then 
                     ! If an interpolation point was found, calculate interpolation 
 
-                    var2_vec(i) = sum(var1_vec(mp(i)%i)*area,mask=area.gt.0.d0) &
-                                  / sum(area,mask=area.gt.0.d0)
+                    if (fixed_values) then 
+                        ! Determine which value dominates in this cell 
+                        var2_vec(i) = maxcount(var1_vec(mp(i)%i),area)
+
+                    else 
+                        ! Perform weighted mean 
+                        var2_vec(i) = sum(var1_vec(mp(i)%i)*area,mask=area.gt.0.d0) &
+                                        / sum(area,mask=area.gt.0.d0)
+                    end if 
 
                 end if 
 
@@ -106,6 +119,45 @@ contains
 
     end subroutine map_field_conservative_map1 
 
+    function maxcount(var,weight) result (var1)
+
+        implicit none 
+
+        double precision, intent(IN) :: var(:), weight(:) 
+        double precision :: var1 
+
+        ! Local variables 
+        double precision, allocatable :: var_unique(:) 
+        double precision :: varnow, wtnow, wtmax 
+        integer :: i, j  
+
+        ! Determine unique values to be checked 
+        call unique(var_unique,var)
+
+        wtmax  = 0.d0  
+        var1   = mv 
+
+        do i = 1, size(var_unique)
+
+            varnow = var_unique(i)
+
+            wtnow = 0.d0
+            do j = 1, size(var)
+                if (var(j) .eq. varnow) then 
+                    wtnow = wtnow + weight(j)
+                end if 
+            end do 
+
+            if (wtnow .gt. wtmax) then 
+                var1  = varnow 
+                wtmax = wtnow 
+            end if
+
+        end do  
+
+        return 
+
+    end function maxcount 
 
     function calc_grid_total(x,y,var,xlim,ylim) result(tot)
 

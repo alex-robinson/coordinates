@@ -599,15 +599,11 @@ contains
         type(map_class),  intent(IN) :: map 
         character(len=*), intent(IN) :: fldr 
         character(len=256) :: map_filename
-        character(len=2) :: char2
+        character(len=10) :: char10
 
-        if (map%nmax .ge. 10) then
-            write(char2,"(i2)") map%nmax
-        else
-            write(char2,"(i1,i1)") 0, map%nmax 
-        end if 
-
-        map_filename = trim(fldr)//"/map_"//trim(map%name1)//"_"//trim(map%name2)//"_"//trim(char2)//".nc"
+        write(char10,"(i10)") map%nmax
+        map_filename = trim(fldr)//"/map_"//trim(map%name1)//"_"//trim(map%name2)// &
+                            "_"//trim(adjustl(char10))//".nc"
 
         return
     end function map_filename
