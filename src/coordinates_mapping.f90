@@ -175,7 +175,7 @@ contains
     end subroutine map_init_points_points
 
     subroutine map_init_internal(map,pts1,pts2,max_neighbors,lat_lim,dist_max,fldr,load,save)
-        ! Generate mapping weights between sets of pointss
+        ! Generate mapping weights between sets of points
 
         implicit none 
 
@@ -190,10 +190,13 @@ contains
         logical :: load_file, save_file, fldr_exists, file_exists 
         character(len=256) :: mapfldr 
 
-        integer :: i 
-        logical :: pts_is_latlon  
+        integer :: i, k
+        integer, allocatable :: inow(:)  
+        real(dp), allocatable :: xxnow(:), yynow(:), dxxnow(:), dyynow(:) 
+        logical :: pts_is_latlon, pts_same_proj  
 
         pts_is_latlon = (.not. pts1%is_cartesian .and. .not. pts2%is_cartesian)
+        pts_same_proj = same_projection(pts1%proj,pts2%proj)
 
         ! Load file if it exists by default
         load_file = .TRUE. 
@@ -263,23 +266,40 @@ contains
             call map_calc_weights(map,pts1,pts2,2.0_dp,lat_lim,dist_max)
 
             ! If the grids are compatible, calculate area weighting too
-            if (same_projection(pts1%proj,pts2%proj) .and. .not. pts_is_latlon) then 
-                ! Only valid for cartesian grids on the same projection right now 
+            if ((pts1%is_projection .or. .not. pts1%is_cartesian) .and. pts2%is_projection ) then 
+                ! Only valid for projected source and target grids right now 
+                ! If pts1 and pts2 are not the same projection, conservative weights will 
+                ! not be fully accurate, because of distorted dx/dy values.
 
                 write(*,*) "Calculating conservative weights ..."
                 do i = 1, pts2%npts
                     if (map%map(i)%dist(1) .lt. ERR_DIST) then 
 
+                        inow = map%map(i)%i
+
+                        ! Determine current point on target grid 
+                        ! xnow/ynow, dxnow/dynow are in [m]
+                        if (pts_same_proj) then 
+                            xxnow  = pts1%x(inow)*pts1%xy_conv
+                            yynow  = pts1%y(inow)*pts1%xy_conv
+                            dxxnow = pts1%dx(inow)*pts1%xy_conv
+                            dyynow = pts1%dy(inow)*pts1%xy_conv
+                        else 
+                            do k = 1, size(inow)
+                                call oblimap_projection(pts1%lon(inow(k)),pts1%lat(inow(k)),xxnow(k),yynow(k),pts2%proj)
+                            end do 
+                            dxxnow = pts1%dx(inow)*pts1%xy_conv
+                            dyynow = pts1%dy(inow)*pts1%xy_conv
+                        end if 
+
                         map%map(i)%area = calc_weights_interpconserv1( &
-                                            x=real(pts1%x(map%map(i)%i )*pts1%xy_conv), &
-                                            y=real(pts1%y(map%map(i)%i )*pts1%xy_conv), &
-                                            dx=real(pts1%dx(map%map(i)%i )*pts1%xy_conv), &
-                                            dy=real(pts1%dy(map%map(i)%i )*pts1%xy_conv), &
+                                            x=real(xxnow),y=real(yynow), &
+                                            dx=real(dxxnow),dy=real(dyynow), &
                                             xout=real(pts2%x(i)*pts2%xy_conv), &
                                             yout=real(pts2%y(i)*pts2%xy_conv), &
                                             dxout=real(pts2%dx(i)*pts2%xy_conv), &
                                             dyout=real(pts2%dy(i)*pts2%xy_conv))
-                        map%map(i)%area = map%map(i)%area / (pts1%xy_conv*pts1%xy_conv)   ! Convert back to axis-units of pts1
+                        map%map(i)%area = map%map(i)%area / (pts2%xy_conv*pts2%xy_conv)   ! Convert back to axis-units of pts2
                         
                     end if 
                     
@@ -287,6 +307,11 @@ contains
                     if (mod(i,100)==0) write(*,"(a,i10,a3,i12,a5,2g12.3)")  &
                                 "  ",i, " / ",pts2%npts,"   : ", sum(map%map(i)%area), pts2%area(i) ! pts2%dx(i)*pts2%dy(i)
                 end do 
+
+            else 
+
+                write(*,*) "Note: no conservative weights calculated since source and target grids &
+                           &are on different projections..."
 
             end if 
 
