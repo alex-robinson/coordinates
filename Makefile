@@ -15,8 +15,8 @@ objdir = .obj
 srcdir = src
 testdir = tests
 
-# netcdf_inc = /usr/include
-# netcdf_lib = /usr/lib
+#netcdf_inc = /usr/include
+#netcdf_lib = /usr/lib
 netcdf_inc = /opt/local/include
 netcdf_lib = /opt/local/lib
 netcdf_inc_ifort = /home/robinson/apps/netcdf/netcdf/include
@@ -125,9 +125,9 @@ $(objdir)/subset2.o: $(srcdir)/subset2.f90 $(objdir)/coordinates.o
 $(objdir)/grid_gen.o: $(srcdir)/grid_gen.f90 $(objdir)/coordinates.o $(objdir)/interp2D_conservative.o
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
+coord_libs = $(objdir)/ncio.o
 
-coord_obj = $(objdir)/ncio.o \
-		    $(objdir)/coord_constants.o \
+coord_obj = $(objdir)/coord_constants.o \
 			$(objdir)/index.o \
 		    $(objdir)/interp1D.o \
 		    $(objdir)/interp2D.o \
@@ -166,95 +166,95 @@ coord0_obj = $(objdir)/ncio.o \
 		    $(objdir)/grid_gen.o 
 
 # The final library wrapper 
-$(objdir)/coord.o: $(srcdir)/coord.f90 $(coord_obj)
+$(objdir)/coord.o: $(srcdir)/coord.f90 $(coord_libs) $(coord_obj)
 	$(FC) $(DFLAGS) $(FLAGS) $(SFLAGS) -c -o $@ $<
 
 ## Complete programs
 
 # coordinates static library - using subset2
-coord-static: $(objdir)/coord.o $(coord_obj)
-	ar rc libcoordinates.a $^
+coord-static: $(coord_libs) $(objdir)/coord.o $(coord_obj)
+	ar rc libcoordinates.a $(objdir)/coord.o $(coord_obj)
 	@echo " "
 	@echo "    libcoordinates.a is ready."
 	@echo " "
 
 # coordinates shared library - using subset2
-coord-shared: $(objdir)/coord.o $(coord_obj)
-	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates.so $^ $(LFLAGS)
+coord-shared: $(coord_libs) $(objdir)/coord.o $(coord_obj)
+	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates.so $(objdir)/coord.o $(coord_obj) $(LFLAGS)
 	@echo " "
 	@echo "    libcoordinates.so is ready."
 	@echo " "
 
 # coordinates shared library - using subset
-coord0-shared: $(objdir)/coord.o $(coord0_obj)
-	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates0.so $^ $(LFLAGS)
+coord0-shared: $(coord_libs) $(objdir)/coord.o $(coord0_obj)
+	$(FC) $(DFLAGS) $(FLAGS) -shared -fPIC -o libcoordinates0.so $(objdir)/coord.o $(coord0_obj) $(LFLAGS)
 	@echo " "
 	@echo "    libcoordinates0.so is ready."
 	@echo " "
 
 # Program to test interpolations of CCSM3 data
 test_ccsm3: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3.x $(testdir)/test_ccsm3.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3.x $(testdir)/test_ccsm3.f90 libcoordinates.a -L. $(LFLAGS) $(coord_libs)
 	@echo " "
 	@echo "    test_ccsm3.x is ready."
 	@echo " "
 
 test_etopo: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_etopo.x $(testdir)/test_etopo.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_etopo.x $(testdir)/test_etopo.f90 libcoordinates.a -L. $(LFLAGS) $(coord_libs)
 	@echo " "
 	@echo "    test_etopo.x is ready."
 	@echo " "
 
 test_MAR: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_MAR.x $(testdir)/test_MAR.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_MAR.x $(testdir)/test_MAR.f90 libcoordinates.a -L. $(LFLAGS) $(coord_libs)
 	@echo " "
 	@echo "    test_MAR.x is ready."
 	@echo " "
 
 test_subset: coord0-shared
-	$(FC) $(DFLAGS) $(FLAGS) -o test_subset.x $(testdir)/test_subset.f90 -L. -lcoordinates0 $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_subset.x $(testdir)/test_subset.f90 -L. -lcoordinates0 $(LFLAGS) $(coord_libs)
 	@echo " "
 	@echo "    test_subset.x is ready."
 	@echo " "
 
 test_subset2: coord-shared
-	$(FC) $(DFLAGS) $(FLAGS) -o test_subset2.x $(testdir)/test_subset2.f90 -L. -lcoordinates $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_subset2.x $(testdir)/test_subset2.f90 -L. -lcoordinates $(LFLAGS) $(coord_libs)
 	@echo " "
 	@echo "    test_subset2.x is ready."
 	@echo " "
 
 test_multigrid: coord-shared
-	$(FC) $(DFLAGS) $(FLAGS) -o test_multigrid.x $(testdir)/test_multigrid.f90 -L. -lcoordinates $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_multigrid.x $(testdir)/test_multigrid.f90 -L. -lcoordinates $(LFLAGS) $(coord_libs)
 	@echo " "
 	@echo "    test_multigrid.x is ready."
 	@echo " "
 
 test_proj: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_proj.x $(testdir)/test_proj.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_proj.x $(testdir)/test_proj.f90 libcoordinates.a -L. $(LFLAGS) $(coord_libs)
 	@echo " "
 	@echo "    test_proj.x is ready."
 	@echo " "
 
 test_proj_etopo1: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_proj_etopo1.x $(testdir)/test_proj_etopo1.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_proj_etopo1.x $(testdir)/test_proj_etopo1.f90 libcoordinates.a -L. $(LFLAGS) $(coord_libs)
 	@echo " "
 	@echo "    test_proj_etopo1.x is ready."
 	@echo " "
 
 test_interp: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x $(testdir)/test_interp.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_interp.x $(testdir)/test_interp.f90 libcoordinates.a -L. $(LFLAGS) $(coord_libs)
 	@echo " "
 	@echo "    test_interp.x is ready."
 	@echo " "
 
 test_climber: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_climber.x $(testdir)/test_climber.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_climber.x $(testdir)/test_climber.f90 libcoordinates.a -L. $(LFLAGS) $(coord_libs)
 	@echo " "
 	@echo "    test_climber.x is ready."
 	@echo " "
 
 test_ccsm3diff: coord-static
-	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3_diffusion.x $(testdir)/test_ccsm3_diffusion.f90 libcoordinates.a -L. $(LFLAGS)
+	$(FC) $(DFLAGS) $(FLAGS) -o test_ccsm3_diffusion.x $(testdir)/test_ccsm3_diffusion.f90 libcoordinates.a -L. $(LFLAGS) $(coord_libs)
 	@echo " "
 	@echo "    test_ccsm3_diffusion.x is ready."
 	@echo " "
