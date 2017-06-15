@@ -190,8 +190,7 @@ contains
         logical :: load_file, save_file, fldr_exists, file_exists 
         character(len=256) :: mapfldr 
 
-        integer :: i, k
-        integer, allocatable :: inow(:)  
+        integer :: i, k  
         real(dp), allocatable :: xxnow(:), yynow(:), dxxnow(:), dyynow(:) 
         logical :: pts_is_latlon, pts_same_proj  
 
@@ -275,21 +274,27 @@ contains
                 do i = 1, pts2%npts
                     if (map%map(i)%dist(1) .lt. ERR_DIST) then 
 
-                        inow = map%map(i)%i
+                        if (allocated(xxnow))  deallocate(xxnow)
+                        if (allocated(yynow))  deallocate(yynow)
+                        if (allocated(dxxnow)) deallocate(dxxnow)
+                        if (allocated(dyynow)) deallocate(dyynow)
+                        k = size(map%map(i)%i,1)
+                        allocate(xxnow(k),yynow(k),dxxnow(k),dyynow(k))
 
                         ! Determine current point on target grid 
                         ! xnow/ynow, dxnow/dynow are in [m]
                         if (pts_same_proj) then 
-                            xxnow  = pts1%x(inow)*pts1%xy_conv
-                            yynow  = pts1%y(inow)*pts1%xy_conv
-                            dxxnow = pts1%dx(inow)*pts1%xy_conv
-                            dyynow = pts1%dy(inow)*pts1%xy_conv
+                            xxnow  = pts1%x(map%map(i)%i)*pts1%xy_conv
+                            yynow  = pts1%y(map%map(i)%i)*pts1%xy_conv
+                            dxxnow = pts1%dx(map%map(i)%i)*pts1%xy_conv
+                            dyynow = pts1%dy(map%map(i)%i)*pts1%xy_conv
                         else 
-                            do k = 1, size(inow)
-                                call oblimap_projection(pts1%lon(inow(k)),pts1%lat(inow(k)),xxnow(k),yynow(k),pts2%proj)
+                            do k = 1, size(map%map(i)%i)
+                                call oblimap_projection(pts1%lon(map%map(i)%i(k)),pts1%lat(map%map(i)%i(k)), &
+                                                        xxnow(k),yynow(k),pts2%proj)
                             end do 
-                            dxxnow = pts1%dx(inow)*pts1%xy_conv
-                            dyynow = pts1%dy(inow)*pts1%xy_conv
+                            dxxnow = pts1%dx(map%map(i)%i)*pts1%xy_conv
+                            dyynow = pts1%dy(map%map(i)%i)*pts1%xy_conv
                         end if 
 
                         map%map(i)%area = calc_weights_interpconserv1( &
