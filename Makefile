@@ -15,26 +15,22 @@ objdir = .obj
 srcdir = src
 testdir = tests
 
-#netcdf_inc = /usr/include
-#netcdf_lib = /usr/lib
-netcdf_inc = /opt/local/include
-netcdf_lib = /opt/local/lib
-netcdf_inc_ifort = /home/robinson/apps/netcdf/netcdf/include
-netcdf_lib_ifort = /home/robinson/apps/netcdf/netcdf/lib
-
-NETCDF_FORTRANROOT = /home/fispalma22/work/librairies/netcdflib
-INC_NC  = -I${NETCDF_FORTRANROOT}/include
-LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff -L${NETCDF_CROOT}/lib -lnetcdf 
-
 # Command-line options at make call
 ifort ?= 0
 debug ?= 0 
 
 ifeq ($(ifort),1)
     FC = ifort 
+    #NETCDF_FORTRANROOT = /home/robinson/apps/netcdf/netcdf
+    NETCDF_FORTRANROOT = /home/fispalma22/work/librairies/netcdflib
 else
     FC = gfortran
+    #NETCDF_FORTRANROOT = /usr
+    NETCDF_FORTRANROOT = /opt/local
 endif 
+
+INC_NC  = -I${NETCDF_FORTRANROOT}/include
+LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff 
 
 ifeq ($(ifort),1)
 	## IFORT OPTIONS ##
@@ -50,8 +46,8 @@ ifeq ($(ifort),1)
 	endif
 else
 	## GFORTRAN OPTIONS ##
-	FLAGS        = -I$(objdir) -J$(objdir) -I$(netcdf_inc)
-	LFLAGS		 = -L$(netcdf_lib) -lnetcdff -lnetcdf
+	FLAGS        = -I$(objdir) -J$(objdir) $(INC_NC)
+	LFLAGS		   = $(LIB_NC)
 	SFLAGS       = 
 
 	ifeq ($(debug), 1)
