@@ -22,6 +22,7 @@ netcdf_lib = /opt/local/lib
 netcdf_inc_ifort = /home/robinson/apps/netcdf/netcdf/include
 netcdf_lib_ifort = /home/robinson/apps/netcdf/netcdf/lib
 
+NETCDF_FORTRANROOT = /home/fispalma22/work/librairies/netcdflib
 INC_NC  = -I${NETCDF_FORTRANROOT}/include
 LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff -L${NETCDF_CROOT}/lib -lnetcdf 
 
@@ -38,7 +39,7 @@ endif
 ifeq ($(ifort),1)
 	## IFORT OPTIONS ##
 	FLAGS        = -heap-arrays -module $(objdir) -L$(objdir) $(INC_NC) 
-	LFLAGS		   = $(LIB_NC) 
+	LFLAGS	     = $(LIB_NC) 
 	SFLAGS       = 
 
 	ifeq ($(debug), 1)
