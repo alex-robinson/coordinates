@@ -34,8 +34,8 @@ module interp2D_conservative
     end type
 
     interface map_field_conservative
-        module procedure :: map_field_conservative_map
-        module procedure :: map_field_conservative_grid
+        module procedure map_field_conservative_map
+        module procedure map_field_conservative_grid
     end interface
 
     private 
