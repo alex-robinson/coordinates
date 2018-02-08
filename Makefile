@@ -21,7 +21,8 @@ debug ?= 0
 
 ifeq ($(ifort),1)
     FC = ifort 
-    NETCDF_FORTRANROOT = /home/robinson/apps/netcdf/netcdf
+    NETCDF_FORTRANROOT = /Users/robinson/apps/netcdf/4.4.1.1_ifort
+    #NETCDF_FORTRANROOT = /home/robinson/apps/netcdf/netcdf
     #NETCDF_FORTRANROOT = /home/fispalma22/work/librairies/netcdflib
 else
     FC = gfortran
