@@ -10,6 +10,7 @@ usage:
 	@echo " make clean      : cleans object files"
 	@echo ""
 
+
 # PATH options
 objdir = .obj
 srcdir = src
@@ -27,11 +28,11 @@ ifeq ($(ifort),1)
 else
     FC = gfortran
     #NETCDF_FORTRANROOT = /usr
-    NETCDF_FORTRANROOT = /opt/local
+    NETCDF_FORTRANROOT = /Users/robinson/apps/netcdf/netcdf
 endif 
 
 INC_NC  = -I${NETCDF_FORTRANROOT}/include
-LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff 
+LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff -lnetcdf
 
 ifeq ($(ifort),1)
 	## IFORT OPTIONS ##
@@ -300,5 +301,5 @@ test_polygon: $(objdir)/polygons.o $(objdir)/index.o
 
 clean:
 	rm -r -f *.x *.dSYM $(objdir)/*.o $(objdir)/*.mod *.so 
+	rm -r -f libcoordinates.a
 
-# cleanall: cleansico cleanrembo cleansicoX
