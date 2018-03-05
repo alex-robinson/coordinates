@@ -19,9 +19,14 @@ module coordinates_mapping
         integer :: n
         integer,  allocatable :: nn(:)                        ! Only used for combining multiple pt_wts_class objects
         integer,  allocatable :: i(:), quadrant(:), border(:) ! Length of pts1/grid1 neighbors
-        real(sp), allocatable :: x(:), y(:), dist(:), weight(:), area(:)
+        real(sp), allocatable :: x(:), y(:), dist(:), weight(:), area(:) 
+
+        ! For bilinear interpolation only:
+        integer  :: iquad(4) 
+        real(sp) :: alpha1, alpha2 
     end type 
 
+    
     type map_class
         character (len=128) :: name1, name2     ! Names of coordinate set1 and set2
         character (len=128) :: mtype
@@ -360,19 +365,20 @@ contains
 
     end subroutine map_allocate_map
 
-    subroutine map_calc_weights(map,pts1,pts2,shepard_exponent,lat_lim,dist_max)
+    subroutine map_calc_weights(map,pts1,pts2,shepard_exponent,lat_lim,lon_lim,dist_max)
         implicit none 
 
         type(map_class) :: map 
         type(points_class),   intent(IN)  :: pts1, pts2 
         real(dp),             intent(IN)  :: shepard_exponent
         real(dp),             intent(IN), optional :: lat_lim 
+        real(dp),             intent(IN), optional :: lon_lim
         real(dp),             intent(IN), optional :: dist_max   ! in units of pts2 axes!!
 
         real(dp), parameter :: DIST_ZERO_OFFSET = 1.0_dp  ! Change dist of zero to 1 m
         integer :: i, i1, kc, k, n 
         real(dp) :: x, y, lon, lat
-        real(dp) :: dist, lat_limit, dist_maximum 
+        real(dp) :: dist, lat_limit, lon_limit, dist_maximum 
 
         integer, parameter :: map_nmax = 1000   ! No more than 1000 neighbors 
         integer  :: map_i(map_nmax), map_quadrant(map_nmax), map_border(map_nmax)
@@ -383,6 +389,9 @@ contains
         ! Limit neighborhood to search 
         lat_limit = 5.0_dp 
         if (present(lat_lim)) lat_limit = lat_lim
+
+        lon_limit = 5.0_dp 
+        if (present(lon_lim)) lon_limit = lon_lim
 
         ! Distances are handled in units of target points
         dist_maximum = ERR_DIST 
@@ -503,6 +512,10 @@ contains
  
             end if 
 
+            ! Perform additional calculations to facilitate bilinear interpolation 
+            call map_calc_weights_bilin(map%map(i),x,y,lon,lat,pts1,map%planet, &
+                    use_cartesian=(map%is_same_map .and. map%is_cartesian) )
+
             ! Output every 1000 rows to check progress
             if (mod(i,1000)==0) write(*,"(a,i10,a3,i12,a5,g12.3)")  &
                                     "  ",i, " / ",pts2%npts,"   : ",map%map(i)%dist(1)
@@ -515,6 +528,122 @@ contains
         return
 
     end subroutine map_calc_weights
+
+    subroutine map_calc_weights_bilin(mnow,x,y,lon,lat,pts1,planet,use_cartesian)
+        ! Pre-calculate the weighting and indices to make
+        ! bilinear interpolation online faster 
+        ! Note: assumes all variable data will be available 
+        ! from the nearest four neighbors from four quadrants, ie, no missing values
+        ! otherwise, the interpolated value will be missing too. 
+        ! Note: also assumed that input points are on a regular grid, this should be
+        ! managed by the user - otherwise interpolation will be incorrect. 
+
+        implicit none 
+
+        type(pt_wts_class), intent(INOUT) :: mnow 
+        real(dp),           intent(IN) :: x, y, lon, lat     ! Current location on target grid
+        type(points_class), intent(IN) :: pts1               ! Source points
+        type(planet_class), intent(IN) :: planet             ! Planet parameters of map
+        logical,  intent(IN) :: use_cartesian 
+
+        ! Local variables 
+        integer :: q, k, n1, i1, i2, i3, i4, ntot  
+        real(dp) :: xy_conv    
+        real(dp) :: dx1, dx1_tot 
+        real(dp) :: dx2, dx2_tot 
+        real(dp) :: dy1, dy1_tot 
+        real(dp) :: dy2, dy2_tot 
+        real(dp) :: dx, dx_tot, dy, dy_tot 
+        
+        xy_conv = pts1%xy_conv 
+
+        ! Initially set all 4 iquad indices to missing, 
+        ! and bilin weights to missing 
+        mnow%iquad = ERR_IND
+        mnow%alpha1 = 0.0_dp
+        mnow%alpha2 = 0.0_dp
+        
+        ! Get size of neighborhood 
+        n1 = size(mnow%i)
+
+        ! Store the indices of four quadrants
+        do q = 1, 4
+            do k = 1, n1
+                if (mnow%quadrant(k) .eq. q) then
+                    ! Store first index of this quadrant that we find, skip the rest 
+                    mnow%iquad(q) = k
+                    exit 
+                end if
+            end do
+        end do
+
+        ! Check number of neighbors available for calculations
+        ntot = count(mnow%iquad .ne. ERR_IND)
+
+        if (ntot.eq.4) then
+            ! All four quadrant neighbors exist 
+            ! calculate bilin weights 
+
+            ! Get indices of relevant neighbors
+            i1 = mnow%i(mnow%iquad(2))    ! Quadrant 2 (above-left  of point)
+            i2 = mnow%i(mnow%iquad(1))    ! Quadrant 1 (above-right of point) 
+            i3 = mnow%i(mnow%iquad(3))    ! Quadrant 3 (below-left  of point)
+            i4 = mnow%i(mnow%iquad(4))    ! Quadrant 4 (below-right of point) 
+            
+            if (use_cartesian) then
+                ! Use cartesian values to determine distance
+                
+                dx1     = cartesian_distance(x,pts1%y(i1)*xy_conv, &
+                                             pts1%x(i1)*xy_conv,pts1%y(i1)*xy_conv)
+                dx1_tot = cartesian_distance(pts1%x(i2)*xy_conv,pts1%y(i1)*xy_conv, &
+                                             pts1%x(i1)*xy_conv,pts1%y(i1)*xy_conv)
+                
+                dx2     = cartesian_distance(x,pts1%y(i3)*xy_conv, &
+                                             pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
+                dx2_tot = cartesian_distance(pts1%x(i4)*xy_conv,pts1%y(i3)*xy_conv, &
+                                             pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
+                
+                dy1     = cartesian_distance(pts1%x(i1)*xy_conv,y, &
+                                             pts1%x(i1)*xy_conv,pts1%y(i1)*xy_conv)
+                dy1_tot = cartesian_distance(pts1%x(i1)*xy_conv,pts1%y(i2)*xy_conv, &
+                                             pts1%x(i1)*xy_conv,pts1%y(i1)*xy_conv)
+                
+                dy2     = cartesian_distance(pts1%x(i3)*xy_conv,y, &
+                                             pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
+                dy2_tot = cartesian_distance(pts1%x(i3)*xy_conv,pts1%y(i4)*xy_conv, &
+                                             pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
+                
+            else
+                ! Use planetary (latlon) values
+
+                dx1     = planet_distance(planet%a,planet%f,lon,pts1%lat(i1),pts1%lon(i1),pts1%lat(i1))
+                dx1_tot = planet_distance(planet%a,planet%f,pts1%lon(i2),pts1%lat(i1),pts1%lon(i1),pts1%lat(i1))
+                
+                dx2     = planet_distance(planet%a,planet%f,lon,pts1%lat(i3),pts1%lon(i3),pts1%lat(i3))
+                dx2_tot = planet_distance(planet%a,planet%f,pts1%lon(i4),pts1%lat(i3),pts1%lon(i3),pts1%lat(i3))
+                
+                dy1     = planet_distance(planet%a,planet%f,pts1%lon(i1),lat,pts1%lon(i1),pts1%lat(i1))
+                dy1_tot = planet_distance(planet%a,planet%f,pts1%lon(i1),pts1%lat(i2),pts1%lon(i1),pts1%lat(i1))
+                
+                dy2     = planet_distance(planet%a,planet%f,pts1%lon(i3),lat,pts1%lon(i3),pts1%lat(i3))
+                dy2_tot = planet_distance(planet%a,planet%f,pts1%lon(i3),pts1%lat(i4),pts1%lon(i3),pts1%lat(i3))
+                
+            end if 
+
+            dx     = 0.5_dp*(dx1+dx2)
+            dx_tot = 0.5_dp*(dx1_tot+dx2_tot)
+
+            dy     = 0.5_dp*(dy1+dy2)
+            dy_tot = 0.5_dp*(dy1_tot+dy2_tot)
+
+            mnow%alpha1 = dx / dx_tot 
+            mnow%alpha2 = dy / dy_tot
+
+        end if
+
+        return 
+
+    end subroutine map_calc_weights_bilin
 
     function calc_weights_interpconserv1(x,y,dx,dy,xout,yout,dxout,dyout,latlon) result(area)
         ! Calculate 1st order conservative interpolation for a 
@@ -534,7 +663,6 @@ contains
         real(sp) :: x1, y1
         integer  :: npts_in  
         integer :: i, j, now  
-        real(sp) :: missing_val
         real(sp) :: area_target 
 
         is_latlon = .FALSE. 
@@ -1513,7 +1641,7 @@ contains
         type(pt_wts_class),     intent(IN)  :: map(:) 
         type(pt_wts_class), intent(OUT) :: map_vec 
 
-        integer :: ntot, i, k, k1
+        integer :: ntot, npt, i, k, k1
 
         ! Deallocate map_vec vectors 
         if (allocated(map_vec%nn))       deallocate(map_vec%nn)
@@ -1526,8 +1654,20 @@ contains
         if (allocated(map_vec%weight))   deallocate(map_vec%weight)
         if (allocated(map_vec%area))     deallocate(map_vec%area)
         
+        if (allocated(map_vec%iquad))    deallocate(map_vec%iquad)
+        if (allocated(map_vec%alpha1))   deallocate(map_vec%alpha1)
+        if (allocated(map_vec%alpha2))   deallocate(map_vec%alpha2)
+        
+        ! Determine how many points there are 
+        npt = size(map)
+        
         ! Allocate the nn vector to the length of points being mapped to 
-        allocate(map_vec%nn(size(map)))
+        allocate(map_vec%nn(npt))
+
+        ! Allocate the bilinear parameters 
+        allocate(map_vec%iquad(npt*4))
+        allocate(map_vec%alpha1(npt))
+        allocate(map_vec%alpha2(npt))
 
         ! Determine length of storage vectors 
         ntot = 0 
@@ -1555,6 +1695,15 @@ contains
             map_vec%area(k:k1)     = map(i)%area 
             
             k = k1 + 1
+        end do 
+
+        ! Store bilinear indices and weights 
+        k = 1 
+        do i = 1, size(map)
+            k1 = k + 4 - 1 
+            map_vec%iquad(k:k1)    = map(i)%iquad 
+            map_vec%alpha1(i)      = map(i)%alpha1 
+            map_vec%alpha2(i)      = map(i)%alpha2 
         end do 
 
         return 

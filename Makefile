@@ -28,7 +28,8 @@ ifeq ($(ifort),1)
 else
     FC = gfortran
     #NETCDF_FORTRANROOT = /usr
-    NETCDF_FORTRANROOT = /Users/robinson/apps/netcdf/netcdf
+    #NETCDF_FORTRANROOT = /Users/robinson/apps/netcdf/netcdf
+    NETCDF_FORTRANROOT = /opt/local
 endif 
 
 INC_NC  = -I${NETCDF_FORTRANROOT}/include
