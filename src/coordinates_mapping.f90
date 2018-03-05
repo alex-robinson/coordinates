@@ -1547,7 +1547,7 @@ contains
                 map_now_quadrant = 1
                 map_now_border   = 0
 
-                ! Get current neighborhood values (won't fill the whole `now` vector necesarrily)
+                ! Get current neighborhood values (won't fill the whole `now` vector necessarily)
                 map_now_var(1:n1)      = var1(map%map(i)%i)
                 map_now_dist(1:n1)     = map%map(i)%dist
                 map_now_weight(1:n1)   = map%map(i)%weight
@@ -1569,6 +1569,26 @@ contains
                         if (map_now_dist(k) .lt. max_distance) then
                             var2(i)        = map_now_var(k) 
                             mask2_local(i) = 1
+                        end if 
+
+                    case("bilinear")
+
+                        if (count(map%map(i)%iquad.ne.ERR_IND).eq.4) then 
+                            ! All four neighbor locations are available, proceed... 
+
+                            map_now_var(1:4) = var1(map%map(i)%iquad)
+
+                            if (count(map_now_var(1:4).eq.missing_val).eq.0) then 
+                                ! All four variable values are available, proceed...
+
+                                var2(i) = calc_bilin_point(map_now_var(1),map_now_var(2), &
+                                                           map_now_var(3),map_now_var(4), &
+                                                           map%map(i)%alpha1(1), &
+                                                           map%map(i)%alpha2(1))
+                                
+                                mask2_local(i) = 1 
+                            end if 
+
                         end if 
 
                     case("quadrant","radius","shepard") 
@@ -1673,6 +1693,26 @@ contains
 
 
     ! === HELPER SUBROUTINES === 
+
+    function calc_bilin_point(z1,z2,z3,z4,alpha1,alpha2) result(var)
+
+        implicit none 
+
+        real(dp), intent(IN) :: z1, z2, z3, z4
+        real(sp), intent(IN) :: alpha1, alpha2
+        real(dp) :: var 
+
+        ! Local variables 
+        real(dp) :: p0, p1 
+
+        p0  = z3 + alpha1*(z4-z3)
+        p1  = z2 + alpha1*(z1-z2)
+        
+        var = p0 + alpha2*(p1-p0)
+
+        return 
+
+    end function calc_bilin_point 
 
     subroutine pack_neighbors(map,map_vec)
 
