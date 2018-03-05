@@ -976,7 +976,7 @@ contains
 
         ! Allocate remaining vectors to correct length
         call map_allocate_map(mp_vec,n_vec,nblin=map%npts)
-        
+
         ! Load neighborhood vectors 
         call nc_read(fnm,"mp_vec_nn",       mp_vec%nn)
         call nc_read(fnm,"mp_vec_i",        mp_vec%i)
@@ -1683,25 +1683,11 @@ contains
 
         integer :: ntot, npt, i, k, k1
 
-        ! Deallocate map_vec vectors 
-        if (allocated(map_vec%nn))       deallocate(map_vec%nn)
-        if (allocated(map_vec%i))        deallocate(map_vec%i)
-        if (allocated(map_vec%quadrant)) deallocate(map_vec%quadrant)
-        if (allocated(map_vec%border))   deallocate(map_vec%border)
-        if (allocated(map_vec%x))        deallocate(map_vec%x)
-        if (allocated(map_vec%y))        deallocate(map_vec%y)
-        if (allocated(map_vec%dist))     deallocate(map_vec%dist)
-        if (allocated(map_vec%weight))   deallocate(map_vec%weight)
-        if (allocated(map_vec%area))     deallocate(map_vec%area)
-        
-        if (allocated(map_vec%iquad))    deallocate(map_vec%iquad)
-        if (allocated(map_vec%alpha1))   deallocate(map_vec%alpha1)
-        if (allocated(map_vec%alpha2))   deallocate(map_vec%alpha2)
-        
         ! Determine how many points there are 
         npt = size(map)
         
         ! Allocate the nn vector to the length of points being mapped to 
+        if (allocated(map_vec%nn)) deallocate(map_vec%nn)
         allocate(map_vec%nn(npt))
 
         ! Determine length of storage vectors 
@@ -1739,6 +1725,7 @@ contains
             map_vec%iquad(k:k1)    = map(i)%iquad(1:4) 
             map_vec%alpha1(i)      = map(i)%alpha1(1) 
             map_vec%alpha2(i)      = map(i)%alpha2(1) 
+            k = k1 + 1 
         end do 
 
         return 
