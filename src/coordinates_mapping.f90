@@ -609,28 +609,28 @@ contains
                 ! calculate bilin weights 
 
                 ! Get indices of relevant neighbors
-                i1 = mnow%iquad(2)    ! Quadrant 2 (above-left  of point)
-                i2 = mnow%iquad(1)    ! Quadrant 1 (above-right of point) 
+                i1 = mnow%iquad(1)    ! Quadrant 1 (above-right of point)
+                i2 = mnow%iquad(2)    ! Quadrant 2 (above-left  of point)
                 i3 = mnow%iquad(3)    ! Quadrant 3 (below-left  of point)
                 i4 = mnow%iquad(4)    ! Quadrant 4 (below-right of point) 
                 
                 if (use_cartesian) then
                     ! Use cartesian values to determine distance
                     
-                    dx1     = cartesian_distance(x,pts1%y(i1)*xy_conv, &
-                                                 pts1%x(i1)*xy_conv,pts1%y(i1)*xy_conv)
-                    dx1_tot = cartesian_distance(pts1%x(i2)*xy_conv,pts1%y(i1)*xy_conv, &
-                                                 pts1%x(i1)*xy_conv,pts1%y(i1)*xy_conv)
+                    dx1     = cartesian_distance(x,pts1%y(i2)*xy_conv, &
+                                                 pts1%x(i2)*xy_conv,pts1%y(i2)*xy_conv)
+                    dx1_tot = cartesian_distance(pts1%x(i1)*xy_conv,pts1%y(i2)*xy_conv, &
+                                                 pts1%x(i2)*xy_conv,pts1%y(i2)*xy_conv)
                     
                     dx2     = cartesian_distance(x,pts1%y(i3)*xy_conv, &
                                                  pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
                     dx2_tot = cartesian_distance(pts1%x(i4)*xy_conv,pts1%y(i3)*xy_conv, &
                                                  pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
                     
-                    dy1     = cartesian_distance(pts1%x(i1)*xy_conv,y, &
-                                                 pts1%x(i1)*xy_conv,pts1%y(i1)*xy_conv)
-                    dy1_tot = cartesian_distance(pts1%x(i1)*xy_conv,pts1%y(i4)*xy_conv, &
-                                                 pts1%x(i1)*xy_conv,pts1%y(i1)*xy_conv)
+                    dy1     = cartesian_distance(pts1%x(i4)*xy_conv,y, &
+                                                 pts1%x(i4)*xy_conv,pts1%y(i4)*xy_conv)
+                    dy1_tot = cartesian_distance(pts1%x(i4)*xy_conv,pts1%y(i1)*xy_conv, &
+                                                 pts1%x(i4)*xy_conv,pts1%y(i4)*xy_conv)
                     
                     dy2     = cartesian_distance(pts1%x(i3)*xy_conv,y, &
                                                  pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
@@ -640,20 +640,20 @@ contains
                 else
                     ! Use planetary (latlon) values
 
-                    dx1     = planet_distance(planet%a,planet%f,lon,pts1%lat(i1), &
-                                                pts1%lon(i1),pts1%lat(i1))
-                    dx1_tot = planet_distance(planet%a,planet%f,pts1%lon(i2),pts1%lat(i1), &
-                                                pts1%lon(i1),pts1%lat(i1))
+                    dx1     = planet_distance(planet%a,planet%f,lon,pts1%lat(i2), &
+                                                pts1%lon(i2),pts1%lat(i2))
+                    dx1_tot = planet_distance(planet%a,planet%f,pts1%lon(i1),pts1%lat(i2), &
+                                                pts1%lon(i2),pts1%lat(i2))
                     
                     dx2     = planet_distance(planet%a,planet%f,lon,pts1%lat(i3), &
                                                 pts1%lon(i3),pts1%lat(i3))
                     dx2_tot = planet_distance(planet%a,planet%f,pts1%lon(i4),pts1%lat(i3), &
                                                 pts1%lon(i3),pts1%lat(i3))
                     
-                    dy1     = planet_distance(planet%a,planet%f,pts1%lon(i1),lat, &
-                                                pts1%lon(i1),pts1%lat(i1))
-                    dy1_tot = planet_distance(planet%a,planet%f,pts1%lon(i1),pts1%lat(i4), &
-                                                pts1%lon(i1),pts1%lat(i1))
+                    dy1     = planet_distance(planet%a,planet%f,pts1%lon(i4),lat, &
+                                                pts1%lon(i4),pts1%lat(i4))
+                    dy1_tot = planet_distance(planet%a,planet%f,pts1%lon(i4),pts1%lat(i1), &
+                                                pts1%lon(i4),pts1%lat(i4))
                     
                     dy2     = planet_distance(planet%a,planet%f,pts1%lon(i3),lat, &
                                                 pts1%lon(i3),pts1%lat(i3))
@@ -975,14 +975,7 @@ contains
         n_vec = nc_size(fnm,"neighbor_vec")
 
         ! Allocate remaining vectors to correct length
-        allocate(mp_vec%i(n_vec))
-        allocate(mp_vec%quadrant(n_vec))
-        allocate(mp_vec%border(n_vec))
-        allocate(mp_vec%x(n_vec))
-        allocate(mp_vec%y(n_vec))
-        allocate(mp_vec%dist(n_vec))
-        allocate(mp_vec%weight(n_vec))
-        allocate(mp_vec%area(n_vec))
+        call map_allocate_map(mp_vec,n_vec,nblin=map%npts)
         
         ! Load neighborhood vectors 
         call nc_read(fnm,"mp_vec_nn",       mp_vec%nn)
