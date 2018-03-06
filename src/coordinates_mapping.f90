@@ -1539,11 +1539,13 @@ contains
 
             case("quadrant")
 
-!                 call map_field_quadrant() 
+                call map_field_radius(map,maskp,var1,var2,mask2,max_distance,missing_val, &
+                                      is_quadrant=.TRUE.,border=border)
 
             case("radius","shepard")
 
-!                 call map_field_radius()
+                call map_field_radius(map,maskp,var1,var2,mask2,max_distance,missing_val, &
+                                      is_quadrant=.FALSE.,border=border)
 
             case DEFAULT 
 
@@ -1663,6 +1665,128 @@ contains
 
     end subroutine map_field_bilinear 
     
+    subroutine map_field_radius(map,maskp,var1,var2,mask2,max_distance,missing_val,is_quadrant,border)
+        ! Map a field using distance weighting
+        ! (optionally limit neighbors to four neighbors in different quadrants - is_quadrant=.TRUE.)
+
+        implicit none 
+
+
+        type(map_class), intent(IN)  :: map       ! Map information
+        logical,         intent(IN)  :: maskp(:)  ! Mask for which points should be interpolated 
+        real(dp),        intent(IN)  :: var1(:)   ! Source variable 
+        real(dp),        intent(OUT) :: var2(:)   ! Target grid variable 
+        integer,         intent(OUT) :: mask2(:)  ! Interpolation mask
+        real(dp),        intent(IN)  :: max_distance  
+        real(dp),        intent(IN)  :: missing_val 
+        logical,         intent(IN)  :: is_quadrant 
+        logical,         intent(IN), optional :: border 
+
+        ! Local variables
+        logical :: fill_border  
+        integer :: i, k, q, nmax, n, ntot
+        logical :: found     
+        real(dp), allocatable :: mp_var(:) 
+        type(pt_wts_class)    :: mp_now
+
+        ! By default, border points will not be filled in 
+        fill_border = .FALSE. 
+        if (present(border)) fill_border = border 
+
+        ! Allocate a storage array to hold neighbors
+        ! (as large as the largest available neighborhood)
+        nmax = maxval(map%nn)
+        allocate(mp_var(nmax))
+
+        call map_allocate_map(mp_now,nmax,nblin=1)
+
+        ! Loop over the new grid points and perform mapping
+        do i = 1, map%npts 
+
+            if (maskp(i)) then ! Only perform calculations for packing mask points
+
+                ! Distance weighted interpolation 
+
+                ! Reset current map values 
+                mp_var          = missing_val 
+                mp_now%dist     = missing_val 
+                mp_now%weight   = 0.0_dp 
+                mp_now%quadrant = 1
+                mp_now%border   = 0
+
+                ! Store current map
+
+                ! Get size of neighborhood 
+                n = size(mp_now%i)
+                
+                ! Store neighborhood variable values 
+                mp_var(1:n)          = var1(map%map(i)%i)
+                mp_now%dist(1:n)     = map%map(i)%dist
+                mp_now%weight(1:n)   = map%map(i)%weight
+                mp_now%quadrant(1:n) = map%map(i)%quadrant
+                mp_now%border(1:n)   = map%map(i)%border
+
+                if (is_quadrant) then 
+                    ! For quadrant method, limit the number of neighbors to 
+                    ! 4 points in different quadrants from neighborhood 
+                    do q = 1, 4
+                        found = .FALSE. 
+                        do k = 1, n 
+                            if (mp_var(k) .ne. missing_val .and. mp_now%quadrant(k) .eq. q) then 
+                                if (found) then 
+                                    mp_var(k) = missing_val 
+                                else
+                                    found = .TRUE. 
+                                end if 
+                            end if 
+                        end do 
+                    end do 
+
+                end if  
+
+                ! Eliminate neighbors outside of distance limit
+                where(mp_now%dist .gt. max_distance) mp_var = missing_val
+
+                ! Set all missing values to maximum distance
+                where(mp_var .eq. missing_val)  mp_now%dist = ERR_DIST
+
+                ! Check number of neighbors available for calculations
+                ntot = count(mp_var .ne. missing_val)
+
+                ! Check if a large fraction of neighbors are border points
+                ! (if so, do not interpolate here)
+                if ( (.not. fill_border) .and. ntot .gt. 0) then 
+                    if ( sum(mp_now%border,mask=mp_var.ne.missing_val)/dble(ntot) .gt. 0.25_dp ) &
+                            ntot = 0
+                end if 
+
+                ! Apply appropriate interpolation calculation
+                if ( ntot .gt. 1) then 
+
+                    ! Calculate the weighted average (using distance weighting)
+                    var2(i)        = weighted_ave(mp_var,real(mp_now%weight,dp),mask=mp_var .ne. missing_val)
+!                     var2(i)        = weighted_ave_shepard(mp_var,mp_now%dist,shepard_exponent=2.d0, &
+!                                                           mask=mp_var .ne. missing_val)
+                    mask2(i) = 1
+
+                else if (ntot .eq. 1) then
+                    k = minloc(mp_now%dist,1)
+                    var2(i)  = mp_var(k)
+                    mask2(i) = 1 
+                else
+                    ! If no neighbors exist, field not mapped here.
+                    mask2(i) = 0  
+
+                end if 
+
+            end if 
+
+        end do 
+                        
+        return 
+
+    end subroutine map_field_radius
+
     subroutine map_field_points_points_double_0(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
         ! Methods include "radius", "nn" (nearest neighbor), "quadrant"
         ! See `map_field_conservative_map1` for 1st order conservative mapping
