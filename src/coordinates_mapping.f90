@@ -528,8 +528,6 @@ contains
                 map%map(i)%border   = mp_all%border(1:n) 
                 map%map(i)%area     = 0.0_dp 
 
-                ! Sort the map by ascending distance 
-
             else 
                 ! Store filler index
                 n = 1 
@@ -547,9 +545,15 @@ contains
             end if 
 
             ! Perform additional calculations to facilitate bilinear interpolation 
-            call map_calc_weights_bilin(map%map(i),x,y,lon,lat,pts1,map%planet, &
+            call map_calc_weights_bilin(mp_all,x,y,lon,lat,pts1,map%planet, &
                     use_cartesian=(map%is_same_map .and. map%is_cartesian) )
 
+            ! Store in current point's map 
+            map%map(i)%iquad  = mp_all%iquad 
+            map%map(i)%alpha1 = mp_all%alpha1 
+            map%map(i)%alpha2 = mp_all%alpha2 
+            map%map(i)%alpha3 = mp_all%alpha3 
+            
             ! Output every 1000 rows to check progress
             if (mod(i,1000)==0) write(*,"(a,i10,a3,i12,a5,g12.3)")  &
                                     "  ",i, " / ",pts2%npts,"   : ",map%map(i)%dist(1)
@@ -589,6 +593,7 @@ contains
         real(dp) :: dy2, dy2_tot 
         real(dp) :: dx, dx_tot, dy, dy_tot 
         real(dp) :: lat_mid_1, lat_mid_0   
+        real(dp) :: y_mid_1, y_mid_0 
 
         xy_conv = pts1%xy_conv 
 
@@ -600,7 +605,7 @@ contains
         mnow%alpha3 = 0.0_dp
         
         ! Get size of neighborhood 
-        n1 = size(mnow%i)
+        n1=count(mnow%i .ne. ERR_IND)
 
         if (n1 .ge. 4) then 
             ! At least four neighbors are needed for these calculations 
@@ -634,25 +639,23 @@ contains
                 if (use_cartesian) then
                     ! Use cartesian values to determine distance
                     
-                    dx1     = cartesian_distance(                 x,pts1%y(i2)*xy_conv, &
+                    y_mid_1 = 0.5_dp*(pts1%y(i2)+pts1%y(i1))
+                    y_mid_0 = 0.5_dp*(pts1%y(i3)+pts1%y(i4))
+                    
+                    dx1     = cartesian_distance(                 x,   y_mid_1*xy_conv, &
                                                  pts1%x(i2)*xy_conv,pts1%y(i2)*xy_conv)
-                    dx1_tot = cartesian_distance(pts1%x(i1)*xy_conv,pts1%y(i2)*xy_conv, &
+                    dx1_tot = cartesian_distance(pts1%x(i1)*xy_conv,pts1%y(i1)*xy_conv, &
                                                  pts1%x(i2)*xy_conv,pts1%y(i2)*xy_conv)
                     
-                    dx2     = cartesian_distance(                 x,pts1%y(i3)*xy_conv, &
+                    dx2     = cartesian_distance(                 x,   y_mid_0*xy_conv, &
                                                  pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
-                    dx2_tot = cartesian_distance(pts1%x(i4)*xy_conv,pts1%y(i3)*xy_conv, &
+                    dx2_tot = cartesian_distance(pts1%x(i4)*xy_conv,pts1%y(i4)*xy_conv, &
                                                  pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
                     
-                    dy1     = cartesian_distance(pts1%x(i4)*xy_conv,y, &
-                                                 pts1%x(i4)*xy_conv,pts1%y(i4)*xy_conv)
-                    dy1_tot = cartesian_distance(pts1%x(i4)*xy_conv,pts1%y(i1)*xy_conv, &
-                                                 pts1%x(i4)*xy_conv,pts1%y(i4)*xy_conv)
-                    
-                    dy2     = cartesian_distance(pts1%x(i3)*xy_conv,y, &
-                                                 pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
-                    dy2_tot = cartesian_distance(pts1%x(i3)*xy_conv,pts1%y(i2)*xy_conv, &
-                                                 pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
+                    dy1     = cartesian_distance(                 x,   y, &
+                                                                  x,   y_mid_0*xy_conv)
+                    dy1_tot = cartesian_distance(                 x,   y_mid_1*xy_conv, &
+                                                                  x,   y_mid_0*xy_conv)
                     
                 else
                     ! Use planetary (latlon) values
@@ -1503,13 +1506,9 @@ contains
         integer :: i_method, i_method_now
 
         integer :: nmax   ! Max of all neighbors
-        real(dp), allocatable :: map_now_var(:), map_now_dist(:), map_now_weight(:)
-        integer,  allocatable :: map_now_quadrant(:), map_now_border(:)
-    
-!         integer :: nmax   ! Max of all neighbors
-!         real(dp) :: map_now_var(nmax), map_now_dist(nmax), map_now_weight(nmax)
-!         integer  :: map_now_quadrant(nmax), map_now_border(nmax)
-    
+        type(pt_wts_class)    :: mp_now
+        real(dp), allocatable :: mp_var(:)
+
         ! Is target grid latlon? 
         is_latlon = .TRUE. 
         if ( (.not. map%is_projection) .and. map%is_cartesian) is_latlon = .FALSE. 
@@ -1545,11 +1544,9 @@ contains
 
         ! Determine max neighborhood 
         nmax = maxval(map%nn)
-        allocate(map_now_var(nmax))
-        allocate(map_now_dist(nmax))
-        allocate(map_now_weight(nmax))
-        allocate(map_now_quadrant(nmax))
-        allocate(map_now_border(nmax))
+
+        call map_allocate_map(mp_now,nmax,nblin=1)
+        allocate(mp_var(nmax))
 
         ! string to integer to speedup loop
         if (method=="nn" .or. method=="nearest") then
@@ -1570,21 +1567,24 @@ contains
                 ! Get size of neighborhood 
                 n1 = size(map%map(i)%i)
 
-                map_now_var  = missing_val 
-                map_now_dist = missing_val 
-                map_now_quadrant = 1
-                map_now_border   = 0
+                mp_var          = missing_val 
+                mp_now%dist     = missing_val 
+                mp_now%weight   = 0.0_dp 
+                mp_now%quadrant = 1
+                mp_now%border   = 0
 
                 ! Get current neighborhood values (won't fill the whole `now` vector necessarily)
-                map_now_var(1:n1)      = var1(map%map(i)%i)
-                map_now_dist(1:n1)     = map%map(i)%dist
-                map_now_weight(1:n1)   = map%map(i)%weight
-                map_now_quadrant(1:n1) = map%map(i)%quadrant
-                map_now_border(1:n1)   = map%map(i)%border
+                mp_var(1:n1)          = var1(map%map(i)%i)
+                mp_now%dist(1:n1)     = map%map(i)%dist
+                mp_now%weight(1:n1)   = map%map(i)%weight
+                mp_now%quadrant(1:n1) = map%map(i)%quadrant
+                mp_now%border(1:n1)   = map%map(i)%border
 
-                ! Get size of neighborhood 
-                n1 = size(map_now_var)
-
+                mp_now%iquad          = map%map(i)%iquad 
+                mp_now%alpha1         = map%map(i)%alpha1 
+                mp_now%alpha2         = map%map(i)%alpha2 
+                mp_now%alpha3         = map%map(i)%alpha3 
+                
                 i_method_now = i_method 
                 if (n1 .eq. 1) i_method_now = 1
 
@@ -1592,29 +1592,31 @@ contains
                 select case(i_method_now)
 
                     case(1)
+                        ! Nearest neighbor interpolation 
 
-                        k = minloc(map_now_dist,mask=map_now_var.ne.missing_val,dim=1)
-                        if (map_now_dist(k) .lt. max_distance) then
-                            var2(i)        = map_now_var(k) 
+                        k = minloc(mp_now%dist,mask=mp_var.ne.missing_val,dim=1)
+                        if (mp_now%dist(k) .lt. max_distance) then
+                            var2(i)        = mp_var(k) 
                             mask2_local(i) = 1
                         end if 
 
                     case(2)
+                        ! Bilinear interpolation 
 
                         if (count(map%map(i)%iquad.ne.ERR_IND).eq.4) then 
                             ! All four neighbor locations are available, proceed... 
 
                             ! Store the four neighbor values based on map indices
-                            map_now_var = var1(map%map(i)%iquad)
+                            mp_var(1:4) = var1(mp_now%iquad)
 
-                            if (count(map_now_var(1:4).eq.missing_val).eq.0) then 
+                            if (count(mp_var(1:4).eq.missing_val).eq.0) then 
                                 ! All four variable values are available, proceed...
 
-                                var2(i) = calc_bilin_point(map_now_var(1),map_now_var(2), &
-                                                           map_now_var(3),map_now_var(4), &
-                                                           map%map(i)%alpha1(1), &
-                                                           map%map(i)%alpha2(1), &
-                                                           map%map(i)%alpha3(1))
+                                var2(i) = calc_bilin_point(mp_var(1),mp_var(2), &
+                                                           mp_var(3),mp_var(4), &
+                                                           mp_now%alpha1(1), &
+                                                           mp_now%alpha2(1), &
+                                                           mp_now%alpha3(1))
                                 
                                 mask2_local(i) = 1
 
@@ -1623,6 +1625,7 @@ contains
                         end if 
 
                     case(3,4) 
+                        ! Distance weighted interpolation 
 
                         if (i_method_now .eq. 3) then 
                             ! For quadrant method, limit the number of neighbors to 
@@ -1630,9 +1633,9 @@ contains
                             do q = 1, 4
                                 found = .FALSE. 
                                 do k = 1, n1 
-                                    if (map_now_var(k) .ne. missing_val .and. map_now_quadrant(k) .eq. q) then 
+                                    if (mp_var(k) .ne. missing_val .and. mp_now%quadrant(k) .eq. q) then 
                                         if (found) then 
-                                            map_now_var(k) = missing_val 
+                                            mp_var(k) = missing_val 
                                         else
                                             found = .TRUE. 
                                         end if 
@@ -1643,18 +1646,18 @@ contains
                         end if  
 
                         ! Eliminate neighbors outside of distance limit
-                        where(map_now_dist .gt. max_distance) map_now_var = missing_val
+                        where(mp_now%dist .gt. max_distance) mp_var = missing_val
 
                         ! Set all missing values to maximum distance
-                        where(map_now_var .eq. missing_val) map_now_dist  = ERR_DIST
+                        where(mp_var .eq. missing_val) mp_now%dist  = ERR_DIST
 
                         ! Check number of neighbors available for calculations
-                        ntot = count(map_now_var .ne. missing_val)
+                        ntot = count(mp_var .ne. missing_val)
 
                         ! Check if a large fraction of neighbors are border points
                         ! (if so, do not interpolate here)
                         if ( (.not. fill_border) .and. ntot .gt. 0) then 
-                            if ( sum(map_now_border,mask=map_now_var.ne.missing_val)/dble(ntot) .gt. 0.25_dp ) &
+                            if ( sum(mp_now%border,mask=mp_var.ne.missing_val)/dble(ntot) .gt. 0.25_dp ) &
                                     ntot = 0
                         end if 
 
@@ -1662,14 +1665,14 @@ contains
                         if ( ntot .gt. 1) then 
 
                             ! Calculate the weighted average (using distance weighting)
-                            var2(i)        = weighted_ave(map_now_var,map_now_weight,mask=map_now_var .ne. missing_val)
-!                             var2(i)        = weighted_ave_shepard(map_now_var,map_now_dist,shepard_exponent=2.d0, &
-!                                                                   mask=map_now_var .ne. missing_val)
+                            var2(i)        = weighted_ave(mp_var,real(mp_now%weight,dp),mask=mp_var .ne. missing_val)
+!                             var2(i)        = weighted_ave_shepard(mp_var,mp_now%dist,shepard_exponent=2.d0, &
+!                                                                   mask=mp_var .ne. missing_val)
                             mask2_local(i) = 1
 
                         else if (ntot .eq. 1) then
-                            k = minloc(map_now_dist,1)
-                            var2(i)        = map_now_var(k)
+                            k = minloc(mp_now%dist,1)
+                            var2(i)        = mp_var(k)
                             mask2_local(i) = 1 
                         else
                             ! If no neighbors exist, field not mapped here.

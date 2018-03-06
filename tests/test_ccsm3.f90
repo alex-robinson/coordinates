@@ -29,7 +29,7 @@ program test_ccsm3
     character(len=256) :: file_new 
 
     double precision :: tmplon(128), tmplat(64)
-    
+
     ! =======================================================================
     !
     ! Step 1: Define global input grid and load data that will be used here
@@ -130,7 +130,7 @@ program test_ccsm3
     ! Initialize 'to' and 'fro' mappings
     ! max_neighbors is the maximum neighbors to be stored for each point
     ! lat_lim is the range of latitudes relative to a given point to check neighbor distances (to speed things up)
-    call map_init(mCCSM3_REG,gCCSM3,gREG,max_neighbors=6, lat_lim=3.0d0,dist_max=1000d0,fldr="maps",load=.TRUE.)
+    call map_init(mCCSM3_REG,gCCSM3,gREG,max_neighbors=20, lat_lim=3.0d0,dist_max=1000d0,fldr="maps",load=.TRUE.)
     call map_init(mREG_CCSM3,gREG,gCCSM3,max_neighbors=30,lat_lim=2.0d0,dist_max=1000d3,fldr="maps",load=.TRUE.)
 
     ! === Quadrant method ===
