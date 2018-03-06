@@ -19,10 +19,11 @@ testdir = tests
 # Command-line options at make call
 ifort ?= 0
 debug ?= 0 
+openmp ?= 1
 
 ifeq ($(ifort),1)
     FC = ifort 
-    NETCDF_FORTRANROOT = /Users/robinson/apps/netcdf/4.4.1.1_ifort
+    #NETCDF_FORTRANROOT = /Users/robinson/apps/netcdf/4.4.1.1_ifort
     #NETCDF_FORTRANROOT = /home/robinson/apps/netcdf/netcdf
     #NETCDF_FORTRANROOT = /home/fispalma22/work/librairies/netcdflib
 else
@@ -33,7 +34,7 @@ else
 endif 
 
 INC_NC  = -I${NETCDF_FORTRANROOT}/include
-LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff -lnetcdf
+LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff -L${NETCDF_CROOT}/lib -lnetcdf
 
 ifeq ($(ifort),1)
 	## IFORT OPTIONS ##
@@ -41,12 +42,25 @@ ifeq ($(ifort),1)
 	LFLAGS	     = $(LIB_NC) 
 	SFLAGS       = 
 
+<<<<<<< Updated upstream
+||||||| merged common ancestors
+	DFLAGS   = -O3
+
+=======
+	DFLAGS   = -O3 
+
+>>>>>>> Stashed changes
 	ifeq ($(debug), 1)
 	    DFLAGS   = -C -g -traceback -ftrapuv -fpe0 -check all 
 	    # -w 
 	else
 	    DFLAGS   = -O3
 	endif
+
+	ifeq ($(openmp),1)
+			DFLAGS += -qopenmp
+	endif
+
 else
 	## GFORTRAN OPTIONS ##
 	FLAGS        = -I$(objdir) -J$(objdir) $(INC_NC)
@@ -58,6 +72,10 @@ else
 	               -fbacktrace -fcheck=all -fbackslash
 	else
 	    DFLAGS   = -O3 -fbackslash
+	endif
+
+	ifeq ($(openmp),1)
+			DFLAGS += -qop
 	endif
 endif
 
