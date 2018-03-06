@@ -459,7 +459,6 @@ contains
                         !dist = spherical_distance(map%planet%a,map%planet%f,lon,lat,pts1%lon(i1),pts1%lat(i1))
                         dist = planet_distance(map%planet%a,map%planet%f,lon,lat,pts1%lon(i1),pts1%lat(i1))
 
-
                     end if 
 
                     ! Convert distance to units of target grid 
@@ -469,12 +468,16 @@ contains
                     ! Make sure no zero distances exist!
                     if (dist .lt. DIST_ZERO_OFFSET) dist = DIST_ZERO_OFFSET
 
+                    ! Find location to insert current neighbor to
+                    ! keep distances sorted in ascending order 
                     do kc = 1, map_nmax
                         if (dist .lt. map_dist(kc)) exit
                     end do 
 
                     if (kc .le. map%nmax .and. dist .lt. dist_maximum) then 
 
+                        ! Shift all other neighbors with larger distances to make room
+                        ! for new neighbor
                         if (kc .le. map%nmax-1) then 
                             map_i(kc:map_nmax)        = cshift(map_i(kc:map_nmax),-1)
                             map_x(kc:map_nmax)        = cshift(map_x(kc:map_nmax),-1)
@@ -484,6 +487,7 @@ contains
                             map_border(kc:map_nmax)   = cshift(map_border(kc:map_nmax),-1)
                         end if 
 
+                        ! Store new neighbor in current index 
                         map_i(kc)      = i1 
                         map_x(kc)      = pts1%x(i1)
                         map_y(kc)      = pts1%y(i1) 
@@ -518,6 +522,8 @@ contains
                 map%map(i)%quadrant = map_quadrant(1:n)
                 map%map(i)%border   = map_border(1:n) 
                 map%map(i)%area     = 0.0_dp 
+
+                ! Sort the map by ascending distance 
 
             else 
                 ! Store filler index
@@ -1708,6 +1714,8 @@ contains
     ! === HELPER SUBROUTINES === 
 
     function calc_bilin_point(z1,z2,z3,z4,alpha1,alpha2,alpha3) result(var)
+        ! Helper function to calculate the bilinear interpolate
+        ! given the four quadrant neighbor values and the weights alpha* 
 
         implicit none 
 
@@ -1723,14 +1731,10 @@ contains
         
         var = p0 + alpha3*(p1-p0)
 
-        !if (alpha1 .eq. 0.0 .or. alpha2 .eq. 0.0 .or. alpha3 .eq. 0.0) then 
-!             write(*,"(10f8.2)") z1, z2, z3, z4, alpha1, alpha2, alpha3, p0, p1, var
-        !end if 
-
         return 
 
     end function calc_bilin_point 
-    
+
     subroutine pack_neighbors(map,map_vec)
 
         implicit none 
