@@ -1503,14 +1503,18 @@ contains
         logical,  intent(IN),  optional :: mask_pack(:) 
 
         ! Local variables 
-        real(dp) :: max_distance 
+        real(dp) :: max_distance, missing_val  
         logical, allocatable :: maskp(:)
         integer, allocatable :: mask2_local(:) 
-        
+
         ! Set neighborhood radius to very large value (to include all neighbors)
         ! or to radius specified by user
         max_distance = 1E7_dp
         if (present(radius)) max_distance = radius 
+
+        ! Set grid missing value by default or that that specified by user
+        missing_val  = MISSING_VALUE_DEFAULT
+        if (present(missing_value)) missing_val = missing_value 
 
         ! By default, all var2 points are interpolated
         allocate(maskp(size(var2)))
@@ -1527,7 +1531,7 @@ contains
 
             case("nn","nearest")
 
-!                 call map_field_nearest()
+                call map_field_nearest(map,maskp,var1,var2,mask2_local,max_distance,missing_val)
 
             case("bilinear")
 
@@ -1548,10 +1552,59 @@ contains
 
         end select 
 
+        ! If interpolation mask available, send to output
+        if (present(mask2)) mask2 = mask2_local 
+        
         return 
 
     end subroutine map_field_points_points_double
 
+    subroutine map_field_nearest(map,maskp,var1,var2,mask2,max_distance,missing_val)
+
+        implicit none 
+
+
+        type(map_class), intent(IN)  :: map       ! Map information
+        logical,         intent(IN)  :: maskp(:)  ! Mask for which points should be interpolated 
+        real(dp),        intent(IN)  :: var1(:)   ! Source variable 
+        real(dp),        intent(OUT) :: var2(:)   ! Target grid variable 
+        integer,         intent(OUT) :: mask2(:)  ! Interpolation mask
+        real(dp),        intent(IN)  :: max_distance  
+        real(dp),        intent(IN)  :: missing_val 
+
+        ! Local variables 
+        integer :: i, k, nmax, n  
+        real(dp), allocatable :: mp_var(:) 
+
+        ! Allocate a storage array to hold neighbors
+        ! (as large as the largest available neighborhood)
+        nmax = maxval(map%nn)
+        allocate(mp_var(nmax))
+
+        ! Loop over the new grid points and perform mapping
+        do i = 1, map%npts 
+
+            if (maskp(i)) then ! Only perform calculations for packing mask points
+
+                ! Get size of neighborhood 
+                n = size(map%map(i)%i)
+                
+                mp_var       = missing_val 
+                mp_var(1:n)  = var1(map%map(i)%i)
+
+                k = minloc(map%map(i)%dist,mask=mp_var.ne.missing_val,dim=1)
+                if (map%map(i)%dist(k) .lt. max_distance) then
+                    var2(i)  = mp_var(k) 
+                    mask2(i) = 1
+                end if 
+
+            end if 
+
+        end do 
+                        
+        return 
+
+    end subroutine map_field_nearest 
 
     subroutine map_field_points_points_double_0(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
         ! Methods include "radius", "nn" (nearest neighbor), "quadrant"

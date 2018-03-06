@@ -138,13 +138,13 @@ program test_ccsm3
     file_gREG      = "output/ccsm3/grid_"//trim(REG%name)//"_quadrant.nc"
     
     ! Map each field to the regional domain using the quadrant method (no max_distance required here)
-    call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="quadrant")
-    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="quadrant")
-    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="quadrant")
+    call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="nn")
+    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="nn")
+    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="nn")
 
-    call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
-    call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
-    call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+!     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+!     call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+!     call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
 
     ! Write new regional data to grid file
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
@@ -153,6 +153,8 @@ program test_ccsm3
     call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
     call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
 
+    stop 
+    
     ! Write new CCSM3 data to grid file 
     call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.)
     call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat")
@@ -167,7 +169,6 @@ program test_ccsm3
     call grid_stats("MB",CCSM3a%MB,CCSM3b%MB,CCSM3b%mask)
     call grid_stats("Hs",CCSM3a%Hs,CCSM3b%Hs,CCSM3b%mask)
 
-    
     ! === Bilinear method ===
     file_gCCSM3b   = "output/ccsm3/grid_CCSM3-T42b_bilinear.nc"
     file_gREG      = "output/ccsm3/grid_"//trim(REG%name)//"_bilinear.nc"
