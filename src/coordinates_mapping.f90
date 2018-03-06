@@ -1498,6 +1498,7 @@ contains
         logical  :: is_latlon 
         
         character(len=56) :: method_now 
+        integer :: i_method, i_method_now
 
         integer :: nmax   ! Max of all neighbors
         real(dp), allocatable :: map_now_var(:), map_now_dist(:), map_now_weight(:)
@@ -1548,6 +1549,17 @@ contains
         allocate(map_now_quadrant(nmax))
         allocate(map_now_border(nmax))
 
+        ! string to integer to speedup loop
+        if (method=="nn" .or. method=="nearest") then
+          i_method = 1
+        else if (method=="bilinear") then
+          i_method = 2
+        else if (method=="quadrant") then
+          i_method = 3
+        else if (method=="radius" .or. method=="shepard") then
+          i_method = 4
+        endif
+
         ! Loop over the new grid points and perform mapping
         do i = 1, map%npts 
 
@@ -1571,13 +1583,13 @@ contains
                 ! Get size of neighborhood 
                 n1 = size(map_now_var)
 
-                method_now = method 
-                if (n1 .eq. 1) method_now = "nn" 
+                i_method_now = i_method 
+                if (n1 .eq. 1) i_method_now = 1
 
                 ! Determine interpolation value based on method
-                select case(trim(method_now))
+                select case(i_method_now)
 
-                    case("nn","nearest")
+                    case(1)
 
                         k = minloc(map_now_dist,mask=map_now_var.ne.missing_val,dim=1)
                         if (map_now_dist(k) .lt. max_distance) then
@@ -1585,7 +1597,7 @@ contains
                             mask2_local(i) = 1
                         end if 
 
-                    case("bilinear")
+                    case(2)
 
                         if (count(map%map(i)%iquad.ne.ERR_IND).eq.4) then 
                             ! All four neighbor locations are available, proceed... 
@@ -1610,9 +1622,9 @@ contains
 
                         end if 
 
-                    case("quadrant","radius","shepard") 
+                    case(3,4) 
 
-                        if (trim(method_now) .eq. "quadrant") then 
+                        if (i_method_now .eq. 3) then 
                             ! For quadrant method, limit the number of neighbors to 
                             ! 4 points in different quadrants
                             do q = 1, 4
