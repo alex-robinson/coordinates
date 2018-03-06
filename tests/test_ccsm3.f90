@@ -142,9 +142,9 @@ program test_ccsm3
     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="quadrant")
     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="quadrant")
 
-!     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
-!     call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
-!     call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+    call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+    call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+    call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
 
     ! Write new regional data to grid file
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
@@ -152,8 +152,6 @@ program test_ccsm3
     call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
     call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
     call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
-
-    stop 
     
     ! Write new CCSM3 data to grid file 
     call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.)

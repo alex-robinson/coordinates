@@ -1525,7 +1525,6 @@ contains
         allocate(mask2_local(map%npts))
         mask2_local = 0 
         
-
         ! Apply method of choice 
         select case(trim(method))
 
@@ -1539,12 +1538,12 @@ contains
 
             case("quadrant")
 
-                call map_field_radius(map,maskp,var1,var2,mask2,max_distance,missing_val, &
+                call map_field_radius(map,maskp,var1,var2,mask2_local,max_distance,missing_val, &
                                       is_quadrant=.TRUE.,border=border)
 
             case("radius","shepard")
 
-                call map_field_radius(map,maskp,var1,var2,mask2,max_distance,missing_val, &
+                call map_field_radius(map,maskp,var1,var2,mask2_local,max_distance,missing_val, &
                                       is_quadrant=.FALSE.,border=border)
 
             case DEFAULT 
@@ -1554,9 +1553,27 @@ contains
 
         end select 
 
+        ! Post-processing 
+
+        ! Avoid underflow errors
+        where (dabs(var2) .lt. 1d-12) var2 = 0.d0 
+
         ! If interpolation mask available, send to output
         if (present(mask2)) mask2 = mask2_local 
 
+
+        ! === Summary === 
+
+!         write(*,*) "Mapped field: "//trim(name)
+
+!         if (count(var2 .eq. missing_val) .gt. 0) &
+!             write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
+
+!         if (count(mask2_local .eq. 0) .gt. 0 .and. .not. fill_pts) then 
+!             write(*,*) "Warning, array contains non-interpolated points."
+!             write(*,*) "Ensure that it was already properly intialized with data."
+!         end if 
+        
         return 
 
     end subroutine map_field_points_points_double
@@ -1671,7 +1688,6 @@ contains
 
         implicit none 
 
-
         type(map_class), intent(IN)  :: map       ! Map information
         logical,         intent(IN)  :: maskp(:)  ! Mask for which points should be interpolated 
         real(dp),        intent(IN)  :: var1(:)   ! Source variable 
@@ -1697,7 +1713,6 @@ contains
         ! (as large as the largest available neighborhood)
         nmax = maxval(map%nn)
         allocate(mp_var(nmax))
-
         call map_allocate_map(mp_now,nmax,nblin=1)
 
         ! Loop over the new grid points and perform mapping
@@ -1717,7 +1732,7 @@ contains
                 ! Store current map
 
                 ! Get size of neighborhood 
-                n = size(mp_now%i)
+                n = size(map%map(i)%i)
                 
                 ! Store neighborhood variable values 
                 mp_var(1:n)          = var1(map%map(i)%i)
@@ -1728,7 +1743,8 @@ contains
 
                 if (is_quadrant) then 
                     ! For quadrant method, limit the number of neighbors to 
-                    ! 4 points in different quadrants from neighborhood 
+                    ! 4 points in different quadrants from neighborhood
+                    ! with data available  
                     do q = 1, 4
                         found = .FALSE. 
                         do k = 1, n 
@@ -1786,253 +1802,6 @@ contains
         return 
 
     end subroutine map_field_radius
-
-    subroutine map_field_points_points_double_0(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
-        ! Methods include "radius", "nn" (nearest neighbor), "quadrant"
-        ! See `map_field_conservative_map1` for 1st order conservative mapping
-        ! This is `map_field_internal` basically 
-
-        implicit none 
-
-        type(map_class), intent(IN)           :: map 
-        real(dp), dimension(:), intent(IN)    :: var1
-        real(dp), dimension(:), intent(INOUT) :: var2
-        integer,  dimension(:), intent(OUT), optional :: mask2
-        logical,  dimension(:), intent(IN),  optional :: mask_pack 
-        logical,  dimension(:), allocatable   :: maskp 
-        character(len=*) :: name, method
-        real(dp), optional :: radius, missing_value 
-        logical,  optional :: fill, border 
-        logical            :: fill_pts, fill_border
-        real(dp) :: shepard_exponent
-        real(dp) :: max_distance, missing_val 
-        integer,  dimension(:), allocatable   :: mask2_local
-        integer :: i, k, k1, q, j, ntot, check, n1  
-        logical :: found 
-        logical  :: is_latlon 
-        
-        character(len=56) :: method_now 
-        integer :: i_method, i_method_now
-
-        integer :: nmax   ! Max of all neighbors
-        type(pt_wts_class)    :: mp_now
-        real(dp), allocatable :: mp_var(:)
-
-        ! Is target grid latlon? 
-        is_latlon = .TRUE. 
-        if ( (.not. map%is_projection) .and. map%is_cartesian) is_latlon = .FALSE. 
-
-        ! Set neighborhood radius to very large value (to include all neighbors)
-        ! or to radius specified by user
-        max_distance = 1E7_dp
-        if (present(radius)) max_distance = radius 
-
-        ! Set grid missing value by default or that that specified by user
-        missing_val  = MISSING_VALUE_DEFAULT
-        if (present(missing_value)) missing_val = missing_value 
-
-        ! By default, fill in grid points with missing values
-        fill_pts = .TRUE. 
-        if (present(fill)) fill_pts = fill 
-
-        ! By default, border points will not be filled in 
-        fill_border = .FALSE. 
-        if (present(border)) fill_border = border 
-
-        ! By default, all var2 points are interpolated
-        allocate(maskp(size(var2)))
-        maskp = .TRUE. 
-        if (present(mask_pack)) maskp = mask_pack 
-
-        ! Initialize mask to show which points have been mapped
-        allocate(mask2_local(map%npts))
-        mask2_local = 0 
-
-        ! If fill is desired, initialize output points to missing values
-        if (fill_pts) var2 = missing_val 
-
-        ! Determine max neighborhood 
-        nmax = maxval(map%nn)
-
-        call map_allocate_map(mp_now,nmax,nblin=1)
-        allocate(mp_var(nmax))
-
-        ! string to integer to speedup loop
-        if (method=="nn" .or. method=="nearest") then
-          i_method = 1
-        else if (method=="bilinear") then
-          i_method = 2
-        else if (method=="quadrant") then
-          i_method = 3
-        else if (method=="radius" .or. method=="shepard") then
-          i_method = 4
-        endif
-
-        ! Loop over the new grid points and perform mapping
-        do i = 1, map%npts 
-
-            if (maskp(i)) then ! Only perform calculations for packing mask points
-
-                ! Get size of neighborhood 
-                n1 = size(map%map(i)%i)
-
-                mp_var          = missing_val 
-                mp_now%dist     = missing_val 
-                mp_now%weight   = 0.0_dp 
-                mp_now%quadrant = 1
-                mp_now%border   = 0
-
-                ! Get current neighborhood values (won't fill the whole `now` vector necessarily)
-                mp_var(1:n1)          = var1(map%map(i)%i)
-                mp_now%dist(1:n1)     = map%map(i)%dist
-                mp_now%weight(1:n1)   = map%map(i)%weight
-                mp_now%quadrant(1:n1) = map%map(i)%quadrant
-                mp_now%border(1:n1)   = map%map(i)%border
-
-                mp_now%iquad          = map%map(i)%iquad 
-                mp_now%alpha1         = map%map(i)%alpha1 
-                mp_now%alpha2         = map%map(i)%alpha2 
-                mp_now%alpha3         = map%map(i)%alpha3 
-                
-                i_method_now = i_method 
-                if (n1 .eq. 1) i_method_now = 1
-
-                ! Determine interpolation value based on method
-                select case(i_method_now)
-
-                    case(1)
-                        ! Nearest neighbor interpolation 
-
-                        k = minloc(mp_now%dist,mask=mp_var.ne.missing_val,dim=1)
-                        if (mp_now%dist(k) .lt. max_distance) then
-                            var2(i)        = mp_var(k) 
-                            mask2_local(i) = 1
-                        end if 
-
-                    case(2)
-                        ! Bilinear interpolation 
-
-                        if (count(map%map(i)%iquad.ne.ERR_IND).eq.4) then 
-                            ! All four neighbor locations are available, proceed... 
-
-                            ! Store the four neighbor values based on map indices
-                            mp_var(1:4) = var1(mp_now%iquad)
-
-                            if (count(mp_var(1:4).eq.missing_val).eq.0) then 
-                                ! All four variable values are available, proceed...
-
-                                var2(i) = calc_bilin_point(mp_var(1),mp_var(2), &
-                                                           mp_var(3),mp_var(4), &
-                                                           mp_now%alpha1(1), &
-                                                           mp_now%alpha2(1), &
-                                                           mp_now%alpha3(1))
-                                
-                                mask2_local(i) = 1
-
-                            end if 
-
-                        end if 
-
-                    case(3,4) 
-                        ! Distance weighted interpolation 
-
-                        if (i_method_now .eq. 3) then 
-                            ! For quadrant method, limit the number of neighbors to 
-                            ! 4 points in different quadrants
-                            do q = 1, 4
-                                found = .FALSE. 
-                                do k = 1, n1 
-                                    if (mp_var(k) .ne. missing_val .and. mp_now%quadrant(k) .eq. q) then 
-                                        if (found) then 
-                                            mp_var(k) = missing_val 
-                                        else
-                                            found = .TRUE. 
-                                        end if 
-                                    end if 
-                                end do 
-                            end do 
-
-                        end if  
-
-                        ! Eliminate neighbors outside of distance limit
-                        where(mp_now%dist .gt. max_distance) mp_var = missing_val
-
-                        ! Set all missing values to maximum distance
-                        where(mp_var .eq. missing_val) mp_now%dist  = ERR_DIST
-
-                        ! Check number of neighbors available for calculations
-                        ntot = count(mp_var .ne. missing_val)
-
-                        ! Check if a large fraction of neighbors are border points
-                        ! (if so, do not interpolate here)
-                        if ( (.not. fill_border) .and. ntot .gt. 0) then 
-                            if ( sum(mp_now%border,mask=mp_var.ne.missing_val)/dble(ntot) .gt. 0.25_dp ) &
-                                    ntot = 0
-                        end if 
-
-                        ! Apply appropriate interpolation calculation
-                        if ( ntot .gt. 1) then 
-
-                            ! Calculate the weighted average (using distance weighting)
-                            var2(i)        = weighted_ave(mp_var,real(mp_now%weight,dp),mask=mp_var .ne. missing_val)
-!                             var2(i)        = weighted_ave_shepard(mp_var,mp_now%dist,shepard_exponent=2.d0, &
-!                                                                   mask=mp_var .ne. missing_val)
-                            mask2_local(i) = 1
-
-                        else if (ntot .eq. 1) then
-                            k = minloc(mp_now%dist,1)
-                            var2(i)        = mp_var(k)
-                            mask2_local(i) = 1 
-                        else
-                            ! If no neighbors exist, field not mapped here.
-                            mask2_local(i) = 0  
-
-                        end if 
-
-                    case DEFAULT 
-
-                        write(*,*) "map_field:: method not recognized: "//trim(method)
-                        stop 
-
-                end select
-
-                    
-                ! Fill missing points with nearest neighbor if desired
-                ! Note, will not necessarily fill ALL points, if 
-                ! no neighbor can be found without a missing value
-                if ( fill_pts .and. (var2(i) .eq. missing_val)) then
-                    do k = 1, n1  
-                        if (var1(map%map(i)%i(k)) .ne. missing_val) then
-                            var2(i)  = var1(map%map(i)%i(k))
-                            mask2_local(i) = 2 
-                            exit 
-                        end if
-                    end do 
-                end if 
-
-            end if ! End packing mask check if-statement 
-
-        end do 
-
-        ! Avoid underflow errors
-        where (dabs(var2) .lt. 1d-12) var2 = 0.d0 
-
-!         write(*,*) "Mapped field: "//trim(name)
-
-!         if (count(var2 .eq. missing_val) .gt. 0) &
-!             write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
-
-!         if (count(mask2_local .eq. 0) .gt. 0 .and. .not. fill_pts) then 
-!             write(*,*) "Warning, array contains non-interpolated points."
-!             write(*,*) "Ensure that it was already properly intialized with data."
-!         end if 
-        
-        ! If interpolation mask available, send to output
-        if (present(mask2)) mask2 = mask2_local 
-
-        return
-    end subroutine map_field_points_points_double_0
-
 
 
     ! === HELPER SUBROUTINES === 
