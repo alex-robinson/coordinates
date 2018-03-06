@@ -388,20 +388,19 @@ contains
 
     end subroutine map_deallocate_map
 
-    subroutine map_calc_weights(map,pts1,pts2,shepard_exponent,lat_lim,lon_lim,dist_max)
+    subroutine map_calc_weights(map,pts1,pts2,shepard_exponent,lat_lim,dist_max)
         implicit none 
 
         type(map_class) :: map 
         type(points_class),   intent(IN)  :: pts1, pts2 
         real(dp),             intent(IN)  :: shepard_exponent
         real(dp),             intent(IN), optional :: lat_lim 
-        real(dp),             intent(IN), optional :: lon_lim
         real(dp),             intent(IN), optional :: dist_max   ! in units of pts2 axes!!
 
         real(dp), parameter :: DIST_ZERO_OFFSET = 1.0_dp  ! Change dist of zero to 1 m
         integer :: i, i1, kc, k, n 
         real(dp) :: x, y, lon, lat
-        real(dp) :: dist, lat_limit, lon_limit, dist_maximum 
+        real(dp) :: dist, lat_limit, dist_maximum 
 
         integer, parameter :: map_nmax = 1000   ! No more than 1000 neighbors 
         type(pt_wts_class) :: mp_all 
@@ -411,9 +410,6 @@ contains
         ! Limit neighborhood to search 
         lat_limit = 5.0_dp 
         if (present(lat_lim)) lat_limit = lat_lim
-
-        lon_limit = 5.0_dp 
-        if (present(lon_lim)) lon_limit = lon_lim
 
         ! Distances are handled in units of target points
         dist_maximum = ERR_DIST 
