@@ -1502,11 +1502,51 @@ contains
         real(dp), intent(IN),  optional :: missing_value 
         logical,  intent(IN),  optional :: mask_pack(:) 
 
+        ! Local variables 
+        real(dp) :: max_distance 
+        logical, allocatable :: maskp(:)
+        integer, allocatable :: mask2_local(:) 
+        
+        ! Set neighborhood radius to very large value (to include all neighbors)
+        ! or to radius specified by user
+        max_distance = 1E7_dp
+        if (present(radius)) max_distance = radius 
 
+        ! By default, all var2 points are interpolated
+        allocate(maskp(size(var2)))
+        maskp = .TRUE. 
+        if (present(mask_pack)) maskp = mask_pack 
+        
+        ! Initialize mask to show which points have been mapped
+        allocate(mask2_local(map%npts))
+        mask2_local = 0 
+        
 
+        ! Apply method of choice 
+        select case(trim(method))
 
+            case("nn","nearest")
 
+!                 call map_field_nearest()
 
+            case("bilinear")
+
+!                 call map_field_bilinear() 
+
+            case("quadrant")
+
+!                 call map_field_quadrant() 
+
+            case("radius","shepard")
+
+!                 call map_field_radius()
+
+            case DEFAULT 
+
+                write(*,*) "map_field:: error: method not recognized: "//trim(method)
+                stop 
+
+        end select 
 
         return 
 
