@@ -143,15 +143,14 @@ program test_ccsm3
 !     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="quadrant")
 !     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="quadrant")
     call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="bilinear")
-!     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="bilinear")
-!     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="bilinear")
+    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="bilinear")
+    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="bilinear")
 !     call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="nng",sigma=80.d0)
 !     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="nng",sigma=80.d0)
 !     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="nng",sigma=80.d0)
 
     ! Write new regional data to grid file 
-    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc")
-    stop 
+    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
     call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
     call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
     call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
