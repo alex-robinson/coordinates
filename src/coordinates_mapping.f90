@@ -1535,7 +1535,7 @@ contains
 
             case("bilinear")
 
-!                 call map_field_bilinear() 
+                call map_field_bilinear(map,maskp,var1,var2,mask2_local,max_distance,missing_val)
 
             case("quadrant")
 
@@ -1554,7 +1554,7 @@ contains
 
         ! If interpolation mask available, send to output
         if (present(mask2)) mask2 = mask2_local 
-        
+
         return 
 
     end subroutine map_field_points_points_double
@@ -1589,9 +1589,11 @@ contains
                 ! Get size of neighborhood 
                 n = size(map%map(i)%i)
                 
+                ! Store neighborhood variable values 
                 mp_var       = missing_val 
                 mp_var(1:n)  = var1(map%map(i)%i)
 
+                ! Find nearest available neighbor, save it if valid
                 k = minloc(map%map(i)%dist,mask=mp_var.ne.missing_val,dim=1)
                 if (map%map(i)%dist(k) .lt. max_distance) then
                     var2(i)  = mp_var(k) 
@@ -1606,6 +1608,61 @@ contains
 
     end subroutine map_field_nearest 
 
+    subroutine map_field_bilinear(map,maskp,var1,var2,mask2,max_distance,missing_val)
+
+        implicit none 
+
+
+        type(map_class), intent(IN)  :: map       ! Map information
+        logical,         intent(IN)  :: maskp(:)  ! Mask for which points should be interpolated 
+        real(dp),        intent(IN)  :: var1(:)   ! Source variable 
+        real(dp),        intent(OUT) :: var2(:)   ! Target grid variable 
+        integer,         intent(OUT) :: mask2(:)  ! Interpolation mask
+        real(dp),        intent(IN)  :: max_distance  
+        real(dp),        intent(IN)  :: missing_val 
+
+        ! Local variables 
+        integer :: i
+        real(dp), allocatable :: mp_var(:) 
+
+        ! Allocate a storage array to hold neighbors
+        ! (only need 4 neighbors for quadrant method)
+        allocate(mp_var(4))
+
+        ! Loop over the new grid points and perform mapping
+        do i = 1, map%npts 
+
+            if (maskp(i)) then ! Only perform calculations for packing mask points
+
+                if (count(map%map(i)%iquad.ne.ERR_IND).eq.4) then  
+                    ! All four neighbor locations are available, proceed... 
+
+                    ! Store the four neighbor values based on map indices
+                    mp_var(1:4) = var1(map%map(i)%iquad)
+
+                    if (count(mp_var(1:4).eq.missing_val).eq.0) then 
+                        ! All four variable values are available, proceed...
+
+                        var2(i)  = calc_bilin_point(mp_var(1),mp_var(2), &
+                                                    mp_var(3),mp_var(4), &
+                                                    map%map(i)%alpha1(1), &
+                                                    map%map(i)%alpha2(1), &
+                                                    map%map(i)%alpha3(1))
+                        
+                        mask2(i) = 1
+
+                    end if 
+
+                end if 
+
+            end if 
+
+        end do 
+                        
+        return 
+
+    end subroutine map_field_bilinear 
+    
     subroutine map_field_points_points_double_0(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
         ! Methods include "radius", "nn" (nearest neighbor), "quadrant"
         ! See `map_field_conservative_map1` for 1st order conservative mapping
