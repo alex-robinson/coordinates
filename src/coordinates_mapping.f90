@@ -404,8 +404,10 @@ contains
         real(dp) :: dist, lat_limit, lon_limit, dist_maximum 
 
         integer, parameter :: map_nmax = 1000   ! No more than 1000 neighbors 
-        integer  :: map_i(map_nmax), map_quadrant(map_nmax), map_border(map_nmax)
-        real(dp) :: map_x(map_nmax), map_y(map_nmax), map_dist(map_nmax)
+        type(pt_wts_class) :: mp_all 
+
+!         integer  :: map_i(map_nmax), map_quadrant(map_nmax), map_border(map_nmax)
+!         real(dp) :: map_x(map_nmax), map_y(map_nmax), map_dist(map_nmax)
         
         real :: start, finish
 
@@ -423,6 +425,9 @@ contains
         write(*,"(a,i12,a,f6.2,a,g12.3)") "Total points to calculate=",pts2%npts, &
                     "  lat_lim=",lat_limit, "  dist_max=",dist_maximum
 
+        ! Allocate the map to contain all neighbors within distance
+        call map_allocate_map(mp_all,map_nmax,nblin=1)
+
         ! For each grid point in the new grid,
         ! Find points within a rough radius,
         ! calculate the distance to the current point
@@ -437,12 +442,12 @@ contains
             lat = pts2%lat(i)
 
             ! Reset temp map values 
-            map_i        = ERR_IND
-            map_quadrant = 0 
-            map_border   = 0 
-            map_x        = 0.0_dp 
-            map_y        = 0.0_dp 
-            map_dist     = ERR_DIST 
+            mp_all%i        = ERR_IND
+            mp_all%quadrant = 0 
+            mp_all%border   = 0 
+            mp_all%x        = 0.0_dp 
+            mp_all%y        = 0.0_dp 
+            mp_all%dist     = ERR_DIST 
             
             ! Get distance in meters to current point on grid2
             ! for each point on grid1
@@ -471,36 +476,36 @@ contains
                     ! Find location to insert current neighbor to
                     ! keep distances sorted in ascending order 
                     do kc = 1, map_nmax
-                        if (dist .lt. map_dist(kc)) exit
+                        if (dist .lt. mp_all%dist(kc)) exit
                     end do 
 
                     if (kc .le. map%nmax .and. dist .lt. dist_maximum) then 
 
-                        ! Shift all other neighbors with larger distances to make room
-                        ! for new neighbor
+                        ! Shift all other neighbors with larger distances right
+                        ! to make room for new neighbor
                         if (kc .le. map%nmax-1) then 
-                            map_i(kc:map_nmax)        = cshift(map_i(kc:map_nmax),-1)
-                            map_x(kc:map_nmax)        = cshift(map_x(kc:map_nmax),-1)
-                            map_y(kc:map_nmax)        = cshift(map_y(kc:map_nmax),-1)
-                            map_dist(kc:map_nmax)     = cshift(map_dist(kc:map_nmax),-1)
-                            map_quadrant(kc:map_nmax) = cshift(map_quadrant(kc:map_nmax),-1)
-                            map_border(kc:map_nmax)   = cshift(map_border(kc:map_nmax),-1)
+                            mp_all%i(kc:map_nmax)        = cshift(mp_all%i(kc:map_nmax),-1)
+                            mp_all%x(kc:map_nmax)        = cshift(mp_all%x(kc:map_nmax),-1)
+                            mp_all%y(kc:map_nmax)        = cshift(mp_all%y(kc:map_nmax),-1)
+                            mp_all%dist(kc:map_nmax)     = cshift(mp_all%dist(kc:map_nmax),-1)
+                            mp_all%quadrant(kc:map_nmax) = cshift(mp_all%quadrant(kc:map_nmax),-1)
+                            mp_all%border(kc:map_nmax)   = cshift(mp_all%border(kc:map_nmax),-1)
                         end if 
 
                         ! Store new neighbor in current index 
-                        map_i(kc)      = i1 
-                        map_x(kc)      = pts1%x(i1)
-                        map_y(kc)      = pts1%y(i1) 
-                        map_dist(kc)   = dist 
-                        map_border(kc) = pts1%border(i1)
+                        mp_all%i(kc)      = i1 
+                        mp_all%x(kc)      = pts1%x(i1)
+                        mp_all%y(kc)      = pts1%y(i1) 
+                        mp_all%dist(kc)   = dist 
+                        mp_all%border(kc) = pts1%border(i1)
 
                         ! Get quadrants of neighbors
                         if (map%is_same_map .and. map%is_cartesian) then
                             ! Use cartesian points to determine quadrants
-                            map_quadrant(kc) = quadrant_cartesian(x,y,pts1%x(i1)*pts1%xy_conv,pts1%y(i1)*pts1%xy_conv)
+                            mp_all%quadrant(kc) = quadrant_cartesian(x,y,pts1%x(i1)*pts1%xy_conv,pts1%y(i1)*pts1%xy_conv)
                         else
                             ! Use planetary (latlon) points
-                            map_quadrant(kc) = quadrant_latlon(lon,lat,pts1%lon(i1),pts1%lat(i1))
+                            mp_all%quadrant(kc) = quadrant_latlon(lon,lat,pts1%lon(i1),pts1%lat(i1))
                         end if 
 
                     end if 
@@ -509,18 +514,18 @@ contains
             end do
 
             ! Store in neighborhood map now 
-            n=count(map_i .ne. ERR_IND)
+            n=count(mp_all%i .ne. ERR_IND)
             if (n .gt. 0) then 
                 n = min(n,map%nmax)   ! Limit neighbors to max_neighbors specified if needed
                 map%nn(i) = n         ! Store neighbor count
                 call map_allocate_map(map%map(i),n=n,nblin=1)
-                map%map(i)%i        = map_i(1:n)
-                map%map(i)%x        = map_x(1:n)
-                map%map(i)%y        = map_y(1:n)
-                map%map(i)%dist     = map_dist(1:n)
+                map%map(i)%i        = mp_all%i(1:n)
+                map%map(i)%x        = mp_all%x(1:n)
+                map%map(i)%y        = mp_all%y(1:n)
+                map%map(i)%dist     = mp_all%dist(1:n)
                 map%map(i)%weight   = 1.0_dp / (map%map(i)%dist**shepard_exponent)
-                map%map(i)%quadrant = map_quadrant(1:n)
-                map%map(i)%border   = map_border(1:n) 
+                map%map(i)%quadrant = mp_all%quadrant(1:n)
+                map%map(i)%border   = mp_all%border(1:n) 
                 map%map(i)%area     = 0.0_dp 
 
                 ! Sort the map by ascending distance 
@@ -604,9 +609,10 @@ contains
             do q = 1, 4
                 do k = 1, n1
                     if (mnow%quadrant(k) .eq. q) then
-                        ! Store first index of this quadrant that we find, skip the rest 
-!                         mnow%iquad(q) = mnow%i(k)
-                        mnow%iquad(q) = k 
+                        ! Store first index of this quadrant that we find,
+                        ! which should also be the closest since neighbors are sorted,
+                        ! then skip the rest 
+                        mnow%iquad(q) = mnow%i(k)
                         exit 
                     end if
                 end do
@@ -620,15 +626,11 @@ contains
                 ! calculate bilin weights 
 
                 ! Get indices of relevant neighbors
-!                 i1 = mnow%iquad(1)    ! Quadrant 1 (above-right of point)
-!                 i2 = mnow%iquad(2)    ! Quadrant 2 (above-left  of point)
-!                 i3 = mnow%iquad(3)    ! Quadrant 3 (below-left  of point)
-!                 i4 = mnow%iquad(4)    ! Quadrant 4 (below-right of point) 
-                i1 = mnow%i(mnow%iquad(1))    ! Quadrant 1 (above-right of point)
-                i2 = mnow%i(mnow%iquad(2))    ! Quadrant 2 (above-left  of point)
-                i3 = mnow%i(mnow%iquad(3))    ! Quadrant 3 (below-left  of point)
-                i4 = mnow%i(mnow%iquad(4))    ! Quadrant 4 (below-right of point) 
-                
+                i1 = mnow%iquad(1)    ! Quadrant 1 (above-right of point)
+                i2 = mnow%iquad(2)    ! Quadrant 2 (above-left  of point)
+                i3 = mnow%iquad(3)    ! Quadrant 3 (below-left  of point)
+                i4 = mnow%iquad(4)    ! Quadrant 4 (below-right of point) 
+
                 if (use_cartesian) then
                     ! Use cartesian values to determine distance
                     
@@ -1602,10 +1604,8 @@ contains
                         if (count(map%map(i)%iquad.ne.ERR_IND).eq.4) then 
                             ! All four neighbor locations are available, proceed... 
 
-                            do k = 1, 4
-                                k1 = map%map(i)%i(map%map(i)%iquad(k))
-                                map_now_var(k) = var1(k1)
-                            end do 
+                            ! Store the four neighbor values based on map indices
+                            map_now_var = var1(map%map(i)%iquad)
 
                             if (count(map_now_var(1:4).eq.missing_val).eq.0) then 
                                 ! All four variable values are available, proceed...

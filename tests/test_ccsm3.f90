@@ -29,7 +29,7 @@ program test_ccsm3
     character(len=256) :: file_new 
 
     double precision :: tmplon(128), tmplat(64)
-
+    
     ! =======================================================================
     !
     ! Step 1: Define global input grid and load data that will be used here
