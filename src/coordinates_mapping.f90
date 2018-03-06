@@ -405,7 +405,7 @@ contains
 
         integer, parameter :: map_nmax = 1000   ! No more than 1000 neighbors 
         type(pt_wts_class) :: mp_all 
-        
+
         real :: start, finish
 
         ! Limit neighborhood to search 
@@ -1484,6 +1484,38 @@ contains
     subroutine map_field_points_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
         ! Methods include "radius", "nn" (nearest neighbor), "quadrant"
         ! See `map_field_conservative_map1` for 1st order conservative mapping
+        ! This is `map_field_internal` basically and is 
+        ! a wrapper for calling specific methods 
+
+        implicit none 
+
+        type(map_class),  intent(IN)    :: map
+        character(len=*), intent(IN)    :: name 
+        real(dp),         intent(IN)    :: var1(:)
+        real(dp),         intent(INOUT) :: var2(:)
+        integer,          intent(OUT), optional :: mask2(:)
+        character(len=*), intent(IN) :: method
+
+        real(dp), intent(IN),  optional :: radius
+        logical,  intent(IN),  optional :: fill
+        logical,  intent(IN),  optional :: border 
+        real(dp), intent(IN),  optional :: missing_value 
+        logical,  intent(IN),  optional :: mask_pack(:) 
+
+
+
+
+
+
+
+        return 
+
+    end subroutine map_field_points_points_double
+
+
+    subroutine map_field_points_points_double_0(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
+        ! Methods include "radius", "nn" (nearest neighbor), "quadrant"
+        ! See `map_field_conservative_map1` for 1st order conservative mapping
         ! This is `map_field_internal` basically 
 
         implicit none 
@@ -1725,7 +1757,7 @@ contains
         if (present(mask2)) mask2 = mask2_local 
 
         return
-    end subroutine map_field_points_points_double
+    end subroutine map_field_points_points_double_0
 
 
 
