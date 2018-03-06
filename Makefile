@@ -65,7 +65,7 @@ else
 	               -fbacktrace -fcheck=all -fbackslash
 	endif
 	ifeq ($(debug), 2)
-	    DFLAGS   = -O3 -fbackslash -pg
+	    DFLAGS   = -fbackslash -pg
 	endif
 endif
 
