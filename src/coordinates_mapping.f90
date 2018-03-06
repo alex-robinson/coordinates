@@ -23,7 +23,7 @@ module coordinates_mapping
 
         ! For bilinear interpolation only:
         integer,  allocatable :: iquad(:) 
-        real(sp), allocatable :: alpha1(:), alpha2(:) 
+        real(sp), allocatable :: alpha1(:), alpha2(:), alpha3(:)  
     end type 
 
     
@@ -357,7 +357,8 @@ contains
         allocate(mp%iquad(nblin*4))
         allocate(mp%alpha1(nblin))
         allocate(mp%alpha2(nblin))
-
+        allocate(mp%alpha3(nblin))
+        
         return 
 
     end subroutine map_allocate_map
@@ -381,6 +382,7 @@ contains
         if (allocated(mp%iquad))    deallocate(mp%iquad)
         if (allocated(mp%alpha1))   deallocate(mp%alpha1)
         if (allocated(mp%alpha2))   deallocate(mp%alpha2)
+        if (allocated(mp%alpha3))   deallocate(mp%alpha3)
         
         return 
 
@@ -575,7 +577,8 @@ contains
         real(dp) :: dy1, dy1_tot 
         real(dp) :: dy2, dy2_tot 
         real(dp) :: dx, dx_tot, dy, dy_tot 
-        
+        real(dp) :: lat_mid_1, lat_mid_0   
+
         xy_conv = pts1%xy_conv 
 
         ! Initially set all 4 iquad indices to missing, 
@@ -583,6 +586,7 @@ contains
         mnow%iquad  = ERR_IND
         mnow%alpha1 = 0.0_dp
         mnow%alpha2 = 0.0_dp
+        mnow%alpha3 = 0.0_dp
         
         ! Get size of neighborhood 
         n1 = size(mnow%i)
@@ -595,7 +599,8 @@ contains
                 do k = 1, n1
                     if (mnow%quadrant(k) .eq. q) then
                         ! Store first index of this quadrant that we find, skip the rest 
-                        mnow%iquad(q) = mnow%i(k)
+!                         mnow%iquad(q) = mnow%i(k)
+                        mnow%iquad(q) = k 
                         exit 
                     end if
                 end do
@@ -609,20 +614,24 @@ contains
                 ! calculate bilin weights 
 
                 ! Get indices of relevant neighbors
-                i1 = mnow%iquad(1)    ! Quadrant 1 (above-right of point)
-                i2 = mnow%iquad(2)    ! Quadrant 2 (above-left  of point)
-                i3 = mnow%iquad(3)    ! Quadrant 3 (below-left  of point)
-                i4 = mnow%iquad(4)    ! Quadrant 4 (below-right of point) 
+!                 i1 = mnow%iquad(1)    ! Quadrant 1 (above-right of point)
+!                 i2 = mnow%iquad(2)    ! Quadrant 2 (above-left  of point)
+!                 i3 = mnow%iquad(3)    ! Quadrant 3 (below-left  of point)
+!                 i4 = mnow%iquad(4)    ! Quadrant 4 (below-right of point) 
+                i1 = mnow%i(mnow%iquad(1))    ! Quadrant 1 (above-right of point)
+                i2 = mnow%i(mnow%iquad(2))    ! Quadrant 2 (above-left  of point)
+                i3 = mnow%i(mnow%iquad(3))    ! Quadrant 3 (below-left  of point)
+                i4 = mnow%i(mnow%iquad(4))    ! Quadrant 4 (below-right of point) 
                 
                 if (use_cartesian) then
                     ! Use cartesian values to determine distance
                     
-                    dx1     = cartesian_distance(x,pts1%y(i2)*xy_conv, &
+                    dx1     = cartesian_distance(                 x,pts1%y(i2)*xy_conv, &
                                                  pts1%x(i2)*xy_conv,pts1%y(i2)*xy_conv)
                     dx1_tot = cartesian_distance(pts1%x(i1)*xy_conv,pts1%y(i2)*xy_conv, &
                                                  pts1%x(i2)*xy_conv,pts1%y(i2)*xy_conv)
                     
-                    dx2     = cartesian_distance(x,pts1%y(i3)*xy_conv, &
+                    dx2     = cartesian_distance(                 x,pts1%y(i3)*xy_conv, &
                                                  pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
                     dx2_tot = cartesian_distance(pts1%x(i4)*xy_conv,pts1%y(i3)*xy_conv, &
                                                  pts1%x(i3)*xy_conv,pts1%y(i3)*xy_conv)
@@ -640,37 +649,29 @@ contains
                 else
                     ! Use planetary (latlon) values
 
-                    dx1     = planet_distance(planet%a,planet%f,lon,pts1%lat(i2), &
-                                                pts1%lon(i2),pts1%lat(i2))
-                    dx1_tot = planet_distance(planet%a,planet%f,pts1%lon(i1),pts1%lat(i2), &
-                                                pts1%lon(i2),pts1%lat(i2))
+                    lat_mid_1 = 0.5_dp*(pts1%lat(i2)+pts1%lat(i1))
+                    lat_mid_0 = 0.5_dp*(pts1%lat(i3)+pts1%lat(i4))
                     
-                    dx2     = planet_distance(planet%a,planet%f,lon,pts1%lat(i3), &
-                                                pts1%lon(i3),pts1%lat(i3))
-                    dx2_tot = planet_distance(planet%a,planet%f,pts1%lon(i4),pts1%lat(i3), &
-                                                pts1%lon(i3),pts1%lat(i3))
+                    dx1     = planet_distance(planet%a,planet%f,         lon,  lat_mid_1, &
+                                                                pts1%lon(i2),pts1%lat(i2))
+                    dx1_tot = planet_distance(planet%a,planet%f,pts1%lon(i1),pts1%lat(i1), &
+                                                                pts1%lon(i2),pts1%lat(i2))
                     
-                    dy1     = planet_distance(planet%a,planet%f,pts1%lon(i4),lat, &
-                                                pts1%lon(i4),pts1%lat(i4))
-                    dy1_tot = planet_distance(planet%a,planet%f,pts1%lon(i4),pts1%lat(i1), &
-                                                pts1%lon(i4),pts1%lat(i4))
+                    dx2     = planet_distance(planet%a,planet%f,         lon,  lat_mid_0, &
+                                                                pts1%lon(i3),pts1%lat(i3))
+                    dx2_tot = planet_distance(planet%a,planet%f,pts1%lon(i4),pts1%lat(i4), &
+                                                                pts1%lon(i3),pts1%lat(i3))
                     
-                    dy2     = planet_distance(planet%a,planet%f,pts1%lon(i3),lat, &
-                                                pts1%lon(i3),pts1%lat(i3))
-                    dy2_tot = planet_distance(planet%a,planet%f,pts1%lon(i3),pts1%lat(i2), &
-                                                pts1%lon(i3),pts1%lat(i3))
+                    dy1     = planet_distance(planet%a,planet%f,         lon,        lat, &
+                                                                         lon,   lat_mid_0)
+                    dy1_tot = planet_distance(planet%a,planet%f,         lon,   lat_mid_1, &
+                                                                         lon,   lat_mid_0)
                     
                 end if 
 
-                dx     = 0.5_dp*(dx1+dx2)
-                dx_tot = 0.5_dp*(dx1_tot+dx2_tot)
-
-                dy     = 0.5_dp*(dy1+dy2)
-                dy_tot = 0.5_dp*(dy1_tot+dy2_tot)
-
-                if (dx_tot .gt. 0.0) mnow%alpha1 = dx / dx_tot 
-
-                if (dy_tot .gt. 0.0) mnow%alpha2 = dy / dy_tot
+                if (dx1_tot .gt. 0.0) mnow%alpha1 = dx1 / dx1_tot 
+                if (dx2_tot .gt. 0.0) mnow%alpha2 = dx2 / dx2_tot
+                if (dy1_tot .gt. 0.0) mnow%alpha3 = dy1 / dy1_tot
 
             end if
 
@@ -880,6 +881,7 @@ contains
         call nc_write(fnm,"mp_vec_iquad",   mp_vec%iquad,   dim1="point_4")
         call nc_write(fnm,"mp_vec_alpha1",  mp_vec%alpha1,  dim1="point")
         call nc_write(fnm,"mp_vec_alpha2",  mp_vec%alpha2,  dim1="point")
+        call nc_write(fnm,"mp_vec_alpha3",  mp_vec%alpha3,  dim1="point")
         
         ! Write generic map parameters
         call nc_write(fnm,"mtype",        map%mtype)
@@ -924,7 +926,7 @@ contains
         real(dp) :: tmp5(5) 
 
         type(pt_wts_class) :: mp_vec 
-        integer :: n_vec 
+        integer :: n_vec
 
         ! Determine filename automatically 
         fnm = map_filename(map,fldr)
@@ -991,6 +993,7 @@ contains
         call nc_read(fnm,"mp_vec_iquad",    mp_vec%iquad)
         call nc_read(fnm,"mp_vec_alpha1",   mp_vec%alpha1)
         call nc_read(fnm,"mp_vec_alpha2",   mp_vec%alpha2)
+        call nc_read(fnm,"mp_vec_alpha3",   mp_vec%alpha3)
         
         ! Allocate map%map 
         if (allocated(map%map)) deallocate(map%map)
@@ -1079,11 +1082,11 @@ contains
             ( 4.d0*(map%npts*8.d0) &
             + 2.d0*(n_vec*4.d0)    &
             + 5.d0*(n_vec*8.d0)    &
-            + 6.d0*(map%npts*4.d0) ) *7.6294d-6, " Mb"      
+            + 7.d0*(map%npts*4.d0) ) *7.6294d-6, " Mb"      
         ! 4 real arrays (8 bytes per value): x, y, lon, lat
         ! 3 integer array (4 bytes per value): i, quadrant, border
         ! 5 real arrays (8 bytes per value): x, y, dist, weight, area
-        ! 6 real arays (4 bytes per value): iquad, alpha1, alpha2 
+        ! 7 real arays (4 bytes per value): iquad, alpha1, alpha2, alpha3
         write(*,*)
         write(*,*) 
 
@@ -1484,9 +1487,10 @@ contains
         real(dp) :: shepard_exponent
         real(dp) :: max_distance, missing_val 
         integer,  dimension(:), allocatable   :: mask2_local
-        integer :: i, k, q, j, ntot, check, n1  
+        integer :: i, k, k1, q, j, ntot, check, n1  
         logical :: found 
-
+        logical  :: is_latlon 
+        
         character(len=56) :: method_now 
 
         integer :: nmax   ! Max of all neighbors
@@ -1496,6 +1500,10 @@ contains
 !         integer :: nmax   ! Max of all neighbors
 !         real(dp) :: map_now_var(nmax), map_now_dist(nmax), map_now_weight(nmax)
 !         integer  :: map_now_quadrant(nmax), map_now_border(nmax)
+    
+        ! Is target grid latlon? 
+        is_latlon = .TRUE. 
+        if ( (.not. map%is_projection) .and. map%is_cartesian) is_latlon = .FALSE. 
 
         ! Set neighborhood radius to very large value (to include all neighbors)
         ! or to radius specified by user
@@ -1576,17 +1584,31 @@ contains
                         if (count(map%map(i)%iquad.ne.ERR_IND).eq.4) then 
                             ! All four neighbor locations are available, proceed... 
 
-                            map_now_var(1:4) = var1(map%map(i)%iquad)
+                            do k = 1, 4
+                                k1 = map%map(i)%i(map%map(i)%iquad(k))
+                                map_now_var(k) = var1(k1)
+                            end do 
 
                             if (count(map_now_var(1:4).eq.missing_val).eq.0) then 
                                 ! All four variable values are available, proceed...
 
+                                ! Matteo's method:
+!                                 if (is_latlon) then 
+!                                     var2(i) = calc_bilin_point_0(map_now_var,map%map(i), &
+!                                                                  map%lon(i),map%lat(i),is_latlon)
+!                                 else
+!                                     var2(i) = calc_bilin_point_0(map_now_var,map%map(i), &
+!                                                                  map%x(i),map%y(i),is_latlon)
+!                                 end if 
+
                                 var2(i) = calc_bilin_point(map_now_var(1),map_now_var(2), &
                                                            map_now_var(3),map_now_var(4), &
                                                            map%map(i)%alpha1(1), &
-                                                           map%map(i)%alpha2(1))
+                                                           map%map(i)%alpha2(1), &
+                                                           map%map(i)%alpha3(1))
                                 
-                                mask2_local(i) = 1 
+                                mask2_local(i) = 1
+                                
                             end if 
 
                         end if 
@@ -1694,25 +1716,95 @@ contains
 
     ! === HELPER SUBROUTINES === 
 
-    function calc_bilin_point(z1,z2,z3,z4,alpha1,alpha2) result(var)
+    function calc_bilin_point(z1,z2,z3,z4,alpha1,alpha2,alpha3) result(var)
 
         implicit none 
 
         real(dp), intent(IN) :: z1, z2, z3, z4
-        real(sp), intent(IN) :: alpha1, alpha2
-        real(dp) :: var 
+        real(sp), intent(IN) :: alpha1, alpha2, alpha3
+        real(dp)             :: var 
 
         ! Local variables 
         real(dp) :: p0, p1 
 
-        p0  = z3 + alpha1*(z4-z3)
         p1  = z2 + alpha1*(z1-z2)
+        p0  = z3 + alpha2*(z4-z3)
         
-        var = p0 + alpha2*(p1-p0)
+        var = p0 + alpha3*(p1-p0)
 
         return 
 
     end function calc_bilin_point 
+
+
+    function calc_bilin_point_0(var0,mp,xnow,ynow,is_latlon) result(var)
+
+        implicit none 
+
+        real(dp),           intent(IN) :: var0(4) 
+        type(pt_wts_class), intent(IN) :: mp          ! Source grid weighting 
+        real(dp),           intent(IN) :: xnow, ynow    ! Target grid 
+        logical,            intent(IN) :: is_latlon
+        real(dp)                       :: var 
+
+        ! Local variables
+        integer :: iq(4)  
+        real(dp) :: d_x2_x, d_x_x1, d_x2_x1
+        real(dp) :: f_x_y1, f_x_y2 
+        real(dp) :: d_y2_y, d_y_y1, d_y2_y1
+
+        real(dp) :: x1, x2, y2, y3 
+        real(dp) :: z1, z2, z3, z4 
+
+        iq = mp%iquad 
+
+        x1 = mp%x(iq(1))
+        x2 = mp%x(iq(2))
+        y2 = mp%y(iq(2))
+        y3 = mp%y(iq(3))
+
+        z1 = var0(iq(1))
+        z2 = var0(iq(2))
+        z3 = var0(iq(3))
+        z4 = var0(iq(4))
+        
+        if (x1.lt.x2 .and. is_latlon) then
+            x1 = x1 + 360.0_dp
+        else if (x1.lt.x2) then 
+            write(*,*) "calc_bilin_point_0:: error: x(I) < x(II)!"
+            write(*,*) x1, x2 
+            stop 
+        end if 
+
+        if (y2.lt.y3) then 
+            write(*,*) "calc_bilin_point_0:: error: y(II) < y(III)!"
+            write(*,*) y2, y3 
+            stop 
+        end if 
+
+        d_x2_x = x1   - xnow
+        d_x_x1 = xnow - x2
+        d_x2_x1 = max(x1 - x2,1d-4)    ! Avoid divide by zero 
+
+        f_x_y1 = (d_x2_x*z3 + d_x_x1*z4) / d_x2_x1
+        f_x_y2 = (d_x2_x*z2 + d_x_x1*z1) / d_x2_x1
+
+        d_y2_y  = y2   - ynow
+        d_y_y1  = ynow - y3
+        d_y2_y1 = max(y2 - y3,1d-4)    ! Avoid divide by zero 
+
+        var = (d_y2_y*f_x_y1 + d_y_y1*f_x_y2) / d_y2_y1
+
+!         write(*,*) "calc_bilin_point_0"
+!         write(*,*) var0, xnow, ynow  
+!         write(*,*) iq 
+!         write(*,*) mp%x(iq)
+!         write(*,*) mp%y(iq)
+!         stop 
+
+        return 
+
+    end function calc_bilin_point_0 
 
     subroutine pack_neighbors(map,map_vec)
 
@@ -1765,6 +1857,7 @@ contains
             map_vec%iquad(k:k1)    = map(i)%iquad(1:4) 
             map_vec%alpha1(i)      = map(i)%alpha1(1) 
             map_vec%alpha2(i)      = map(i)%alpha2(1) 
+            map_vec%alpha3(i)      = map(i)%alpha3(1) 
             k = k1 + 1 
         end do 
 
@@ -1806,10 +1899,11 @@ contains
         k = 1
         do i = 1, size(map)
             k1 = k + 4 - 1
-            map(i)%iquad    = map_vec%iquad(k:k1)
-            map(i)%alpha1   = map_vec%alpha1(i)
-            map(i)%alpha2   = map_vec%alpha2(i)
-        
+            map(i)%iquad(1:4) = map_vec%iquad(k:k1)
+            map(i)%alpha1(1)  = map_vec%alpha1(i)
+            map(i)%alpha2(1)  = map_vec%alpha2(i)
+            map(i)%alpha3(1)  = map_vec%alpha3(i)
+            k = k1 + 1 
         end do 
 
 
@@ -1819,68 +1913,6 @@ contains
         return 
 
     end subroutine unpack_neighbors 
-
-    subroutine quadrant_search(dist,quadrant,max_distance)
-        ! Set distances to max distance if a neighbor in a given quadrant
-        ! has been found 
-
-        implicit none 
-
-        real(sp), dimension(:,:), intent(INOUT) :: dist 
-        integer,  dimension(:,:), intent(IN)    :: quadrant 
-!         logical,  dimension(:), intent(IN)      :: mask 
-        real(dp), intent(IN)                    :: max_distance 
-        integer :: i, q, k 
-        logical :: found 
-
-        ! For quadrant method, limit the number of neighbors to 
-        ! 4 points in different quadrants
-
-        do i = 1, size(dist,1)
-
-!             if (mask(i)) then 
-
-                do q = 1, 4 
-                    found = .FALSE. 
-                    do k = 1, size(dist,2)
-                        if (dist(i,k) .lt. max_distance .and. quadrant(i,k) .eq. q) then 
-                            if (found) then 
-                                dist(i,k) = max_distance 
-                            else
-                                found = .TRUE. 
-                            end if 
-                        end if 
-                    end do 
-                end do 
-
-!             end if
-
-        end do 
-
-        return
-
-    end subroutine quadrant_search
-
-    function n_quadrants(quadrant)
-
-        implicit none 
-
-        integer, intent(IN) :: quadrant(:) 
-        integer :: n_quadrants, q, k 
-
-        n_quadrants = 0 
-        do q = 1, 4
-            do k = 1, size(quadrant)
-                if (quadrant(k) .eq. q) then 
-                    n_quadrants = n_quadrants + 1
-                    exit 
-                end if 
-            end do 
-        end do 
-
-        return
-
-    end function n_quadrants
 
     subroutine points_density(density,pts,max_distance)
         ! Get the density of neighbors
