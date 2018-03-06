@@ -48,10 +48,9 @@ program test_ccsm3
                      x=tmplon,y=tmplat)
 !     call grid_init(gCCSM3,filename="maps/grid_CCSM3-T42.txt",x=tmplon,y=tmplat)
 
-    ! Write grid information to files
+    ! Write grid information to file
     call grid_write(gCCSM3,file_gCCSM3a,xnm="lon",ynm="lat",create=.TRUE.)
-    call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.)
-
+    
     ! Allocate arrays of the size of the global grid
     call grid_allocate(gCCSM3, CCSM3a%Ts)
     call grid_allocate(gCCSM3, CCSM3a%MB)
@@ -112,10 +111,6 @@ program test_ccsm3
                      dx=20.d0,nx=REG%nx,dy=20.d0,ny=REG%ny, &
                      lambda=REG%lambda,phi=REG%phi,alpha=REG%alpha)
 
-    ! Output grid to file
-    file_gREG = "output/ccsm3/grid_"//trim(REG%name)//"_quadrant.nc"
-    call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.)
-
     ! Allocate arrays of the size of the regional grid
     call grid_allocate(gREG, REG%Ts)
     call grid_allocate(gREG, REG%MB)
@@ -135,35 +130,31 @@ program test_ccsm3
     ! Initialize 'to' and 'fro' mappings
     ! max_neighbors is the maximum neighbors to be stored for each point
     ! lat_lim is the range of latitudes relative to a given point to check neighbor distances (to speed things up)
-    call map_init(mCCSM3_REG,gCCSM3,gREG,max_neighbors=6, lat_lim=3.0d0,dist_max=1000d0,fldr="maps",load=.TRUE.)
+    call map_init(mCCSM3_REG,gCCSM3,gREG,max_neighbors=20,lat_lim=3.0d0,dist_max=1000d0,fldr="maps",load=.TRUE.)
     call map_init(mREG_CCSM3,gREG,gCCSM3,max_neighbors=30,lat_lim=2.0d0,dist_max=1000d3,fldr="maps",load=.TRUE.)
 
+    ! === Quadrant method ===
+    file_gCCSM3b   = "output/ccsm3/grid_CCSM3-T42b_quadrant.nc"
+    file_gREG      = "output/ccsm3/grid_"//trim(REG%name)//"_quadrant.nc"
+    
     ! Map each field to the regional domain using the quadrant method (no max_distance required here)
-!     call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="quadrant")
-!     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="quadrant")
-!     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="quadrant")
-    call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="bilinear")
-    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="bilinear")
-    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="bilinear")
-!     call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="nng",sigma=80.d0)
-!     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="nng",sigma=80.d0)
-!     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="nng",sigma=80.d0)
+    call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="quadrant")
+    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="quadrant")
+    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="quadrant")
 
-    ! Write new regional data to grid file 
+    call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+    call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+    call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+
+    ! Write new regional data to grid file
+    call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
     call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
     call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
     call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
     call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
 
-    ! Map each field back to the CCSM3 domain using the radius method
-    call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
-    call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
-    call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
-!     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
-!     call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
-!     call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
-
     ! Write new CCSM3 data to grid file 
+    call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.)
     call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat")
     call nc_write(file_gCCSM3b,"MB",  CCSM3b%MB,  dim1="lon",dim2="lat")
     call nc_write(file_gCCSM3b,"Hs",  CCSM3b%Hs,  dim1="lon",dim2="lat")
@@ -171,10 +162,55 @@ program test_ccsm3
 
     ! Calculate statistics concerning remapping
     ! (as in Table 3 of Reerink et al, 2010)
+    write(*,*) "=== Quadrant method ==="
     call grid_stats("Ts",CCSM3a%Ts,CCSM3b%Ts,CCSM3b%mask)
     call grid_stats("MB",CCSM3a%MB,CCSM3b%MB,CCSM3b%mask)
     call grid_stats("Hs",CCSM3a%Hs,CCSM3b%Hs,CCSM3b%mask)
 
+    
+    ! === Bilinear method ===
+    file_gCCSM3b   = "output/ccsm3/grid_CCSM3-T42b_bilinear.nc"
+    file_gREG      = "output/ccsm3/grid_"//trim(REG%name)//"_bilinear.nc"
+    
+    call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="bilinear")
+    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="bilinear")
+    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="bilinear")
+
+    call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+    call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+    call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
+
+    ! Write new regional data to grid file
+    call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
+    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
+    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
+
+    ! Write new CCSM3 data to grid file 
+    call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.)
+    call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"MB",  CCSM3b%MB,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"Hs",  CCSM3b%Hs,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"mask",CCSM3b%mask,dim1="lon",dim2="lat")
+
+    ! Calculate statistics concerning remapping
+    ! (as in Table 3 of Reerink et al, 2010)
+    write(*,*) "=== Bilinear method ==="
+    call grid_stats("Ts",CCSM3a%Ts,CCSM3b%Ts,CCSM3b%mask)
+    call grid_stats("MB",CCSM3a%MB,CCSM3b%MB,CCSM3b%mask)
+    call grid_stats("Hs",CCSM3a%Hs,CCSM3b%Hs,CCSM3b%mask)
+
+
+    ! Other tests 
+
+!     call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="nng",sigma=80.d0)
+!     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="nng",sigma=80.d0)
+!     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="nng",sigma=80.d0)
+
+!     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
+!     call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
+!     call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
 
 contains
 

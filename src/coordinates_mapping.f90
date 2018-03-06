@@ -1592,15 +1592,6 @@ contains
                             if (count(map_now_var(1:4).eq.missing_val).eq.0) then 
                                 ! All four variable values are available, proceed...
 
-                                ! Matteo's method:
-!                                 if (is_latlon) then 
-!                                     var2(i) = calc_bilin_point_0(map_now_var,map%map(i), &
-!                                                                  map%lon(i),map%lat(i),is_latlon)
-!                                 else
-!                                     var2(i) = calc_bilin_point_0(map_now_var,map%map(i), &
-!                                                                  map%x(i),map%y(i),is_latlon)
-!                                 end if 
-
                                 var2(i) = calc_bilin_point(map_now_var(1),map_now_var(2), &
                                                            map_now_var(3),map_now_var(4), &
                                                            map%map(i)%alpha1(1), &
@@ -1608,7 +1599,7 @@ contains
                                                            map%map(i)%alpha3(1))
                                 
                                 mask2_local(i) = 1
-                                
+
                             end if 
 
                         end if 
@@ -1732,80 +1723,14 @@ contains
         
         var = p0 + alpha3*(p1-p0)
 
+        !if (alpha1 .eq. 0.0 .or. alpha2 .eq. 0.0 .or. alpha3 .eq. 0.0) then 
+!             write(*,"(10f8.2)") z1, z2, z3, z4, alpha1, alpha2, alpha3, p0, p1, var
+        !end if 
+
         return 
 
     end function calc_bilin_point 
-
-
-    function calc_bilin_point_0(var0,mp,xnow,ynow,is_latlon) result(var)
-
-        implicit none 
-
-        real(dp),           intent(IN) :: var0(4) 
-        type(pt_wts_class), intent(IN) :: mp          ! Source grid weighting 
-        real(dp),           intent(IN) :: xnow, ynow    ! Target grid 
-        logical,            intent(IN) :: is_latlon
-        real(dp)                       :: var 
-
-        ! Local variables
-        integer :: iq(4)  
-        real(dp) :: d_x2_x, d_x_x1, d_x2_x1
-        real(dp) :: f_x_y1, f_x_y2 
-        real(dp) :: d_y2_y, d_y_y1, d_y2_y1
-
-        real(dp) :: x1, x2, y2, y3 
-        real(dp) :: z1, z2, z3, z4 
-
-        iq = mp%iquad 
-
-        x1 = mp%x(iq(1))
-        x2 = mp%x(iq(2))
-        y2 = mp%y(iq(2))
-        y3 = mp%y(iq(3))
-
-        z1 = var0(iq(1))
-        z2 = var0(iq(2))
-        z3 = var0(iq(3))
-        z4 = var0(iq(4))
-        
-        if (x1.lt.x2 .and. is_latlon) then
-            x1 = x1 + 360.0_dp
-        else if (x1.lt.x2) then 
-            write(*,*) "calc_bilin_point_0:: error: x(I) < x(II)!"
-            write(*,*) x1, x2 
-            stop 
-        end if 
-
-        if (y2.lt.y3) then 
-            write(*,*) "calc_bilin_point_0:: error: y(II) < y(III)!"
-            write(*,*) y2, y3 
-            stop 
-        end if 
-
-        d_x2_x = x1   - xnow
-        d_x_x1 = xnow - x2
-        d_x2_x1 = max(x1 - x2,1d-4)    ! Avoid divide by zero 
-
-        f_x_y1 = (d_x2_x*z3 + d_x_x1*z4) / d_x2_x1
-        f_x_y2 = (d_x2_x*z2 + d_x_x1*z1) / d_x2_x1
-
-        d_y2_y  = y2   - ynow
-        d_y_y1  = ynow - y3
-        d_y2_y1 = max(y2 - y3,1d-4)    ! Avoid divide by zero 
-
-        var = (d_y2_y*f_x_y1 + d_y_y1*f_x_y2) / d_y2_y1
-
-!         write(*,*) "calc_bilin_point_0"
-!         write(*,*) var0, xnow, ynow  
-!         write(*,*) iq 
-!         write(*,*) mp%x(iq)
-!         write(*,*) mp%y(iq)
-!         stop 
-
-        return 
-
-    end function calc_bilin_point_0 
-
+    
     subroutine pack_neighbors(map,map_vec)
 
         implicit none 
