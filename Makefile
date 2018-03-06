@@ -41,11 +41,16 @@ ifeq ($(ifort),1)
 	LFLAGS	     = $(LIB_NC) 
 	SFLAGS       = 
 
+	DFLAGS   = -O3
+
 	ifeq ($(debug), 1)
 	    DFLAGS   = -C -g -traceback -ftrapuv -fpe0 -check all 
 	    # -w 
-	else
-	    DFLAGS   = -O3
+	endif
+
+	ifeq ($(debug), 2)
+	    DFLAGS   = -O3 -pg
+	    # -w 
 	endif
 else
 	## GFORTRAN OPTIONS ##
@@ -53,11 +58,14 @@ else
 	LFLAGS		   = $(LIB_NC)
 	SFLAGS       = 
 
+	DFLAGS   = -O3 -fbackslash
+
 	ifeq ($(debug), 1)
 	    DFLAGS   = -w -pg -ggdb -ffpe-trap=invalid,zero,overflow,underflow \
 	               -fbacktrace -fcheck=all -fbackslash
-	else
-	    DFLAGS   = -O3 -fbackslash
+	endif
+	ifeq ($(debug), 2)
+	    DFLAGS   = -O3 -fbackslash -pg
 	endif
 endif
 

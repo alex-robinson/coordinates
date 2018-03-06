@@ -1641,12 +1641,8 @@ contains
         real(dp),        intent(IN)  :: missing_val 
 
         ! Local variables 
-        integer :: i
-        real(dp), allocatable :: mp_var(:) 
-
-        ! Allocate a storage array to hold neighbors
-        ! (only need 4 neighbors for quadrant method)
-        allocate(mp_var(4))
+        integer  :: i
+        real(dp) :: mp_var(4)   ! Only four neighbors needed
 
         ! Loop over the new grid points and perform mapping
         do i = 1, map%npts 
@@ -1657,9 +1653,9 @@ contains
                     ! All four neighbor locations are available, proceed... 
 
                     ! Store the four neighbor values based on map indices
-                    mp_var(1:4) = var1(map%map(i)%iquad)
-
-                    if (count(mp_var(1:4).eq.missing_val).eq.0) then 
+                    mp_var = var1(map%map(i)%iquad)
+                    
+                    if (count(mp_var.eq.missing_val).eq.0) then 
                         ! All four variable values are available, proceed...
 
                         var2(i)  = calc_bilin_point(mp_var(1),mp_var(2), &
