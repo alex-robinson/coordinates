@@ -405,9 +405,6 @@ contains
 
         integer, parameter :: map_nmax = 1000   ! No more than 1000 neighbors 
         type(pt_wts_class) :: mp_all 
-
-!         integer  :: map_i(map_nmax), map_quadrant(map_nmax), map_border(map_nmax)
-!         real(dp) :: map_x(map_nmax), map_y(map_nmax), map_dist(map_nmax)
         
         real :: start, finish
 
@@ -479,11 +476,11 @@ contains
                         if (dist .lt. mp_all%dist(kc)) exit
                     end do 
 
-                    if (kc .le. map%nmax .and. dist .lt. dist_maximum) then 
+                    if (kc .le. map_nmax .and. dist .lt. dist_maximum) then 
 
                         ! Shift all other neighbors with larger distances right
                         ! to make room for new neighbor
-                        if (kc .le. map%nmax-1) then 
+                        if (kc .le. map_nmax-1) then 
                             mp_all%i(kc:map_nmax)        = cshift(mp_all%i(kc:map_nmax),-1)
                             mp_all%x(kc:map_nmax)        = cshift(mp_all%x(kc:map_nmax),-1)
                             mp_all%y(kc:map_nmax)        = cshift(mp_all%y(kc:map_nmax),-1)
@@ -638,7 +635,10 @@ contains
 
                 if (use_cartesian) then
                     ! Use cartesian values to determine distance
-                    
+                    ! Note: extra interpolation to y_mid_ points is not necessary
+                    ! on a Cartesian grid, but the form is kept to be consistent
+                    ! with the latlon grid algorithm 
+
                     y_mid_1 = 0.5_dp*(pts1%y(i2)+pts1%y(i1))
                     y_mid_0 = 0.5_dp*(pts1%y(i3)+pts1%y(i4))
                     
@@ -659,6 +659,9 @@ contains
                     
                 else
                     ! Use planetary (latlon) values
+                    ! Note: it is not strictly correct to average the latitudes
+                    ! evenly - this should be done proportionally to the distance,
+                    ! but to the first order it's ok. 
 
                     lat_mid_1 = 0.5_dp*(pts1%lat(i2)+pts1%lat(i1))
                     lat_mid_0 = 0.5_dp*(pts1%lat(i3)+pts1%lat(i4))
