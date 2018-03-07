@@ -1,21 +1,16 @@
-FC  = ifort
-INC_NC  = -I/home/fispalma22/work/librairies/netcdflib/include
-LIB_NC  = -L/home/fispalma22/work/librairies/netcdflib/lib -lnetcdf
+FC = ifort
 
-COORDROOT = /home/fispalma25/apps/coordinates
-INC_COORD = -I${COORDROOT}/.obj
-LIB_COORD = ${COORDROOT}/libcoordinates.a
+NETCDF_CROOT       = /home/fispalma22/work/librairies/netcdflib
+NETCDF_FORTRANROOT = /home/fispalma22/work/librairies/netcdflib
 
-INC_MKL = -I/opt/intel/mkl/include
-LIB_MKL = -L/opt/intel/mkl/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread
+INC_NC  = -I${NETCDF_FORTRANROOT}/include
+LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff -L${NETCDF_CROOT}/lib -lnetcdf
 
-LISROOT = /home/fispalma25/apps/lis/lis
-INC_LIS = -I${LISROOT}/include 
-LIB_LIS = -L${LISROOT}/lib/ -llis
+DFLAGS_NODEBUG = -O3 -fp-model precise -vec-report0
+DFLAGS_DEBUG   = -C -traceback -ftrapuv -fpe0 -check all -fp-model precise -vec-report0
+DFLAGS_PROFILE = -fp-model precise -pg
 
-FFLAGS  = -module $(objdir) -L$(objdir) $(INC_COORD)
-LFLAGS  = $(LIB_NC) $(LIB_COORD) $(LIB_LIS) $(LIB_MKL) -Wl,-zmuldefs
+FFLAGS_DEFAULT = -module $(objdir) -L$(objdir) $(INC_NC)
+FFLAGS_OPENMP  = $(FFLAGS_DEFAULT) -openmp
 
-DFLAGS_NODEBUG = -vec-report0 -O2 -fp-model precise
-DFLAGS_DEBUG   = -C -traceback -ftrapuv -fpe0 -check all -vec-report0 -fp-model precise
-DFLAGS_PROFILE = -vec-report0 -O2 -fp-model precise -pg
+LFLAGS  = $(LIB_NC)

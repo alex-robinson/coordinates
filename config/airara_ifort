@@ -1,23 +1,16 @@
 FC = ifort
-INC_NC  = -I/Users/robinson/apps/netcdf/4.4.1/include
-LIB_NC  = -L/Users/robinson/apps/netcdf/4.4.1/lib -lnetcdff  -lnetcdf
-INC_MKL = -I/opt/intel/mkl/include
-#LIB_MKL = -lmkl
-#LIB_MKL = -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread
-MKLROOT = /opt/intel/mkl
-TBBROOT = /opt/intel/tbb
-#LIB_MKL = -L$(TBBROOT)/lib  -L$(MKLROOT)/lib -Wl,-rpath,$(MKLROOT)/lib -lmkl_intel_lp64 -lmkl_tbb_thread -lmkl_core -ltbb -lstdc++ -lpthread -lm -ldl
 
-# For sequential running (no tbb library)
-LIB_MKL =  -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+NETCDF_CROOT       = /Users/robinson/apps/netcdf/4.4.1.1_ifort
+NETCDF_FORTRANROOT = /Users/robinson/apps/netcdf/4.4.1.1_ifort
 
-#INC_COORD = -I/
-#LIB_COORD = -L/
+INC_NC  = -I${NETCDF_FORTRANROOT}/include
+LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff -L${NETCDF_CROOT}/lib -lnetcdf
 
-FFLAGS  = -module $(objdir) -L$(objdir) 
-LFLAGS  = $(LIB_NC) $(LIB_MKL)
- 
-DFLAGS_NODEBUG = -O2 -fp-model precise
+DFLAGS_NODEBUG = -O3 -fp-model precise
 DFLAGS_DEBUG   = -C -traceback -ftrapuv -fpe0 -check all -fp-model precise
-DFLAGS_PROFILE = -O2 -fp-model precise -pg
+DFLAGS_PROFILE = -fp-model precise -pg
 
+FFLAGS_DEFAULT = -module $(objdir) -L$(objdir) $(INC_NC)
+FFLAGS_OPENMP  = $(FFLAGS_DEFAULT) -openmp
+
+LFLAGS  = $(LIB_NC)
