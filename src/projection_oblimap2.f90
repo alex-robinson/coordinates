@@ -97,7 +97,7 @@ CONTAINS
   SUBROUTINE projection_init(proj,name,planet,lambda,phi,alpha,x_e,y_n,method)
     
     IMPLICIT NONE
-
+    
     type(projection_class) :: proj 
     character(len=*)       :: name
     type(planet_class)     :: planet 

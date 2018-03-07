@@ -87,19 +87,19 @@ program test_ccsm3
     !
     ! =======================================================================
 
-!     REG%name = "ANT-20KM"
-!     REG%nx   = 281
-!     REG%ny   = 281 
-!     REG%lambda =   0.d0 
-!     REG%phi    = -90.d0
-!     REG%alpha  =  19.d0 
+    REG%name = "ANT-20KM"
+    REG%nx   = 281
+    REG%ny   = 281 
+    REG%lambda =   0.d0 
+    REG%phi    = -90.d0
+    REG%alpha  =  19.d0 
 
-    REG%name = "GRL-20KM"
-    REG%nx   = 76
-    REG%ny   = 151 
-    REG%lambda = 320.d0 
-    REG%phi    = 72.d0
-    REG%alpha  = 7.5d0
+!     REG%name = "GRL-20KM"
+!     REG%nx   = 76
+!     REG%ny   = 151 
+!     REG%lambda = 320.d0 
+!     REG%phi    = 72.d0
+!     REG%alpha  = 7.5d0
 
 !     REG%name = "HIM-20KM"
 !     REG%nx   = 200
@@ -140,9 +140,9 @@ program test_ccsm3
     file_gREG      = "output/ccsm3/grid_"//trim(REG%name)//"_quadrant.nc"
     
     ! Map each field to the regional domain using the quadrant method (no max_distance required here)
-    call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="bilinear")
-    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="bilinear")
-    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="bilinear") 
+    call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="quadrant")
+    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="quadrant")
+    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="quadrant") 
 
     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
     call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)

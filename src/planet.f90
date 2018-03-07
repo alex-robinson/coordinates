@@ -369,17 +369,75 @@ contains
         implicit none 
 
         real(dp), intent(IN)  :: lon1, lat1, lon2, lat2
-        integer :: quadrant, quadrant_latlon
+        integer :: quadrant_latlon
 
-        if( ((lon2 - lon1) .le.  180.0_dp .and. (lon2 - lon1) .gt. 0.0_dp) .or. &
-            ((lon2 - lon1) .le. -180.0_dp)) then
-            if(lat2 .gt. lat1) then
+        ! Local variables 
+        integer :: quadrant
+        real(dp) :: lon1r, lat1r, lon2r, lat2r
+        real(dp) :: rot_lon0, rot_lat0  
+        real(dp), parameter :: lat_lim = 80.0_dp 
+        real(dp) :: dlon 
+
+        lon1r = lon1 
+        lat1r = lat1 
+        lon2r = lon2 
+        lat2r = lat2 
+
+        ! Determine how far away in longitude two points are 
+        dlon = dabs(lon2r - lon1r)
+        if (dlon .gt. 180.0_dp) dlon = abs(dlon - 360.0_dp) 
+
+        ! Rotate latlon if first point is situated near the poles 
+        if (dlon .gt. 90.0_dp .and. dabs(lat1) > lat_lim) then 
+            ! Perform rotation 
+                
+            ! Set origin equal to first point 
+            rot_lon0 = lon1
+
+            if (lat1 > lat_lim) then  
+                ! North pole 
+                rot_lat0 = 0.0_dp - (90.0_dp-abs(lat1)) !lat1 
+            else 
+                ! South pole 
+                rot_lat0 = 0.0_dp + (90.0_dp-abs(lat1)) !lat1 
+            end if 
+
+            call rotated_grid_transform(lon1r,lat1r,lon1,lat1,rot_lon0,rot_lat0)
+            call rotated_grid_transform(lon2r,lat2r,lon2,lat2,rot_lon0,rot_lat0)
+            
+        else 
+            ! Use points as normal 
+
+            lon1r = lon1 
+            lat1r = lat1 
+            lon2r = lon2 
+            lat2r = lat2 
+
+        end if 
+        
+!         if (dlon .gt. 90.0_dp .and. lat1r .gt. lat_lim) then 
+!             ! North polar target point on the other side of planet,
+!             ! wrap around the latitude 
+
+!             lat2r = 90.0_dp + (90.0_dp-lat2r)
+
+!         else if (dlon .gt. 90.0_dp .and. lat1r .lt. -lat_lim) then 
+!             ! South polar target point on the other side of planet,
+!             ! wrap around the latitude 
+
+!             lat2r = -90.0_dp + (-90.0_dp-lat2r)
+
+!         end if 
+
+        if( ((lon2r - lon1r) .le.  180.0_dp .and. (lon2r - lon1r) .gt. 0.0_dp) .or. &
+            ((lon2r - lon1r) .le. -180.0_dp) ) then
+            if(lat2r .gt. lat1r) then
                 quadrant = 1
             else
                 quadrant = 4
             end if
         else
-            if(lat2 .gt. lat1) then
+            if(lat2r .gt. lat1r) then
                 quadrant = 2
             else
                 quadrant = 3
@@ -425,5 +483,69 @@ contains
         return
 
     end function quadrant_cartesian
+
+
+    subroutine rotated_grid_transform(lon_out,lat_out,lon_in,lat_in,rot_lon0,rot_lat0,reverse)
+        ! Rotate latlon coordinates to another projection 
+        ! ported from: http://es.mathworks.com/matlabcentral/fileexchange/43435-rotated-grid-transform?requestedDomain=true
+        ! and discussion: https://gis.stackexchange.com/questions/10808/manually-transforming-rotated-lat-lon-to-regular-lat-lon
+
+        real(dp), intent(OUT) :: lon_out, lat_out 
+        real(dp), intent(IN)  :: lon_in, lat_in 
+        real(dp), intent(IN)  :: rot_lon0, rot_lat0 
+        logical,  intent(IN), optional :: reverse 
+
+        ! Local variables 
+        logical  :: regular_to_rotated 
+        real(dp) :: lon, lat 
+        real(dp) :: SP_lon, SP_lat 
+        real(dp) :: theta, phi
+        real(dp) :: x, y, z  
+        real(dp) :: x_new, y_new, z_new 
+
+        regular_to_rotated = .TRUE. 
+        if (present(reverse)) regular_to_rotated = .not. reverse 
+
+        ! Convert input degrees to radians
+        lon = (lon_in*pi)/180
+        lat = (lat_in*pi)/180
+
+        ! Store rotation origin
+        SP_lon = rot_lon0
+        SP_lat = rot_lat0 
+
+        theta = (90.0_dp+SP_lat) *pi/180.0_dp  ! Rotation around y-axis
+        phi   = (SP_lon)         *pi/180.0_dp  ! Rotation around z-axis
+
+        x = cos(lon)*cos(lat) ! Convert from spherical to cartesian coordinates
+        y = sin(lon)*cos(lat)
+        z = sin(lat)
+
+        if (regular_to_rotated) then
+            ! Regular -> Rotated
+
+            x_new = cos(theta)*cos(phi)*x + cos(theta)*sin(phi)*y + sin(theta)*z
+            y_new = -sin(phi)*x + cos(phi)*y
+            z_new = -sin(theta)*cos(phi)*x - sin(theta)*sin(phi)*y + cos(theta)*z
+
+        else
+            ! Rotated -> Regular
+
+            phi   = -phi
+            theta = -theta
+
+            x_new = cos(theta)*cos(phi)*x + sin(phi)*y + sin(theta)*cos(phi)*z
+            y_new = -cos(theta)*sin(phi)*x + cos(phi)*y - sin(theta)*sin(phi)*z
+            z_new = -sin(theta)*x + cos(theta)*z
+
+        end if 
+
+        ! Convert cartesian back to spherical coordinates
+        lon_out = atan2(y_new,x_new)  * 180.0_dp/pi
+        lat_out = asin(z_new)         * 180.0_dp/pi
+
+        return 
+
+    end subroutine rotated_grid_transform
 
 end module planet
