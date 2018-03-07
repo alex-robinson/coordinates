@@ -8,6 +8,6 @@ DFLAGS_DEBUG   = -C -traceback -ftrapuv -fpe0 -check all -fp-model precise
 DFLAGS_PROFILE = -fp-model precise -pg
 
 FFLAGS_DEFAULT = -module $(objdir) -L$(objdir) $(INC_NC)
-FFLAGS_OPENMP  = $(FFLAGS_DEFAULT) -openmp
+FFLAGS_OPENMP  = $(FFLAGS_DEFAULT) -qopenmp
 
 LFLAGS  = $(LIB_NC)
