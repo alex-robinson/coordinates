@@ -1,0 +1,26 @@
+FC = ifort
+
+INC_NC  = -I/Users/robinson/apps/netcdf/4.4.1.1_ifort/include
+LIB_NC  = -L/Users/robinson/apps/netcdf/4.4.1.1_ifort/lib -lnetcdff  -lnetcdf
+
+COORDROOT = /Users/robinson/models/EURICE/coordinates
+INC_COORD = -I${COORDROOT}/.obj
+LIB_COORD = ${COORDROOT}/libcoordinates.a
+
+MKLROOT = /opt/intel/mkl
+INC_MKL = -I${MKLROOT}/include
+# For sequential running (no tbb library)
+LIB_MKL =  -L${MKLROOT}/lib -Wl,-rpath,${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+
+LISROOT = /Users/robinson/apps/lis/lis
+INC_LIS = -I${LISROOT}/include 
+LIB_LIS = -L${LISROOT}/lib/ -llis
+
+FFLAGS  = -module $(objdir) -L$(objdir) $(INC_COORD)
+LFLAGS  = $(LIB_NC) $(LIB_COORD) $(LIB_LIS) $(LIB_MKL) 
+#-Wl,-zmuldefs
+
+DFLAGS_NODEBUG = -O2 -fp-model precise
+DFLAGS_DEBUG   = -C -traceback -ftrapuv -fpe0 -check all -fp-model precise
+DFLAGS_PROFILE = -O2 -fp-model precise -pg
+

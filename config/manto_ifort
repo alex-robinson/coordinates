@@ -1,0 +1,27 @@
+FC  = ifort
+
+#NETCDF_FORTRANROOT = /home/robinson/apps/netcdf/netcdf
+#NETCDF_CROOT = ${NETCDF_FORTRANROOT}
+#INC_NC  = -I${NETCDF_FORTRANROOT}/include
+#LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff -L${NETCDF_CROOT}/lib -lnetcdf
+
+INC_NC  = -I/home/jalvarez/work/librairies/netcdflib/include
+LIB_NC  = -L/home/jalvarez/work/librairies/netcdflib/lib -lnetcdf
+
+COORDROOT = /home/robinson/apps/coordinates
+INC_COORD = -I${COORDROOT}/.obj
+LIB_COORD = ${COORDROOT}/libcoordinates.a
+
+MKLROOT = /opt/intel/mkl
+LIB_MKL = -L${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread
+
+LISROOT = /home/robinson/apps/lis/lis
+INC_LIS = -I${LISROOT}/include 
+LIB_LIS = -L${LISROOT}/lib/ -llis
+
+FFLAGS  = -module $(objdir) -L$(objdir) $(INC_COORD)
+LFLAGS  = $(LIB_NC) $(LIB_COORD) $(LIB_LIS) $(LIB_MKL) -Wl,-zmuldefs
+
+DFLAGS_NODEBUG = -O2 -fp-model precise
+DFLAGS_DEBUG   = -C -traceback -ftrapuv -fpe0 -check all -fp-model precise
+DFLAGS_PROFILE = -O2 -fp-model precise -pg
