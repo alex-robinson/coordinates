@@ -1,5 +1,6 @@
 module coordinates_mapping 
-    
+
+    !$ use omp_lib
     use coord_constants 
     use coordinates 
 
@@ -426,6 +427,8 @@ contains
         ! calculate the distance to the current point
         ! and store in map
         call cpu_time(start)
+
+        !$omp parallel do private(i,x,y,lon,lat,mp_all,i1,dist,kc,n)
         do i = 1, pts2%npts
                 
             ! Get current xy and latlon coordinates
@@ -551,6 +554,7 @@ contains
             if (mod(i,1000)==0) write(*,"(a,i10,a3,i12,a5,g12.3)")  &
                                     "  ",i, " / ",pts2%npts,"   : ",map%map(i)%dist(1)
         end do
+        !omp end parallel do
 
         call cpu_time(finish)
         write(*,"(a,a,f7.2)") "map_calc_weights:: "//trim(map%name1)//" => "//trim(map%name2)//": ", &
