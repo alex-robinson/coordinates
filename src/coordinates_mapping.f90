@@ -428,7 +428,8 @@ contains
         ! and store in map
         call cpu_time(start)
 
-        !$omp parallel do private(i,x,y,lon,lat,mp_all,i1,dist,kc,n)
+        !!!$omp parallel do private(i,x,y,lon,lat,mp_all,i1,dist,kc,n)
+        !$omp parallel do private(i,x,y,lon,lat,i1,dist,kc,n) firstprivate(mp_all)
         do i = 1, pts2%npts
                 
             ! Get current xy and latlon coordinates
