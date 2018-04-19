@@ -29,11 +29,10 @@ public :: diffuse2D, diff2D_timestep
 
 contains
 
-    subroutine filter_gaussian_dble(input,output,sigma,dx,mask,truncate)
+    subroutine filter_gaussian_dble(var,sigma,dx,mask,truncate)
         ! Wrapper for input as doubles
-        real(kind=8), intent(in)  :: input(:,:)
-        real(kind=8), intent(out) :: output(:,:)
-        real(kind=8), intent(in) :: sigma
+        real(kind=8), intent(inout) :: var(:,:)
+        real(kind=8), intent(in)    :: sigma
         real(kind=8), intent(in), optional :: dx 
         logical,      intent(in), optional :: mask(:,:) 
         real(kind=4), intent(in), optional :: truncate
@@ -45,28 +44,28 @@ contains
         real(kind=4), allocatable :: output4(:,:)
 
         ! Allocate local output array 
-        allocate(output4(size(output,1),size(output,2)))
+        allocate(output4(size(var,1),size(var,2)))
 
-        call filter_gaussian_float(real(input),output4,real(sigma),real(dx), &
-                                   mask,truncate)
+        output4 = real(var) 
+
+        call filter_gaussian_float(output4,real(sigma),real(dx),mask,truncate)
         
         ! Return a double array
-        output = dble(output4)
+        var = dble(output4)
 
         return 
 
     end subroutine filter_gaussian_dble
 
-    subroutine filter_gaussian_float(input,output,sigma,dx,mask,truncate)
+    subroutine filter_gaussian_float(var,sigma,dx,mask,truncate)
 
-        real(kind=4), intent(in)  :: input(:,:)
-        real(kind=4), intent(out) :: output(:,:)
-        real(kind=4), intent(in) :: sigma
+        real(kind=4), intent(inout) :: var(:,:)
+        real(kind=4), intent(in)    :: sigma
         real(kind=4), intent(in), optional :: dx 
         logical,      intent(in), optional :: mask(:,:) 
         real(kind=4), intent(in), optional :: truncate
 
-        real(kind=4), allocatable :: intmp(:,:), kernel(:,:)
+        real(kind=4), allocatable :: intmp(:,:), kernel(:,:), output(:,:) 
         real(kind=4) :: sigmap 
         integer :: nx, ny, nloop, i 
 
@@ -80,8 +79,8 @@ contains
         call gaussian_kernel(sigmap, kernel, truncate)
         
         nloop = 1
-        if (size(kernel,1) > size(input,1)+1 .or. &
-            size(kernel,2) > size(input,2)+1 ) then 
+        if (size(kernel,1) > size(var,1)+1 .or. &
+            size(kernel,2) > size(var,2)+1 ) then 
             nloop  = 4
             sigmap = sigmap/2.0
             call gaussian_kernel(sigmap, kernel, truncate)
@@ -89,12 +88,16 @@ contains
 
         ! Convolve as many times as necessary to acheive 
         ! desired level of smoothing 
-        allocate(intmp(size(input,1),size(input,2)))
-        intmp = input 
+        allocate(intmp(size(var,1),size(var,2)))
+        allocate(output(size(var,1),size(var,2)))
+        intmp = var 
         do i = 1, nloop
             call convolve(intmp, kernel, output, mask)
             intmp = output 
         end do 
+
+        ! Store final solution 
+        var = output 
 
         return 
 

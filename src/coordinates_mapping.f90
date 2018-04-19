@@ -1342,7 +1342,6 @@ contains
         real(dp) :: missing_val 
         integer :: nx2, ny2, npts2, npts1 
         character(len=24) :: method_local 
-        real(dp), dimension(:,:), allocatable :: var2tmp 
 
         method_local = trim(method)
         if (method .eq. "nng") method_local = "nn" 
@@ -1377,11 +1376,9 @@ contains
             if (present(fill)) then 
                 if (fill) call fill_nearest(var2,missing_value=missing_val)
             end if 
-
-            allocate(var2tmp(nx2,ny2))
-            var2tmp = var2 
-            call filter_gaussian(input=var2tmp,output=var2,sigma=sigma,dx=map%G%dx,&
-                        mask=reshape(mask_pack_vec,[nx2,ny2]) .and. var2tmp .ne. missing_val)
+             
+            call filter_gaussian(var=var2,sigma=sigma,dx=map%G%dx,&
+                        mask=reshape(mask_pack_vec,[nx2,ny2]) .and. var2 .ne. missing_val)
         
         end if 
 
@@ -1438,7 +1435,6 @@ contains
         logical,  dimension(:), allocatable :: mask_pack_vec 
         integer :: nx2, ny2, npts2
         character(len=24) :: method_local 
-        real(dp), dimension(:,:), allocatable :: var2tmp 
 
         method_local = trim(method)
         if (method .eq. "nng") method_local = "nn" 
@@ -1470,10 +1466,8 @@ contains
                 if (fill) call fill_nearest(var2,missing_value=missing_value)
             end if 
             
-            allocate(var2tmp(nx2,ny2))
-            var2tmp = var2 
-            call filter_gaussian(input=var2tmp,output=var2,sigma=sigma,dx=map%G%dx,&
-                        mask=reshape(mask_pack_vec,[nx2,ny2]) .and. var2tmp .ne. missing_value)
+            call filter_gaussian(var=var2,sigma=sigma,dx=map%G%dx,&
+                        mask=reshape(mask_pack_vec,[nx2,ny2]) .and. var2 .ne. missing_value)
         
         end if 
 
