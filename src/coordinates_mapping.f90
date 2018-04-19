@@ -428,8 +428,23 @@ contains
         ! and store in map
         call cpu_time(start)
 
-        !!!$omp parallel do private(i,x,y,lon,lat,mp_all,i1,dist,kc,n)
-        !$omp parallel do private(i,x,y,lon,lat,i1,dist,kc,n) firstprivate(mp_all)
+        ! Note: for older versions of the ifort compiler (eg v12),
+        ! the allocatable object mp_all appears not to be allocated inside
+        ! of the processing loop below. The solution for such older compilers 
+        ! is to use the following line:
+        !
+        ! !$omp parallel do private(i,x,y,lon,lat,i1,dist,kc,n) firstprivate(mp_all)
+        !
+        ! while for newer compilers, the following line works well:
+        !
+        ! !$omp parallel do private(i,x,y,lon,lat,mp_all,i1,dist,kc,n)
+        !
+        ! However, the solution for older compilers does not work for newer versions
+        ! of ifort (eg ifort v18). Therefore, the default is to keep the
+        ! newer solution activated, and revert to not using openmp with the
+        ! older compilers (or activate the old solution as needed).
+        
+        !$omp parallel do private(i,x,y,lon,lat,mp_all,i1,dist,kc,n)
         do i = 1, pts2%npts
                 
             ! Get current xy and latlon coordinates
