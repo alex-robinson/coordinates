@@ -65,9 +65,11 @@ module coordinates_mapping
     end interface
 
     interface map_field 
-        module procedure map_field_grid_grid_double,   map_field_points_points_double
-        module procedure map_field_grid_points_double, map_field_points_grid_double
-        module procedure map_field_grid_grid_integer,  map_field_points_points_integer
+        module procedure map_field_grid_grid_double,    map_field_points_points_double
+        module procedure map_field_grid_points_double,  map_field_points_grid_double
+        module procedure map_field_grid_grid_float,     map_field_points_points_float
+        module procedure map_field_grid_points_float,   map_field_points_grid_float
+        module procedure map_field_grid_grid_integer,   map_field_points_points_integer
         module procedure map_field_grid_points_integer, map_field_points_grid_integer
     end interface
 
@@ -1335,6 +1337,146 @@ contains
         return
 
     end subroutine map_field_points_points_integer
+
+    subroutine map_field_grid_grid_float(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
+
+        implicit none 
+
+        type(map_class), intent(IN)           :: map 
+        real(sp), dimension(:,:), intent(IN)   :: var1
+        real(sp), dimension(:,:), intent(OUT)  :: var2
+        integer,  dimension(:,:), intent(OUT), optional :: mask2
+        logical,  dimension(:,:), intent(IN), optional  :: mask_pack 
+        character(len=*) :: name, method
+        real(sp), optional :: radius, missing_value 
+        logical,  optional :: fill, border
+        real(dp) :: shepard_exponent
+
+        real(dp), dimension(:), allocatable   :: var2_vec
+        integer,  dimension(:), allocatable   :: mask2_vec
+        logical,  dimension(:), allocatable   :: mask_pack_vec 
+        integer :: nx2, ny2, npts2, npts1 
+
+        nx2   = size(var2,1)
+        ny2   = size(var2,2)
+        npts2  = nx2*ny2 
+        npts1 = size(var1,1)*size(var1,2)
+
+        allocate(var2_vec(npts2),mask2_vec(npts2),mask_pack_vec(npts2))
+        var2_vec = reshape(var2, [npts2])
+        mask_pack_vec = .TRUE. 
+        if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
+
+        call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2_vec, &
+                                     method,dble(radius),fill,border,dble(missing_value), &
+                                     mask_pack_vec)
+        
+        var2  = reshape(real(var2_vec,sp), [nx2,ny2])
+        if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
+
+        return
+
+    end subroutine map_field_grid_grid_float
+
+    subroutine map_field_grid_points_float(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
+
+        implicit none 
+
+        type(map_class), intent(IN)           :: map 
+        real(sp), dimension(:,:), intent(IN)   :: var1
+        real(sp), dimension(:), intent(OUT)    :: var2
+        integer,  dimension(:), intent(OUT), optional :: mask2
+        logical,  dimension(:), intent(IN),  optional :: mask_pack 
+        character(len=*) :: name, method
+        real(sp), optional :: radius, missing_value 
+        logical,  optional :: fill, border  
+        real(dp) :: shepard_exponent
+
+        real(dp), dimension(:), allocatable   :: var2_vec
+
+        integer :: npts1 
+
+        npts1 = size(var1,1)*size(var1,2)
+        allocate(var2_vec(size(var2)))
+
+        call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2, &
+                                     method,dble(radius),fill,border,dble(missing_value), &
+                                     mask_pack)
+
+        var2 = real(var2_vec,sp)
+
+        return
+
+    end subroutine map_field_grid_points_float
+
+    subroutine map_field_points_grid_float(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
+
+        implicit none 
+
+        type(map_class), intent(IN)           :: map 
+        real(sp), dimension(:), intent(IN)     :: var1
+        real(sp), dimension(:,:), intent(INOUT)  :: var2
+        integer,  dimension(:,:),  intent(OUT), optional :: mask2
+        logical,  dimension(:,:), intent(IN),  optional :: mask_pack 
+        
+        character(len=*) :: name, method
+        real(sp), optional :: radius, missing_value 
+        logical,  optional :: fill, border
+        real(dp) :: shepard_exponent
+
+        real(dp), dimension(:), allocatable   :: var2_vec
+        integer,  dimension(:), allocatable   :: mask2_vec
+        logical,  dimension(:), allocatable   :: mask_pack_vec 
+        integer :: nx2, ny2, npts2
+
+        nx2   = size(var2,1)
+        ny2   = size(var2,2)
+        npts2  = nx2*ny2 
+
+        allocate(var2_vec(npts2),mask2_vec(npts2),mask_pack_vec(npts2))
+        var2_vec = reshape(var2, (/npts2 /))
+        mask_pack_vec = .TRUE. 
+        if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
+
+        call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2_vec, &
+                                     method,dble(radius),fill,border,dble(missing_value), &
+                                     mask_pack_vec)
+        
+        var2  = reshape(real(var2_vec,sp),[nx2,ny2])
+        if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
+
+        return
+
+    end subroutine map_field_points_grid_float
+
+    subroutine map_field_points_points_float(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
+
+        implicit none 
+
+        type(map_class), intent(IN)          :: map 
+        real(sp), dimension(:), intent(IN)    :: var1
+        real(sp), dimension(:), intent(INOUT) :: var2
+        integer, dimension(:),  intent(OUT), optional :: mask2
+        logical,  dimension(:), intent(IN),  optional :: mask_pack 
+        
+        character(len=*) :: name, method
+        real(sp), optional :: radius, missing_value 
+        logical,  optional :: fill, border  
+        real(dp) :: shepard_exponent
+
+        real(dp), dimension(:), allocatable   :: var2_vec
+
+        allocate(var2_vec(size(var2)))
+
+        call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2, &
+                                     method,dble(radius),fill,border,dble(missing_value), &
+                                     mask_pack)
+
+        var2 = real(var2_vec,sp)
+
+        return
+
+    end subroutine map_field_points_points_float
 
     subroutine map_field_grid_grid_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack,sigma)
 
