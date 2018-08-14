@@ -1338,7 +1338,7 @@ contains
 
     end subroutine map_field_points_points_integer
 
-    subroutine map_field_grid_grid_float(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
+    subroutine map_field_grid_grid_float(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack,sigma)
 
         implicit none 
 
@@ -1348,14 +1348,24 @@ contains
         integer,  dimension(:,:), intent(OUT), optional :: mask2
         logical,  dimension(:,:), intent(IN), optional  :: mask_pack 
         character(len=*) :: name, method
-        real(sp), optional :: radius, missing_value 
+        real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
+        real(dp), optional :: sigma 
         real(dp) :: shepard_exponent
 
         real(dp), dimension(:), allocatable   :: var2_vec
         integer,  dimension(:), allocatable   :: mask2_vec
         logical,  dimension(:), allocatable   :: mask_pack_vec 
         integer :: nx2, ny2, npts2, npts1 
+        character(len=24) :: method_local
+        real(dp), dimension(:,:), allocatable :: var2dp 
+        real(dp) :: missing_val 
+
+        method_local = trim(method)
+        if (method .eq. "nng") method_local = "nn"
+
+        missing_val = MISSING_VALUE_DEFAULT
+        if (present(missing_value)) missing_val = missing_value
 
         nx2   = size(var2,1)
         ny2   = size(var2,2)
@@ -1368,11 +1378,32 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2_vec, &
-                                     method,dble(radius),fill,border,dble(missing_value), &
+                                     method,radius,fill,border,missing_value, &
                                      mask_pack_vec)
         
         var2  = reshape(real(var2_vec,sp), [nx2,ny2])
         if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
+
+        if (method .eq. "nng") then
+            if (.not. present(sigma)) then
+                write(*,*) "map_field:: error: method 'nng' requires &
+                           &that the optional sigma argument be specified."
+                stop
+            end if
+            
+            allocate(var2dp(nx2,ny2))
+            var2dp = dble(var2)
+
+            if (present(fill)) then
+                if (fill) call fill_nearest(var2dp,missing_value=missing_val)
+            end if
+
+            call filter_gaussian(var=var2dp,sigma=sigma,dx=map%G%dx,&
+                        mask=reshape(mask_pack_vec,[nx2,ny2]) .and. var2 .ne. missing_val)
+
+            var2 = real(var2dp,sp)
+
+        end if
 
         return
 
@@ -1388,7 +1419,7 @@ contains
         integer,  dimension(:), intent(OUT), optional :: mask2
         logical,  dimension(:), intent(IN),  optional :: mask_pack 
         character(len=*) :: name, method
-        real(sp), optional :: radius, missing_value 
+        real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border  
         real(dp) :: shepard_exponent
 
@@ -1400,7 +1431,7 @@ contains
         allocate(var2_vec(size(var2)))
 
         call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2, &
-                                     method,dble(radius),fill,border,dble(missing_value), &
+                                     method,radius,fill,border,missing_value, &
                                      mask_pack)
 
         var2 = real(var2_vec,sp)
@@ -1420,7 +1451,7 @@ contains
         logical,  dimension(:,:), intent(IN),  optional :: mask_pack 
         
         character(len=*) :: name, method
-        real(sp), optional :: radius, missing_value 
+        real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border
         real(dp) :: shepard_exponent
 
@@ -1439,7 +1470,7 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2_vec, &
-                                     method,dble(radius),fill,border,dble(missing_value), &
+                                     method,radius,fill,border,missing_value, &
                                      mask_pack_vec)
         
         var2  = reshape(real(var2_vec,sp),[nx2,ny2])
@@ -1460,7 +1491,7 @@ contains
         logical,  dimension(:), intent(IN),  optional :: mask_pack 
         
         character(len=*) :: name, method
-        real(sp), optional :: radius, missing_value 
+        real(dp), optional :: radius, missing_value 
         logical,  optional :: fill, border  
         real(dp) :: shepard_exponent
 
@@ -1469,7 +1500,7 @@ contains
         allocate(var2_vec(size(var2)))
 
         call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2, &
-                                     method,dble(radius),fill,border,dble(missing_value), &
+                                     method,radius,fill,border,missing_value, &
                                      mask_pack)
 
         var2 = real(var2_vec,sp)

@@ -8,6 +8,8 @@ module interp2D
     interface interp_bilinear 
         module procedure interp_bilinear_dble 
         module procedure interp_bilinear_points_dble
+        module procedure interp_bilinear_float 
+        module procedure interp_bilinear_points_float
     end interface
 
     interface interp_nearest 
@@ -42,6 +44,47 @@ module interp2D
 
 contains
 
+    function interp_bilinear_float(x,y,z,xout,yout,missing_value,mask,fill) result(zout)
+        ! Find closest x-indices and closest y-indices on original
+        ! grid (assume these and next indices will bracket our point)
+        ! Perform weighted interpolation 
+
+        implicit none 
+
+        real(sp), dimension(:) :: x, y, xout, yout 
+        real(sp), dimension(:,:) :: z
+        real(dp), optional :: missing_value 
+        logical, dimension(:,:), optional :: mask 
+        logical, optional :: fill 
+        real(sp), dimension(size(xout,1),size(yout,1)) :: zout 
+        
+        zout = real( interp_bilinear_dble(dble(x),dble(y),dble(z),dble(xout),dble(yout), &
+                                          missing_value,mask,fill), sp)
+
+        return 
+
+    end function interp_bilinear_float
+
+    function interp_bilinear_points_float(is_points,x,y,z,xout,yout,missing_value,mask) result(zout)
+        ! Find closest x-indices and closest y-indices on original
+        ! grid (assume these and next indices will bracket our point)
+        ! Perform bilinear interpolation to new points
+
+        implicit none 
+
+        logical :: is_points
+        real(sp), dimension(:) :: x, y, xout, yout 
+        real(sp), dimension(:,:) :: z
+        real(dp), optional :: missing_value 
+        logical, dimension(:), optional :: mask 
+        real(sp), dimension(size(xout,1)) :: zout 
+        
+        zout = real( interp_bilinear_points_dble(is_points,dble(x),dble(y),dble(z), &
+                                                 dble(xout),dble(yout),missing_value,mask), sp)
+
+        return 
+
+    end function interp_bilinear_points_float
 
     function interp_bilinear_dble(x,y,z,xout,yout,missing_value,mask,fill) result(zout)
         ! Find closest x-indices and closest y-indices on original
