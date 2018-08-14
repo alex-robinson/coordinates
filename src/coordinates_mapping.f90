@@ -1378,7 +1378,7 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2_vec, &
-                                     method,radius,fill,border,missing_value, &
+                                     method_local,radius,fill,border,missing_value, &
                                      mask_pack_vec)
         
         var2  = reshape(real(var2_vec,sp), [nx2,ny2])
