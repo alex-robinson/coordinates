@@ -1797,9 +1797,11 @@ contains
 
                 ! Find nearest available neighbor, save it if valid
                 k = minloc(map%map(i)%dist,mask=mp_var.ne.missing_val,dim=1)
-                if (map%map(i)%dist(k) .lt. max_distance) then
-                    var2(i)  = mp_var(k) 
-                    mask2(i) = 1
+                if (k .gt. 0) then 
+                    if (map%map(i)%dist(k) .lt. max_distance) then
+                        var2(i)  = mp_var(k) 
+                        mask2(i) = 1
+                    end if 
                 end if 
 
             end if 
