@@ -79,67 +79,67 @@ coord0-shared: $(coord_libs) $(objdir)/coord.o $(coord0_obj)
 
 # Program to test interpolations of CCSM3 data
 test_ccsm3: coord-static
-	$(FC) $(LDFLAGS) $(INC_COORD) -o $(bindir)/test_ccsm3.x $(testdir)/test_ccsm3.f90 $(LFLAGS) $(LIB_COORD) $(coord_libs)
+	$(FC) $(LDFLAGS) $(INC_COORD) -o $(bindir)/test_ccsm3.x $(testdir)/test_ccsm3.f90 $(LIB_COORD) $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_ccsm3.x is ready."
 	@echo " "
 
 test_etopo: coord-static
-	$(FC) $(LDFLAGS) -o $(bindir)/test_etopo.x $(testdir)/test_etopo.f90 $(objdir)/libcoordinates.a -L$(objdir) $(LFLAGS) $(coord_libs)
+	$(FC) $(LDFLAGS) -o $(bindir)/test_etopo.x $(testdir)/test_etopo.f90 $(objdir)/libcoordinates.a -L$(objdir) $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_etopo.x is ready."
 	@echo " "
 
 test_MAR: coord-static
-	$(FC) $(LDFLAGS) -o $(bindir)/test_MAR.x $(testdir)/test_MAR.f90 $(objdir)/libcoordinates.a -L$(objdir) $(LFLAGS) $(coord_libs)
+	$(FC) $(LDFLAGS) -o $(bindir)/test_MAR.x $(testdir)/test_MAR.f90 $(objdir)/libcoordinates.a -L$(objdir) $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_MAR.x is ready."
 	@echo " "
 
 test_subset: coord0-shared
-	$(FC) $(LDFLAGS) -o $(bindir)/test_subset.x $(testdir)/test_subset.f90 -L. -lcoordinates0 $(LFLAGS) $(coord_libs)
+	$(FC) $(LDFLAGS) -o $(bindir)/test_subset.x $(testdir)/test_subset.f90 -L. -lcoordinates0 $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_subset.x is ready."
 	@echo " "
 
 test_subset2: coord-shared
-	$(FC) $(LDFLAGS) -o $(bindir)/test_subset2.x $(testdir)/test_subset2.f90 -L. -lcoordinates $(LFLAGS) $(coord_libs)
+	$(FC) $(LDFLAGS) -o $(bindir)/test_subset2.x $(testdir)/test_subset2.f90 -L. -lcoordinates $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_subset2.x is ready."
 	@echo " "
 
 test_multigrid: coord-shared
-	$(FC) $(LDFLAGS) -o $(bindir)/test_multigrid.x $(testdir)/test_multigrid.f90 -L. -lcoordinates $(LFLAGS) $(coord_libs)
+	$(FC) $(LDFLAGS) -o $(bindir)/test_multigrid.x $(testdir)/test_multigrid.f90 -L. -lcoordinates $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_multigrid.x is ready."
 	@echo " "
 
 test_proj: coord-static
-	$(FC) $(LDFLAGS) -o $(bindir)/test_proj.x $(testdir)/test_proj.f90 $(objdir)/libcoordinates.a -L$(objdir) $(LFLAGS) $(coord_libs)
+	$(FC) $(LDFLAGS) -o $(bindir)/test_proj.x $(testdir)/test_proj.f90 $(objdir)/libcoordinates.a -L$(objdir) $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_proj.x is ready."
 	@echo " "
 
 test_proj_etopo1: coord-static
-	$(FC) $(LDFLAGS) -o $(bindir)/test_proj_etopo1.x $(testdir)/test_proj_etopo1.f90 $(objdir)/libcoordinates.a -L$(objdir) $(LFLAGS) $(coord_libs)
+	$(FC) $(LDFLAGS) -o $(bindir)/test_proj_etopo1.x $(testdir)/test_proj_etopo1.f90 $(objdir)/libcoordinates.a -L$(objdir) $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_proj_etopo1.x is ready."
 	@echo " "
 
 test_interp: coord-static
-	$(FC) $(LDFLAGS) -o $(bindir)/test_interp.x $(testdir)/test_interp.f90 $(objdir)/libcoordinates.a -L$(objdir) $(LFLAGS) $(coord_libs)
+	$(FC) $(LDFLAGS) -o $(bindir)/test_interp.x $(testdir)/test_interp.f90 $(objdir)/libcoordinates.a -L$(objdir) $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_interp.x is ready."
 	@echo " "
 
 test_climber: coord-static
-	$(FC) $(LDFLAGS) -o $(bindir)/test_climber.x $(testdir)/test_climber.f90 $(objdir)/libcoordinates.a -L$(objdir) $(LFLAGS) $(coord_libs)
+	$(FC) $(LDFLAGS) -o $(bindir)/test_climber.x $(testdir)/test_climber.f90 $(objdir)/libcoordinates.a -L$(objdir) $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_climber.x is ready."
 	@echo " "
 
 test_ccsm3diff: coord-static
-	$(FC) $(LDFLAGS) -o $(bindir)/test_ccsm3_diffusion.x $(testdir)/test_ccsm3_diffusion.f90 $(objdir)/libcoordinates.a -L$(objdir) $(LFLAGS) $(coord_libs)
+	$(FC) $(LDFLAGS) -o $(bindir)/test_ccsm3_diffusion.x $(testdir)/test_ccsm3_diffusion.f90 $(objdir)/libcoordinates.a -L$(objdir) $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_ccsm3_diffusion.x is ready."
 	@echo " "
