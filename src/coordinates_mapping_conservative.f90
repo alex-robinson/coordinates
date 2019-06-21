@@ -114,12 +114,23 @@ contains
 
                             area_tot    = sum(area,mask=area.gt.0.d0)
                             npt_now     = count(area.gt.0.0)
-                            
-                            pt_ave      = sum((area/area_tot)*var1_vec(mp(i)%i))
-                            pt_var      = (npt_now/(npt_now - 1.0)) &
-                                           * sum((area/area_tot)*(var1_vec(mp(i)%i)-pt_ave)**2)
-                    
-                            var2_vec(i) = sqrt(pt_var)
+
+                            if (npt_now .gt. 2) then
+                                ! Only calculate stdev for 2 or more input points
+
+                                pt_ave      = sum((area/area_tot)*var1_vec(mp(i)%i))
+                                pt_var      = (npt_now/(npt_now - 1.0)) &
+                                               * sum((area/area_tot)*(var1_vec(mp(i)%i)-pt_ave)**2)
+                                
+                                var2_vec(i) = sqrt(pt_var)
+
+                            else
+
+                                var2_vec(i) = mv 
+                                
+                            end if 
+
+                                
 
                     end select 
 
