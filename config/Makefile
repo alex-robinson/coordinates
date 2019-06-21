@@ -102,13 +102,13 @@ test_subset: coord0-shared
 	@echo "    $(bindir)/test_subset.x is ready."
 	@echo " "
 
-test_subset2: coord-shared
+test_subset2: coord-static
 	$(FC) $(LDFLAGS) -o $(bindir)/test_subset2.x $(testdir)/test_subset2.f90 -L. -lcoordinates $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_subset2.x is ready."
 	@echo " "
 
-test_multigrid: coord-shared
+test_multigrid: coord-static
 	$(FC) $(LDFLAGS) -o $(bindir)/test_multigrid.x $(testdir)/test_multigrid.f90 -L. -lcoordinates $(coord_libs) $(LFLAGS)
 	@echo " "
 	@echo "    $(bindir)/test_multigrid.x is ready."
