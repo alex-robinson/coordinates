@@ -1,7 +1,6 @@
 module grid_gen 
     ! This module is designed to generate various resolution
-    ! versions of the same grid, with interpolation between 
-    ! them, including staggered grids
+    ! versions of the same grid, with interpolation between them
 
     use coord_constants
     use coordinates 
@@ -21,7 +20,6 @@ module grid_gen
     private 
     public :: multigrid_class
     public :: multigrid_init 
-    public :: grid_gen_staggered
 
 contains 
 
@@ -136,17 +134,6 @@ contains
         return 
 
     end subroutine multigrid_init 
-
-
-    subroutine grid_gen_staggered()
-
-        implicit none 
-
-
-        return 
-
-    end subroutine grid_gen_staggered
-
 
 end module grid_gen 
 

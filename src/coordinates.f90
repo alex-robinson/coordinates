@@ -64,12 +64,15 @@ module coordinates
         logical :: is_lon180
         type(projection_class) :: proj
 
-        type(grid_axis_class) :: G
+        ! Points information
         integer :: npts
         real(dp), allocatable, dimension(:,:) :: x, y, lon, lat, area
         integer,  allocatable, dimension(:,:) :: border
         real(dp) :: xy_conv
 
+        ! Grid axes information 
+        type(grid_axis_class) :: G
+        
     end type 
 
     interface grid_init

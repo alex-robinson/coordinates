@@ -29,7 +29,7 @@ module coordinates_mapping
 
     
     type map_class
-        character (len=128) :: name1, name2     ! Names of coordinate set1 and set2
+        character (len=128) :: name1, name2     ! Names of coordinate set1 (source) and set2 (target)
         character (len=128) :: mtype
         character (len=128) :: units 
         type(planet_class)  :: planet 
@@ -755,6 +755,7 @@ contains
 
             do now = 1, size(x) 
                 
+                ! Define number of subgrid points to use for area calculation
                 nx = max(5,int(dx(now)/dxout))
                 ny = max(5,int(dy(now)/dyout))
                 npts = nx*ny 
@@ -763,6 +764,7 @@ contains
                 
                 npts_in   = 0
 
+                ! Determine how many subgrid points are inside of the target point boundaries
                 do j = 1, ny 
                     do i = 1, nx 
                         x1 = (x(now)-dx(now)/2.d0) + (dx(now))*dble(i-1)/dble(nx) + 0.5d0*1.d0/dble(nx)
@@ -771,6 +773,7 @@ contains
                     end do
                 end do 
                 
+                ! Get area of target point that current neighbor point contains
                 area(now) = dble(npts_in)/dble(npts) * dx(now)*dy(now) 
 
                 ! If the source points area adds up to the target cell area, exit loop
