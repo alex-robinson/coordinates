@@ -90,7 +90,7 @@ contains
                 area = mp(i)%area 
                 where (var1_vec(mp(i)%i) .eq. missing_val) area = 0.d0 
 
-                if (count(area.gt.0.d0)) then 
+                if (count(area.gt.0.d0) .gt. 0) then 
                     ! If an interpolation point was found, calculate interpolation 
 
                     select case(trim(method))
@@ -127,7 +127,7 @@ contains
                             else
 
                                 var2_vec(i) = mv 
-                                
+
                             end if 
 
                                 
