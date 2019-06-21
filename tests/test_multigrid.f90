@@ -61,7 +61,7 @@ program test
 
             if (trim(varname) .ne. "mask") then 
 !                 call map_field_conservative(mgrid%map_to(q),varname,var,var1)
-                call map_field_conservative_map1(mgrid%map_to(q)%map,varname,var,var1)
+                call map_field_conservative_map1(mgrid%map_to(q)%map,varname,var,var1,method="mean")
 
                 current_val = calc_grid_total(mgrid%grid(q)%G%x,mgrid%grid(q)%G%y,var1,xlim=xlim,ylim=ylim)
                 err_percent = 100.d0 * (current_val-target_val) / target_val
@@ -69,8 +69,10 @@ program test
                         target_val, current_val, err_percent                  
 
             else 
-                var1 = interp_nearest(x=grid%G%x,y=grid%G%y,z=var, &
-                                      xout=mgrid%grid(q)%G%x,yout=mgrid%grid(q)%G%y)
+!                 var1 = interp_nearest(x=grid%G%x,y=grid%G%y,z=var, &
+!                                       xout=mgrid%grid(q)%G%x,yout=mgrid%grid(q)%G%y)
+
+                call map_field_conservative_map1(mgrid%map_to(q)%map,varname,var,var1,method="count")
 
             end if 
 
@@ -89,7 +91,7 @@ program test
 !                 call map_field_conservative_smooth(mgrid%map_from(q),mgrid%map_to(q), &
 !                             mgrid%grid(q),grid,varname,var1,var2)
                 
-                call map_field_conservative_map1(mgrid%map_from(q)%map,varname,var1,var2)
+                call map_field_conservative_map1(mgrid%map_from(q)%map,varname,var1,var2,method="mean")
 
                 current_val = calc_grid_total(mgrid%grid(q)%G%x,mgrid%grid(q)%G%y,var1,xlim=xlim,ylim=ylim)
                 err_percent = 100.d0 * (current_val-target_val) / target_val
@@ -98,8 +100,11 @@ program test
 
             else 
 
-                var2 = interp_nearest(x=mgrid%grid(q)%G%x,y=mgrid%grid(q)%G%y,z=var1, &
-                                      xout=grid%G%x,yout=grid%G%y)
+!                 var2 = interp_nearest(x=mgrid%grid(q)%G%x,y=mgrid%grid(q)%G%y,z=var1, &
+!                                       xout=grid%G%x,yout=grid%G%y)
+
+                call map_field_conservative_map1(mgrid%map_from(q)%map,varname,var1,var2,method="count")
+
             end if 
 
             file_out = trim(outfldr)//trim(mgrid%grid(q)%name)//"_5KM"//trim(file_out_suffix)
