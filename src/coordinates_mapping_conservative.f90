@@ -90,7 +90,7 @@ contains
                 area = mp(i)%area 
                 where (var1_vec(mp(i)%i) .eq. missing_val) area = 0.d0 
 
-                if (sum(area) .gt. 0.d0) then 
+                if (count(area.gt.0.d0)) then 
                     ! If an interpolation point was found, calculate interpolation 
 
                     select case(trim(method))
@@ -114,7 +114,7 @@ contains
 
                             area_tot    = sum(area,mask=area.gt.0.d0)
                             npt_now     = count(area.gt.0.0)
-
+                            
                             pt_ave      = sum((area/area_tot)*var1_vec(mp(i)%i))
                             pt_var      = (npt_now/(npt_now - 1.0)) &
                                            * sum((area/area_tot)*(var1_vec(mp(i)%i)-pt_ave)**2)
