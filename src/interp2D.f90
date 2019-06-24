@@ -938,12 +938,15 @@ contains
     end function get_nn_indices_line 
 
 
-    subroutine fill_weighted_dble(z,missing_value,fill_value,n)
+    subroutine fill_weighted_dble(z,missing_value,fill_value,n,mask)
         implicit none 
-        double precision, dimension(:,:) :: z 
-        double precision :: missing_value 
-        double precision, optional :: fill_value
-        integer, optional :: n 
+        double precision, intent(INOUT) :: z(:,:) 
+        double precision, intent(IN)    :: missing_value 
+        double precision, intent(IN), optional :: fill_value
+        integer,          intent(IN), optional :: n 
+        logical,          intent(IN), optional :: mask(:,:) 
+
+        ! Local variables 
         integer :: nr 
         integer :: q, nx, ny, i, j
         integer, parameter :: qmax = 400 ! Iterations 
@@ -951,8 +954,10 @@ contains
         
         double precision, dimension (:,:), allocatable :: neighb, weight, weight0 
         double precision :: wtot, mval 
-        double precision, dimension(:,:), allocatable :: filled
-        integer, dimension(:,:), allocatable :: nquad 
+        double precision, allocatable :: filled(:,:)
+        integer, allocatable :: nquad(:,:) 
+        logical, allocatable :: mask_apply(:,:) 
+
         integer :: quadmin 
 
         nr = 4
@@ -964,6 +969,11 @@ contains
         allocate(filled(nx,ny))
         allocate(nquad(nx,ny))
         allocate(neighb(2*nr+1,2*nr+1),weight(2*nr+1,2*nr+1),weight0(2*nr+1,2*nr+1))
+
+        allocate(mask_apply(nx,ny)) 
+
+        mask_apply = .TRUE. 
+        if (present(mask)) mask_apply = mask 
 
         if (present(fill_value)) then
             where(z .eq. missing_value) z = fill_value 
@@ -1050,22 +1060,29 @@ contains
 
     ! Fill in missing values of an array with neighbor averages
     ! or with a specified fill_value
-    subroutine fill_mean_dble(var,missing_value,fill_value)
+    subroutine fill_mean_dble(var,missing_value,fill_value,mask)
         implicit none 
-        double precision, dimension(:,:) :: var 
-        double precision :: missing_value 
-        double precision, optional :: fill_value
+        double precision, intent(INOUT) :: var(:,:) 
+        double precision, intent(IN)    :: missing_value 
+        double precision, intent(IN), optional :: fill_value
+        logical,          intent(IN), optional :: mask(:,:) 
 
         integer :: q, nx, ny, i, j 
         integer, parameter :: qmax = 50 ! Iterations 
 
         double precision, dimension (3,3) :: neighb, weight
         double precision :: wtot, mval 
-        double precision, dimension(:,:), allocatable :: filled
+        double precision, allocatable :: filled(:,:)
+        logical, allocatable :: mask_apply(:,:)
+
         nx = size(var,1)
         ny = size(var,2) 
 
         allocate(filled(nx,ny))
+        allocate(mask_apply(nx,ny)) 
+
+        mask_apply = .TRUE. 
+        if (present(mask)) mask_apply = mask 
 
         if (present(fill_value)) then
             where(var .eq. missing_value) var = fill_value 
@@ -1077,26 +1094,31 @@ contains
 
             do i = 2, nx-1 
                 do j = 2, ny-1 
-                    neighb = var(i-1:i+1,j-1:j+1)
+                    
+                    if (count(mask_apply(i-1:i+1,j-1:j+1)) .gt. 1) then 
 
-                    weight = 0.d0 
-                    where (neighb .ne. missing_value) weight = 1.d0
-                    wtot = sum(weight)
+                        neighb = var(i-1:i+1,j-1:j+1)
 
-                    if (wtot .gt. 0.d0) then 
-                        mval = sum(neighb*weight)/wtot
-                        where (neighb .eq. missing_value) neighb = mval 
+                        weight = 0.d0 
+                        where (neighb .ne. missing_value) weight = 1.d0
+                        wtot = sum(weight)
+
+                        if (wtot .gt. 0.d0) then 
+                            mval = sum(neighb*weight)/wtot
+                            where (neighb .eq. missing_value) neighb = mval 
+                        end if 
+
+                        filled(i-1:i+1,j-1:j+1) = neighb 
+
                     end if 
-
-                    filled(i-1:i+1,j-1:j+1) = neighb 
 
                 end do 
             end do 
 
-            where(filled .ne. missing_value) var = filled 
+            where(filled .ne. missing_value .and. mask_apply) var = filled 
 
 !             write(*,*) q," : Missing values: ", count(var .eq. missing_value)
-            if ( count(var .eq. missing_value) .eq. 0 ) exit 
+            if ( count(var .eq. missing_value  .and. mask_apply) .eq. 0 ) exit 
         end do 
 
         return
