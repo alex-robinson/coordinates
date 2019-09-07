@@ -598,7 +598,7 @@ contains
     end subroutine points_init_from_file
 
     subroutine points_init_from_opts(pts,name,mtype,units,planet,lon180,x,y,dx,dy, &
-                                     lambda,phi,alpha,x_e,y_n,latlon)
+                                     lambda,phi,alpha,x_e,y_n,latlon,verbose)
 
         use oblimap_projection_module 
 
@@ -613,7 +613,11 @@ contains
         logical, optional  :: lon180
         real(dp), optional :: lambda, phi, alpha, x_e, y_n 
         logical, optional :: latlon 
+        logical, optional :: verbose 
+        
+        ! Local variables 
         logical :: latlon_in 
+        logical :: verbose_in 
         integer :: i, nborder 
         integer, allocatable :: tmpi(:)
 
@@ -622,6 +626,9 @@ contains
         pts%mtype = trim(mtype)
         pts%units = trim(units)
         
+        verbose_in = .TRUE. 
+        if (present(verbose)) verbose_in = verbose 
+
         ! Also define the standard cf name
         select case(trim(pts%mtype))
             case("latlon")
@@ -769,8 +776,8 @@ contains
                 where( pts%lon .gt. 180.0_dp ) pts%lon = pts%lon - 360.0_dp 
         end if 
 
-        ! Print a summary of the set of points 
-        call points_print(pts)
+        ! Print a summary of the set of points if desired
+        if (verbose_in) call points_print(pts)
 
         return 
 
