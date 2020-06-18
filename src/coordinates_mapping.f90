@@ -1231,7 +1231,7 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2_vec, &
-                                     method,radius,fill,border,missing_value, &
+                                     method,radius,border,missing_value, &
                                      mask_pack_vec)
         
         var2  = reshape(nint(var2_vec), [nx2,ny2])
@@ -1263,7 +1263,7 @@ contains
         allocate(var2_vec(size(var2)))
 
         call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2, &
-                                     method,radius,fill,border,missing_value, &
+                                     method,radius,border,missing_value, &
                                      mask_pack)
 
         var2 = int(var2_vec)
@@ -1302,7 +1302,7 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2_vec, &
-                                     method,radius,fill,border,missing_value, &
+                                     method,radius,border,missing_value, &
                                      mask_pack_vec)
         
         var2  = reshape(nint(var2_vec),[nx2,ny2])
@@ -1332,7 +1332,7 @@ contains
         allocate(var2_vec(size(var2)))
 
         call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2, &
-                                     method,radius,fill,border,missing_value, &
+                                     method,radius,border,missing_value, &
                                      mask_pack)
 
         var2 = nint(var2_vec)
@@ -1381,7 +1381,7 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2_vec, &
-                                     method_local,radius,fill,border,missing_value, &
+                                     method_local,radius,border,missing_value, &
                                      mask_pack_vec)
         
         var2  = reshape(real(var2_vec,sp), [nx2,ny2])
@@ -1434,7 +1434,7 @@ contains
         allocate(var2_vec(size(var2)))
 
         call map_field_points_points_double(map,name,reshape(dble(var1),[npts1]),var2_vec,mask2, &
-                                     method,radius,fill,border,missing_value, &
+                                     method,radius,border,missing_value, &
                                      mask_pack)
 
         var2 = real(var2_vec,sp)
@@ -1473,7 +1473,7 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2_vec, &
-                                     method,radius,fill,border,missing_value, &
+                                     method,radius,border,missing_value, &
                                      mask_pack_vec)
         
         var2  = reshape(real(var2_vec,sp),[nx2,ny2])
@@ -1503,7 +1503,7 @@ contains
         allocate(var2_vec(size(var2)))
 
         call map_field_points_points_double(map,name,dble(var1),var2_vec,mask2, &
-                                     method,radius,fill,border,missing_value, &
+                                     method,radius,border,missing_value, &
                                      mask_pack)
 
         var2 = real(var2_vec,sp)
@@ -1552,7 +1552,7 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2_vec,mask2_vec, &
-                                     method_local,radius,fill,border,missing_val, &
+                                     method_local,radius,border,missing_val, &
                                      mask_pack_vec)
     
         var2  = reshape(var2_vec, [nx2,ny2])
@@ -1598,7 +1598,7 @@ contains
         npts1 = size(var1,1)*size(var1,2)
 
         call map_field_points_points_double(map,name,reshape(var1,[npts1]),var2,mask2, &
-                                     method,radius,fill,border,missing_value, &
+                                     method,radius,border,missing_value, &
                                      mask_pack)
 
         return
@@ -1641,7 +1641,7 @@ contains
         if (present(mask_pack)) mask_pack_vec = reshape(mask_pack,[npts2])
 
         call map_field_points_points_double(map,name,var1,var2_vec,mask2_vec, &
-                                     method_local,radius,fill,border,missing_value, &
+                                     method_local,radius,border,missing_value, &
                                      mask_pack_vec)
         
         var2  = reshape(var2_vec, [nx2,ny2])
@@ -1667,7 +1667,7 @@ contains
 
     end subroutine map_field_points_grid_double
 
-    subroutine map_field_points_points_double(map,name,var1,var2,mask2,method,radius,fill,border,missing_value,mask_pack)
+    subroutine map_field_points_points_double(map,name,var1,var2,mask2,method,radius,border,missing_value,mask_pack)
         ! Methods include "radius", "nn" (nearest neighbor), "quadrant"
         ! See `map_field_conservative_map1` for 1st order conservative mapping
         ! This is `map_field_internal` basically and is 
@@ -1683,7 +1683,6 @@ contains
         character(len=*), intent(IN) :: method
 
         real(dp), intent(IN),  optional :: radius
-        logical,  intent(IN),  optional :: fill
         logical,  intent(IN),  optional :: border 
         real(dp), intent(IN),  optional :: missing_value 
         logical,  intent(IN),  optional :: mask_pack(:) 
@@ -1747,19 +1746,6 @@ contains
         ! If interpolation mask available, send to output
         if (present(mask2)) mask2 = mask2_local 
 
-
-        ! === Summary === 
-
-!         write(*,*) "Mapped field: "//trim(name)
-
-!         if (count(var2 .eq. missing_val) .gt. 0) &
-!             write(*,*) "   **missing points remaining: ", count(var2 .eq. missing_val)
-
-!         if (count(mask2_local .eq. 0) .gt. 0 .and. .not. fill_pts) then 
-!             write(*,*) "Warning, array contains non-interpolated points."
-!             write(*,*) "Ensure that it was already properly intialized with data."
-!         end if 
-        
         return 
 
     end subroutine map_field_points_points_double
