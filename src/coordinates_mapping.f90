@@ -1647,6 +1647,14 @@ contains
         var2  = reshape(var2_vec, [nx2,ny2])
         if (present(mask2)) mask2 = reshape(mask2_vec,[nx2,ny2])
 
+        ! Fill missing values if requested
+        if (present(fill)) then 
+            !if (fill) call fill_nearest(var2,missing_value=missing_value)               ! Old routine  < 2020.06.18
+            if (fill) call fill_nearest(var2,missing_value,fill_value=missing_value, &   ! New routine >= 2020.06.18
+                                                fill_dist=1d20,n=5,dx=map%G%dx)    
+        end if 
+        
+        ! Apply additional Gaussian smoothing if method==nng
         if (method .eq. "nng") then 
             if (.not. present(sigma)) then 
                 write(*,*) "map_field:: error: method 'nng' requires &
@@ -1654,10 +1662,6 @@ contains
                 stop 
             end if 
 
-            if (present(fill)) then 
-                if (fill) call fill_nearest(var2,missing_value=missing_value)
-            end if 
-            
             call filter_gaussian(var=var2,sigma=sigma,dx=map%G%dx,&
                         mask=reshape(mask_pack_vec,[nx2,ny2]) .and. var2 .ne. missing_value)
         
