@@ -49,8 +49,9 @@ $(objdir)/coordinates_mapping_conservative.o: $(srcdir)/coordinates_mapping_cons
 								 $(objdir)/coordinates.o $(objdir)/coordinates_mapping.o
 	$(FC) $(LDFLAGS) -c -o $@ $<
 
-$(objdir)/coordinates_mapping_scrips.o: $(srcdir)/coordinates_mapping_scrips.f90 \
-								 $(objdir)/coordinates.o $(objdir)/coordinates_mapping_scrips.o
+$(objdir)/coordinates_mapping_scrip.o: $(srcdir)/coordinates_mapping_scrip.f90 \
+								 $(objdir)/coordinates.o $(objdir)/coordinates_mapping_scrip.o \
+								 $(objdir)/ncio.o
 	$(FC) $(LDFLAGS) -c -o $@ $<
 
 $(objdir)/interp2D_conservative.o: $(srcdir)/interp2D_conservative.f90 \
@@ -83,7 +84,7 @@ coord_obj = $(objdir)/coord_constants.o \
 		    $(objdir)/coordinates.o \
 		    $(objdir)/coordinates_mapping.o \
 		    $(objdir)/coordinates_mapping_conservative.o \
-		    $(objdir)/coordinates_mapping_scrips.o \
+		    $(objdir)/coordinates_mapping_scrip.o \
 		    $(objdir)/subset2.o \
 		    $(objdir)/grid_gen.o \
 		    $(objdir)/interp2D_conservative.o

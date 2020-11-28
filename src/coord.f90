@@ -18,7 +18,8 @@ module coord
     use coordinates     ! grid_class, points_class and init methods    
     use coordinates_mapping
     use coordinates_mapping_conservative 
-     
+    use coordinates_mapping_scrip
+
     use subset2 
 !     use subset1 
     use grid_gen 

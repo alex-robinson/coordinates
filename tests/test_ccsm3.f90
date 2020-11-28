@@ -32,6 +32,18 @@ program test_ccsm3
 
     integer :: q 
 
+    character(len=512) :: file_scrips_wts
+    type(map_scrip_class) :: mps
+
+    ! ==== SCRIPS testing ========
+
+    file_scrips_wts = "grids/conwts_ccsm3_latlon.nc"
+    call map_scrip_load(mps,file_scrips_wts)
+
+    stop 
+    
+    ! ============================
+
     ! =======================================================================
     !
     ! Step 1: Define global input grid and load data that will be used here
