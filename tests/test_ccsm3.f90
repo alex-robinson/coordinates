@@ -37,11 +37,11 @@ program test_ccsm3
 
     ! ==== SCRIPS testing ========
 
-    file_scrips_wts = "grids/conwts_ccsm3_latlon.nc"
+    file_scrips_wts = "grids/mapscrip_ccsm3_ANT-20KM.nc"
     call map_scrip_load(mps,file_scrips_wts)
 
-    stop 
-    
+    !stop 
+
     ! ============================
 
     ! =======================================================================
@@ -224,6 +224,16 @@ program test_ccsm3
 !     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
 !     call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
 !     call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
+    
+    ! SCRIP interpolation weights 
+    write(*,*) "=== SCRIP method ==="
+    call map_scrip_field(REG%Ts,CCSM3a%Ts,mps,normalize_opt='fracarea')
+
+    file_gREG      = "output/ccsm3/grid_"//trim(REG%name)//"_scrip.nc"
+    
+    call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
+    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
+    
 
 contains
 

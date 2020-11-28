@@ -42,6 +42,66 @@ module coordinates_mapping_scrip
 contains 
 
     
+    subroutine map_scrip_field(dst,src,map,normalize_opt)
+        ! Load a map_scrip_class object into memory
+        ! from a netcdf file. 
+
+        implicit none 
+
+        real(8), intent(OUT) :: dst(:,:) 
+        real(8), intent(IN)  :: src(:,:) 
+        type(map_scrip_class), intent(IN) :: map 
+        character(len=*), intent(IN)  :: normalize_opt
+
+        ! Local variables 
+        integer :: n 
+        real(8), allocatable :: dst_array(:) 
+        real(8), allocatable :: src_array(:) 
+        
+        allocate(dst_array(map%dst_grid_size))
+        allocate(src_array(map%src_grid_size))
+        
+        dst_array = 0.0
+        src_array = reshape(src,[map%src_grid_size])
+
+        select case(trim(normalize_opt))
+        
+            case ('fracarea')
+
+                do n = 1,map%num_links
+                    dst_array(map%dst_address(n)) = dst_array(map%dst_address(n)) +      &
+                                    map%remap_matrix(1,n)*src_array(map%src_address(n))
+                end do
+
+            case ('destarea')
+
+                do n = 1, map%num_links
+                    dst_array(map%dst_address(n)) = dst_array(map%dst_address(n)) +        &
+                                    (map%remap_matrix(1,n)*src_array(map%src_address(n)))/ &
+                                    (map%dst_grid_frac(map%dst_address(n)))
+                end do
+
+            case ('none')
+
+                do n = 1, map%num_links
+                    dst_array(map%dst_address(n)) = dst_array(map%dst_address(n)) +        &
+                                    (map%remap_matrix(1,n)*src_array(map%src_address(n)))/ &
+                                    (map%dst_grid_area(map%dst_address(n))*map%dst_grid_frac(map%dst_address(n)))
+                end do
+
+            case DEFAULT 
+
+                write(*,*) "map_scrip_field:: Error: normalize_opt case not recongized."
+                write(*,*) "normalize_opt = ", normalize_opt
+                stop 
+
+        end select
+
+        dst = reshape(dst_array,[size(dst,1),size(dst,2)])
+        
+        return 
+
+    end subroutine map_scrip_field
 
     subroutine map_scrip_load(map,filename)
         ! Load a map_scrip_class object into memory
