@@ -32,13 +32,11 @@ program test_ccsm3
 
     integer :: q 
 
-    character(len=512) :: file_scrips_wts
     type(map_scrip_class) :: mps
 
     ! ==== SCRIPS testing ========
 
-    file_scrips_wts = "grids/mapscrip_ccsm3_ANT-20KM.nc"
-    call map_scrip_load(mps,file_scrips_wts)
+    call map_scrip_load(mps,"ccsm3","ANT-20KM","grids")
 
     !stop 
 

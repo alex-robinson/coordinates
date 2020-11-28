@@ -159,7 +159,7 @@ contains
 
         return 
 
-    end subroutine map_init_points_grid 
+    end subroutine map_init_points_grid
 
     subroutine map_init_points_points(map,pts1,pts2,max_neighbors,lat_lim,dist_max,fldr,load,save)
         ! Generate mapping weights from set of points to another set of points

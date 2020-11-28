@@ -103,19 +103,24 @@ contains
 
     end subroutine map_scrip_field
 
-    subroutine map_scrip_load(map,filename)
+    subroutine map_scrip_load(map,src_name,dst_name,fldr)
         ! Load a map_scrip_class object into memory
         ! from a netcdf file. 
 
         implicit none 
 
-        type(map_scrip_class), intent(INOUT) :: map 
-        character(len=*), intent(IN) :: filename 
-
+        type(map_scrip_class), intent(INOUT) :: map
+        character(len=*), intent(IN) :: src_name
+        character(len=*), intent(IN) :: dst_name 
+        character(len=*), intent(IN) :: fldr  
+        
         ! Local variables 
+        character(len=512) :: filename 
         integer, allocatable :: dims(:) 
         character(len=56), allocatable :: dim_names(:) 
 
+        ! Determine filename from grid names and folder 
+        filename = map_filename(src_name,dst_name,fldr)
 
         write(*,*) "Loading SCRIP map from file: "//trim(filename) 
         write(*,*) "" 
@@ -238,5 +243,19 @@ contains
 
     end subroutine map_scrip_dealloc
 
+    function map_filename(src_name,dst_name,fldr)
+        ! Output the standard map filename with input folder name
+        implicit none 
+
+        character(len=*), intent(IN) :: src_name
+        character(len=*), intent(IN) :: dst_name 
+        character(len=*), intent(IN) :: fldr 
+        character(len=256) :: map_filename
+
+        map_filename = trim(fldr)//"/scrip_"//trim(src_name)//"_"//trim(dst_name)//".nc"
+
+        return
+
+    end function map_filename
 
 end module coordinates_mapping_scrip

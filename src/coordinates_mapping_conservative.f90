@@ -117,7 +117,7 @@ contains
 
         return 
 
-    end subroutine map_field_conservative_map1 
+    end subroutine map_field_conservative_map1
 
     function maxcount(var,weight) result (var1)
 
@@ -157,7 +157,7 @@ contains
 
         return 
 
-    end function maxcount 
+    end function maxcount
 
     function calc_grid_total(x,y,var,xlim,ylim) result(tot)
 
