@@ -32,13 +32,12 @@ program test_ccsm3
 
     integer :: q 
 
-    type(map_scrip_class) :: mps
+    type(map_scrip_class) :: mps1, mps2
 
     ! ==== SCRIPS testing ========
 
-    call map_scrip_load(mps,"ccsm3","ANT-20KM","grids")
-
-    !stop 
+    call map_scrip_load(mps1,"ccsm3","ANT-20KM","grids")
+    call map_scrip_load(mps2,"ANT-20KM","ccsm3","grids")
 
     ! ============================
 
@@ -227,13 +226,17 @@ program test_ccsm3
 !     call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
     
     ! SCRIP interpolation weights 
-    write(*,*) "=== SCRIP method ==="
-    call map_scrip_field(REG%Ts,CCSM3a%Ts,mps,normalize_opt='fracarea')
-
+    file_gCCSM3b   = "output/ccsm3/grid_CCSM3-T42b_scrip.nc"
     file_gREG      = "output/ccsm3/grid_"//trim(REG%name)//"_scrip.nc"
     
+    write(*,*) "=== SCRIP method ==="
+    call map_scrip_field(mps1,"Ts",CCSM3a%Ts,REG%Ts,normalize_opt='fracarea')
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
     call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
+    
+    call map_scrip_field(mps2,"Ts",REG%Ts,CCSM3b%Ts,dst_mask=CCSM3b%mask,normalize_opt='fracarea')
+    call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.) 
+    call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat") 
     
 
 contains

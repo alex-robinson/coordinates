@@ -10,6 +10,15 @@ module coordinates_mapping_scrip
 
     type map_scrip_class
 
+        character(len=256) :: src_name 
+        character(len=256) :: dst_name 
+        character(len=512) :: map_fname 
+
+        ! ========================================================
+        ! Variables below are defined to be consistent with 
+        ! a SCRIP format netcdf file
+        ! ========================================================
+        
         integer :: src_grid_size
         integer :: dst_grid_size 
         integer :: dst_grid_corners
@@ -42,19 +51,21 @@ module coordinates_mapping_scrip
 contains 
 
     
-    subroutine map_scrip_field(dst,src,map,normalize_opt)
+    subroutine map_scrip_field(map,var_name,dst,src,,dst_mask,method)
         ! Load a map_scrip_class object into memory
         ! from a netcdf file. 
 
         implicit none 
 
-        real(8), intent(OUT) :: dst(:,:) 
-        real(8), intent(IN)  :: src(:,:) 
-        type(map_scrip_class), intent(IN) :: map 
-        character(len=*), intent(IN)  :: normalize_opt
+        type(map_scrip_class), intent(IN)  :: map 
+        character(len=*),      intent(IN)  :: var_name 
+        real(8),               intent(OUT) :: dst(:,:) 
+        real(8),               intent(IN)  :: src(:,:) 
+        character(len=*),      intent(IN), optional :: method
 
         ! Local variables 
         integer :: n 
+        character(len=56) :: normalize_opt
         real(8), allocatable :: dst_array(:) 
         real(8), allocatable :: src_array(:) 
         
@@ -115,26 +126,29 @@ contains
         character(len=*), intent(IN) :: fldr  
         
         ! Local variables 
-        character(len=512) :: filename 
         integer, allocatable :: dims(:) 
         character(len=56), allocatable :: dim_names(:) 
 
+        ! Define map names 
+        map%src_name = trim(src_name) 
+        map%dst_name = trim(dst_name) 
+
         ! Determine filename from grid names and folder 
-        filename = map_filename(src_name,dst_name,fldr)
+        map%map_fname = gen_map_filename(src_name,dst_name,fldr)
+        
+        !write(*,*) "Loading SCRIP map from file: "//trim(filename) 
+        !write(*,*) "" 
 
-        write(*,*) "Loading SCRIP map from file: "//trim(filename) 
-        write(*,*) "" 
-
-        call nc_dims(filename,"src_grid_center_lat",dim_names,dims)
+        call nc_dims(map%map_fname,"src_grid_center_lat",dim_names,dims)
         map%src_grid_size = dims(1) 
-        call nc_dims(filename,"dst_grid_corner_lat",dim_names,dims)
+        call nc_dims(map%map_fname,"dst_grid_corner_lat",dim_names,dims)
         map%dst_grid_corners = dims(1) 
         map%dst_grid_size    = dims(2) 
-        call nc_dims(filename,"src_grid_dims",dim_names,dims)
+        call nc_dims(map%map_fname,"src_grid_dims",dim_names,dims)
         map%src_grid_rank = dims(1) 
-        call nc_dims(filename,"dst_grid_dims",dim_names,dims)
+        call nc_dims(map%map_fname,"dst_grid_dims",dim_names,dims)
         map%dst_grid_rank = dims(1) 
-        call nc_dims(filename,"remap_matrix",dim_names,dims)
+        call nc_dims(map%map_fname,"remap_matrix",dim_names,dims)
         map%num_wgts  = dims(1)
         map%num_links = dims(2) 
 
@@ -150,26 +164,30 @@ contains
         call map_scrip_alloc(map)
 
         ! Load map from file 
-        call nc_read(filename,"src_grid_dims",map%src_grid_dims)
-        call nc_read(filename,"dst_grid_dims",map%dst_grid_dims)
-        call nc_read(filename,"src_grid_center_lat",map%src_grid_center_lat)
-        call nc_read(filename,"dst_grid_center_lat",map%dst_grid_center_lat)
-        call nc_read(filename,"src_grid_center_lon",map%src_grid_center_lon)
-        call nc_read(filename,"dst_grid_center_lon",map%dst_grid_center_lon)
-        call nc_read(filename,"dst_grid_corner_lat",map%dst_grid_corner_lat)
-        call nc_read(filename,"dst_grid_corner_lon",map%dst_grid_corner_lon)
-        call nc_read(filename,"src_grid_imask",map%src_grid_imask)
-        call nc_read(filename,"dst_grid_imask",map%dst_grid_imask)
-        call nc_read(filename,"src_grid_area",map%src_grid_area)
-        call nc_read(filename,"dst_grid_area",map%dst_grid_area)
-        call nc_read(filename,"src_grid_frac",map%src_grid_frac)
-        call nc_read(filename,"dst_grid_frac",map%dst_grid_frac)
-        call nc_read(filename,"src_address",map%src_address)
-        call nc_read(filename,"dst_address",map%dst_address)
-        call nc_read(filename,"remap_matrix",map%remap_matrix)
+        call nc_read(map%map_fname,"src_grid_dims",map%src_grid_dims)
+        call nc_read(map%map_fname,"dst_grid_dims",map%dst_grid_dims)
+        call nc_read(map%map_fname,"src_grid_center_lat",map%src_grid_center_lat)
+        call nc_read(map%map_fname,"dst_grid_center_lat",map%dst_grid_center_lat)
+        call nc_read(map%map_fname,"src_grid_center_lon",map%src_grid_center_lon)
+        call nc_read(map%map_fname,"dst_grid_center_lon",map%dst_grid_center_lon)
+        call nc_read(map%map_fname,"dst_grid_corner_lat",map%dst_grid_corner_lat)
+        call nc_read(map%map_fname,"dst_grid_corner_lon",map%dst_grid_corner_lon)
+        call nc_read(map%map_fname,"src_grid_imask",map%src_grid_imask)
+        call nc_read(map%map_fname,"dst_grid_imask",map%dst_grid_imask)
+        call nc_read(map%map_fname,"src_grid_area",map%src_grid_area)
+        call nc_read(map%map_fname,"dst_grid_area",map%dst_grid_area)
+        call nc_read(map%map_fname,"src_grid_frac",map%src_grid_frac)
+        call nc_read(map%map_fname,"dst_grid_frac",map%dst_grid_frac)
+        call nc_read(map%map_fname,"src_address",map%src_address)
+        call nc_read(map%map_fname,"dst_address",map%dst_address)
+        call nc_read(map%map_fname,"remap_matrix",map%remap_matrix)
 
-        write(*,*) "range(remap_matrix): ", minval(map%remap_matrix), maxval(map%remap_matrix)
-        write(*,*) "Loaded SCRIP weights."
+        !write(*,*) "range(remap_matrix): ", minval(map%remap_matrix), maxval(map%remap_matrix)
+        !write(*,*) "Loaded SCRIP weights."
+
+        ! Summary print line
+        !write(*,*) "Loaded SCRIP map from file: "//trim(filename) 
+        write(*,*) "Loaded SCRIP map: "//trim(map%src_name)//" => "//trim(map%dst_name) 
 
         return 
 
@@ -243,19 +261,19 @@ contains
 
     end subroutine map_scrip_dealloc
 
-    function map_filename(src_name,dst_name,fldr)
+    function gen_map_filename(src_name,dst_name,fldr) result(filename)
         ! Output the standard map filename with input folder name
         implicit none 
 
         character(len=*), intent(IN) :: src_name
         character(len=*), intent(IN) :: dst_name 
         character(len=*), intent(IN) :: fldr 
-        character(len=256) :: map_filename
+        character(len=256) :: filename
 
-        map_filename = trim(fldr)//"/scrip_"//trim(src_name)//"_"//trim(dst_name)//".nc"
+        filename = trim(fldr)//"/scrip_"//trim(src_name)//"_"//trim(dst_name)//".nc"
 
         return
 
-    end function map_filename
+    end function gen_map_filename
 
 end module coordinates_mapping_scrip
