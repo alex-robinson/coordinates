@@ -3,6 +3,7 @@ module coordinates_mapping_scrip
     ! SCRIP file format for storing mapping
     ! weights and neighbors.
 
+    use coord_constants
     use ncio 
 
     implicit none 
@@ -49,67 +50,114 @@ module coordinates_mapping_scrip
 
 
 contains 
-
     
-    subroutine map_scrip_field(map,var_name,dst,src,,dst_mask,method)
+    subroutine map_scrip_field(map,var_name,var1,var2,method,fill,missing_value,mask_pack)
         ! Load a map_scrip_class object into memory
         ! from a netcdf file. 
 
         implicit none 
 
-        type(map_scrip_class), intent(IN)  :: map 
-        character(len=*),      intent(IN)  :: var_name 
-        real(8),               intent(OUT) :: dst(:,:) 
-        real(8),               intent(IN)  :: src(:,:) 
-        character(len=*),      intent(IN), optional :: method
+        type(map_scrip_class), intent(IN)    :: map 
+        character(len=*),      intent(IN)    :: var_name 
+        real(8),               intent(IN)    :: var1(:,:) 
+        real(8),               intent(INOUT) :: var2(:,:) 
+        character(len=*),      intent(IN)    :: method
+        logical,               intent(IN), optional :: fill            ! Fill cells with no available values?
+        double precision,      intent(IN), optional :: missing_value   ! Points not included in mapping
+        logical,               intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
 
         ! Local variables 
-        integer :: n 
-        character(len=56) :: normalize_opt
-        real(8), allocatable :: dst_array(:) 
-        real(8), allocatable :: src_array(:) 
-        
-        allocate(dst_array(map%dst_grid_size))
-        allocate(src_array(map%src_grid_size))
-        
-        dst_array = 0.0
-        src_array = reshape(src,[map%src_grid_size])
+        integer :: n, npts1, npts2         
+        logical          :: fill_pts
+        double precision :: missing_val 
+        logical          :: fixed_values  
+        logical, allocatable  :: maskp(:)
+        real(dp), allocatable :: area(:)
+        integer :: i, j 
 
-        select case(trim(normalize_opt))
+        real(dp), allocatable :: var1_vec(:), var2_vec(:) 
+        real(dp) :: area_tot, pt_ave, pt_var   
+        integer  :: npt_now 
+
+
+        npts1 = size(var1,1)*size(var1,2)
+        npts2 = size(var2,1)*size(var2,2)
+
+        ! Confirm that source (var1) and destination (var2)
+        ! arrays match map. 
+        if (npts1 .ne. map%src_grid_size) then 
+            write(*,*) "map_scrip_field:: Error: source array and map size do not match."
+            write(*,*) "size(var1): ", size(var1,1), size(var1,2), " = ", npts1
+            write(*,*) "map%src_grid_size = ", map%src_grid_size 
+            stop 
+        end if 
+        if (npts2 .ne. map%dst_grid_size) then 
+            write(*,*) "map_scrip_field:: Error: dest. array and map size do not match."
+            write(*,*) "size(var2): ", size(var2,1), size(var2,2), " = ", npts2
+            write(*,*) "map%dst_grid_size = ", map%dst_grid_size 
+            stop 
+        end if 
         
-            case ('fracarea')
+        ! By default, fill in target grid points with missing values
+        fill_pts = .TRUE. 
+        if (present(fill)) fill_pts = fill 
+
+        missing_val = mv 
+        if (present(missing_value)) missing_val = missing_value
+
+        ! By default, all var2 points are interpolated
+        allocate(maskp(npts2))
+        maskp = .TRUE. 
+        if (present(mask_pack)) maskp = reshape(mask_pack,[npts2])
+
+        ! Store var1 in vector format
+        allocate(var1_vec(npts1)) 
+        var1_vec = reshape(var1,[npts1])
+
+        ! Store var2 in vector format
+        allocate(var2_vec(npts2))
+        var2_vec = reshape(var2,[npts2])
+
+        ! If fill is desired, initialize output points to missing values
+        if (fill_pts) var2_vec = missing_val 
+        
+
+        select case(trim(method))
+        
+            case ("fracarea")
 
                 do n = 1,map%num_links
-                    dst_array(map%dst_address(n)) = dst_array(map%dst_address(n)) +      &
-                                    map%remap_matrix(1,n)*src_array(map%src_address(n))
+                    var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +      &
+                                    map%remap_matrix(1,n)*var1_vec(map%src_address(n))
                 end do
 
-            case ('destarea')
+            case ("destarea")
 
                 do n = 1, map%num_links
-                    dst_array(map%dst_address(n)) = dst_array(map%dst_address(n)) +        &
-                                    (map%remap_matrix(1,n)*src_array(map%src_address(n)))/ &
+                    var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +        &
+                                    (map%remap_matrix(1,n)*var1_vec(map%src_address(n)))/ &
                                     (map%dst_grid_frac(map%dst_address(n)))
                 end do
 
-            case ('none')
+            case ("none")
 
                 do n = 1, map%num_links
-                    dst_array(map%dst_address(n)) = dst_array(map%dst_address(n)) +        &
-                                    (map%remap_matrix(1,n)*src_array(map%src_address(n)))/ &
+                    var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +        &
+                                    (map%remap_matrix(1,n)*var1_vec(map%src_address(n)))/ &
                                     (map%dst_grid_area(map%dst_address(n))*map%dst_grid_frac(map%dst_address(n)))
                 end do
 
             case DEFAULT 
 
-                write(*,*) "map_scrip_field:: Error: normalize_opt case not recongized."
-                write(*,*) "normalize_opt = ", normalize_opt
+                write(*,*) "map_scrip_field:: Error: method not recongized."
+                write(*,*) "method = ", trim(method)
                 stop 
 
         end select
 
-        dst = reshape(dst_array,[size(dst,1),size(dst,2)])
-        
+        ! Send back to 2D array 
+        var2 = reshape(var2_vec,[size(var2,1),size(var2,2)])
+
         return 
 
     end subroutine map_scrip_field

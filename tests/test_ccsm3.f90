@@ -230,11 +230,11 @@ program test_ccsm3
     file_gREG      = "output/ccsm3/grid_"//trim(REG%name)//"_scrip.nc"
     
     write(*,*) "=== SCRIP method ==="
-    call map_scrip_field(mps1,"Ts",CCSM3a%Ts,REG%Ts,normalize_opt='fracarea')
+    call map_scrip_field(mps1,"Ts",CCSM3a%Ts,REG%Ts,method="fracarea")
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
     call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
     
-    call map_scrip_field(mps2,"Ts",REG%Ts,CCSM3b%Ts,dst_mask=CCSM3b%mask,normalize_opt='fracarea')
+    call map_scrip_field(mps2,"Ts",REG%Ts,CCSM3b%Ts,method="fracarea",mask_pack=CCSM3b%mask==1)
     call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.) 
     call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat") 
     
