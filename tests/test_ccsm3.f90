@@ -119,7 +119,10 @@ program test_ccsm3
 !     REG%alpha  = 14.5d0
 
     ! Oblique stereographic grid for region of interest
-    call grid_init(gREG,name=REG%name,mtype="stereographic",units="kilometers",lon180=.FALSE., &
+    ! call grid_init(gREG,name=REG%name,mtype="stereographic",units="km",lon180=.FALSE., &
+    !                  dx=20.d0,nx=REG%nx,dy=20.d0,ny=REG%ny, &
+    !                  lambda=REG%lambda,phi=REG%phi,alpha=REG%alpha)
+    call grid_init(gREG,name=REG%name,mtype="polar_stereographic",units="km",lon180=.FALSE., &
                      dx=20.d0,nx=REG%nx,dy=20.d0,ny=REG%ny, &
                      lambda=REG%lambda,phi=REG%phi,alpha=REG%alpha)
 
