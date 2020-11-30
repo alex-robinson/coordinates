@@ -20,32 +20,37 @@ contains
 
     ! === CONSERVATIVE FIELD MAPPING SUBROUTINES === 
 
-    subroutine map_field_conservative_map1(mp,varname,var1,var2,fill,missing_value,mask_pack,no_interp)
+    subroutine map_field_conservative_map1(mp,varname,var1,var2,method,fill,missing_value,mask_pack)
         ! Map a field from grid1 to grid2 using a predefined map of neighbor weights
         ! generated using `map_conserv_init` 
+        ! method="mean": get the conservative average 
+        ! method="count": get the most frequent value 
+        ! method="stdev": get the weighted standard deviation 
 
         implicit none 
 
-        type(pt_wts_class), intent(IN)    :: mp(:)          ! Map values grid1=>grid2
-        character(len=*),   intent(IN)    :: varname        ! Name of the variable being mapped
-        double precision,   intent(IN)    :: var1(:,:)      ! Input variable
-        double precision,   intent(INOUT) :: var2(:,:)      ! Output variable
-        logical,  optional :: fill
-        double precision, intent(IN), optional :: missing_value  ! Points not included in mapping
-        logical,          intent(IN), optional :: mask_pack(:,:)
-        logical,          intent(IN), optional :: no_interp    ! Pick point with most area instead of weighted average
+        type(pt_wts_class), intent(IN)    :: mp(:)                  ! Map values grid1=>grid2
+        character(len=*),   intent(IN)    :: varname                ! Name of the variable being mapped
+        double precision,   intent(IN)    :: var1(:,:)              ! Input variable
+        double precision,   intent(INOUT) :: var2(:,:)              ! Output variable
+        character(len=*),   intent(IN)    :: method                 ! Pick point with most area instead of weighted average
+        logical,            intent(IN), optional :: fill            ! Fill cells with no available values?
+        double precision,   intent(IN), optional :: missing_value   ! Points not included in mapping
+        logical,            intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
         
         ! Local variables
         integer :: npts1
         integer :: npts2
         logical          :: fill_pts
         double precision :: missing_val 
-        logical          :: fixed_values 
+        logical          :: fixed_values  
         logical, allocatable  :: maskp(:)
         real(dp), allocatable :: area(:)
         integer :: i, j 
 
         real(dp), allocatable :: var1_vec(:), var2_vec(:) 
+        real(dp) :: area_tot, pt_ave, pt_var   
+        integer  :: npt_now 
 
         npts1 = size(var1,1)*size(var1,2)
         npts2 = size(var2,1)*size(var2,2)
@@ -56,10 +61,6 @@ contains
 
         missing_val = mv 
         if (present(missing_value)) missing_val = missing_value
-
-        ! Decide whether to perform weighted mean or count values 
-        fixed_values = .FALSE.  
-        if (present(no_interp)) fixed_values = no_interp 
 
         ! By default, all var2 points are interpolated
         allocate(maskp(npts2))
@@ -89,18 +90,49 @@ contains
                 area = mp(i)%area 
                 where (var1_vec(mp(i)%i) .eq. missing_val) area = 0.d0 
 
-                if (sum(area) .gt. 0.d0) then 
+                if (count(area.gt.0.d0) .gt. 0) then 
                     ! If an interpolation point was found, calculate interpolation 
 
-                    if (fixed_values) then 
-                        ! Determine which value dominates in this cell 
-                        var2_vec(i) = maxcount(var1_vec(mp(i)%i),area)
+                    select case(trim(method))
 
-                    else 
-                        ! Perform weighted mean 
-                        var2_vec(i) = sum(var1_vec(mp(i)%i)*area,mask=area.gt.0.d0) &
-                                        / sum(area,mask=area.gt.0.d0)
-                    end if 
+                        case("mean")
+                            ! Calculate the area-weighted mean 
+
+                            area_tot    = sum(area,mask=area.gt.0.d0)
+                            pt_ave      = sum((area/area_tot)*var1_vec(mp(i)%i))
+                            
+                            var2_vec(i) = pt_ave 
+
+                        case("count")
+                            ! Choose the most frequently occurring value, weighted by area
+
+                            var2_vec(i) = maxcount(var1_vec(mp(i)%i),area)
+
+                        case("stdev")
+                            ! Calculate the weighted standard deviation 
+                            ! using unbiased estimator correction 
+
+                            area_tot    = sum(area,mask=area.gt.0.d0)
+                            npt_now     = count(area.gt.0.0)
+
+                            if (npt_now .gt. 2) then
+                                ! Only calculate stdev for 2 or more input points
+
+                                pt_ave      = sum((area/area_tot)*var1_vec(mp(i)%i))
+                                pt_var      = (npt_now/(npt_now - 1.0)) &
+                                               * sum((area/area_tot)*(var1_vec(mp(i)%i)-pt_ave)**2)
+                                
+                                var2_vec(i) = sqrt(pt_var)
+
+                            else
+
+                                var2_vec(i) = mv 
+
+                            end if 
+
+                                
+
+                    end select 
 
                 end if 
 

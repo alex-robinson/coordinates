@@ -43,7 +43,7 @@ module interp2D_conservative
     public :: map_conservative_init
     public :: map_field_conservative
     public :: map_field_conservative_smooth
-    public :: calc_grid_total
+    !public :: calc_grid_total
 
 contains 
 

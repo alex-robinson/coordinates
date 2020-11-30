@@ -149,7 +149,7 @@ program test
 
     call map_init(map_hilo,gridhi,grid,max_neighbors=50,lat_lim=1.0d0,dist_max=100d3,fldr="maps",load=.FALSE.)
 
-    call map_field_conservative_map1(map_hilo%map,"zs",varhi,var)
+    call map_field_conservative_map1(map_hilo%map,"zs",varhi,var,method="mean")
     call nc_write(file_outlo,"zs_con",var,dim1="xc",dim2="yc")
 
     xlim = [minval(gridhi%G%x+gridhi%G%dx/2.d0),maxval(gridhi%G%x-gridhi%G%dx/2.d0)]
