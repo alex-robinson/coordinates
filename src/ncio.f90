@@ -543,7 +543,7 @@ contains
         v%missing_set   = .TRUE.
         v%missing_value = -9999d0
         v%FillValue     = v%missing_value
-        v%FillValue_set = .FALSE.
+        v%FillValue_set = .TRUE.
 
         v%xtype = "NF90_DOUBLE"
         v%coord = .FALSE.
@@ -880,13 +880,14 @@ contains
                     if (v%FillValue_set) then
                         select case(trim(v%xtype))
                             case("NF90_INT")
-                                call nc_check( nf90_put_att(ncid, v%varid, "FillValue", int(v%FillValue)) )
+                                call nc_check( nf90_put_att(ncid, v%varid, "_FillValue", int(v%FillValue)) )
                             case("NF90_FLOAT")
-                                call nc_check( nf90_put_att(ncid, v%varid, "FillValue", real(v%FillValue)) )
+                                call nc_check( nf90_put_att(ncid, v%varid, "_FillValue", real(v%FillValue)) )
                             case("NF90_DOUBLE")
-                                call nc_check( nf90_put_att(ncid, v%varid, "FillValue", v%FillValue) )
+                                call nc_check( nf90_put_att(ncid, v%varid, "_FillValue", v%FillValue) )
                         end select
                     end if
+
 
             end if
 
@@ -1014,10 +1015,17 @@ contains
                         call nc_get_att_double(ncid,v%varid,"missing_value",v%missing_value,stat)
                         if (stat .eq. noerr) v%missing_set = .TRUE.
 
-                        stat = nc_check_att( nf90_get_att(ncid, v%varid, "FillValue", tmpi) )
+                        stat = nc_check_att( nf90_get_att(ncid, v%varid, "_FillValue", tmpi) )
                         if (stat .eq. noerr) then
                             v%FillValue = dble(tmpi)
                             v%FillValue_set = .TRUE.
+
+                            ! ajr, 2020-08-20 
+                            ! Overwrite missing value with Fillvalue, since missing_value 
+                            ! attribute has been deprecated. 
+                            v%missing_value = v%FillValue 
+                            v%missing_set   = .TRUE. 
+                            
                         end if
 
                     case DEFAULT
@@ -1034,7 +1042,7 @@ contains
                         call nc_get_att_double(ncid,v%varid,"missing_value",v%missing_value,stat)
                         if (stat .eq. noerr) v%missing_set = .TRUE.
 
-                        stat = nc_check_att( nf90_get_att(ncid, v%varid, "FillValue", tmp) )
+                        stat = nc_check_att( nf90_get_att(ncid, v%varid, "_FillValue", tmp) )
                         if (stat .eq. noerr) then
                             v%FillValue = tmp
                             v%FillValue_set = .TRUE.
@@ -1517,7 +1525,14 @@ contains
                         
                     call nc_check( nf90_put_att(nc_id,varid, "false_easting",  x_e) )
                     call nc_check( nf90_put_att(nc_id,varid, "false_northing", y_n) )
-                    
+
+                case("lambert_conformal_conic")
+
+                    call nc_check( nf90_put_att(nc_id,varid, "longitude_of_central_meridian", lambda) )
+                    call nc_check( nf90_put_att(nc_id,varid, "latitude_of_projection_origin", phi) )
+                    if (present(alpha)) &
+                    call nc_check( nf90_put_att(nc_id,varid, "standard_parallel", alpha) )
+                        
                 case("latlon")
                     
                     
