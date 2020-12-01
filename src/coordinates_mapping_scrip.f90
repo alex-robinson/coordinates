@@ -73,11 +73,11 @@ contains
         logical          :: fixed_values  
         logical, allocatable  :: maskp(:)
         real(dp), allocatable :: area(:)
-        integer :: i, j 
+        integer :: i, j, j1, j2  
 
         real(dp), allocatable :: var1_vec(:), var2_vec(:) 
         real(dp) :: area_tot, pt_ave, pt_var   
-        integer  :: npt_now 
+        integer  :: npt_now, num_links_now 
 
 
         npts1 = size(var1,1)*size(var1,2)
@@ -127,9 +127,10 @@ contains
                 var2_vec(map%dst_address(n)) = 0.0d0 
             end if 
         end do 
-        
+
         select case(trim(method))
-        
+            
+
             case ("fracarea")
 
                 do n = 1,map%num_links
@@ -166,6 +167,57 @@ contains
                 stop 
 
         end select
+
+        j1 = 0 
+        j2 = 0 
+
+        ! Loop over target points
+        do k = 1, npts2 
+
+            if (maskp(k)) then 
+                ! Only interpolate for desired target points 
+        
+                ! Find the range of link indices that correspond 
+                ! to the current point k, ie, such that:
+                ! map%dst_address(j1:j2) == k 
+                ! Note: dst_address can be expected to be sorted 
+                ! in ascending order.
+                j1 = j2+1 
+                do j = j1, map%num_links 
+                    if (map%dst_address(j) .eq. k) then 
+                        j1 = j 
+                        exit 
+                    end if 
+                end do 
+
+                do j = j1, map%num_links
+                    if (map%dst_address(j) .eq. map%dst_address(j1) ) then 
+                        j2 = j 
+                    else 
+                        exit 
+                    end if 
+                end do 
+
+                ! Determine the number of links 
+                ! To do: treat missing values!!
+                num_links_now = j2-j1+1
+                !wt_tot = sum()
+
+                select case(trim(method))
+
+                    case("mean")
+                        ! Calculate the area-weighted mean 
+
+                        ! area_tot    = sum(area,mask=area.gt.0.d0)
+                        ! pt_ave      = sum((area/area_tot)*var1_vec(mp(i)%i))
+                        
+                        ! var2_vec(i) = pt_ave 
+
+                end select 
+
+            end if 
+
+        end do 
 
         ! Send back to 2D array 
         var2 = reshape(var2_vec,[size(var2,1),size(var2,2)])
