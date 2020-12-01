@@ -235,7 +235,7 @@ program test_ccsm3
     call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
     
     CCSM3b%Ts = CCSM3a%Ts 
-    call map_scrip_field(mps2,"Ts",REG%Ts,CCSM3b%Ts,method="fracarea",mask_pack=CCSM3b%mask==0,fill=.TRUE.)
+    call map_scrip_field(mps2,"Ts",REG%Ts,CCSM3b%Ts,method="fracarea",mask_pack=CCSM3b%mask==1,fill=.TRUE.)
     call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.) 
     call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat") 
     

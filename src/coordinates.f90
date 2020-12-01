@@ -1174,10 +1174,10 @@ contains
         
             ! Add grid axis variables to netcdf file
             call nc_write_dim(fnm,xnm,x=grid%G%x,units=grid%units)
-            ! call nc_write_attr(fnm,xnm,"_CoordinateAxisType","GeoX")
+            call nc_write_attr(fnm,xnm,"_CoordinateAxisType","GeoX")
 
             call nc_write_dim(fnm,ynm,x=grid%G%y,units=grid%units)
-            ! call nc_write_attr(fnm,ynm,"_CoordinateAxisType","GeoY")
+            call nc_write_attr(fnm,ynm,"_CoordinateAxisType","GeoY")
 
         end if 
 
@@ -1186,28 +1186,28 @@ contains
                           alpha=grid%proj%alpha,x_e=grid%proj%x_e,y_n=grid%proj%y_n)
         
         if (grid%is_projection .or. grid%is_cartesian) then 
-            ! call nc_write(fnm,"x2D",grid%x,dim1=xnm,dim2=ynm,grid_mapping="crs")
-            ! call nc_write_attr(fnm,"x2D","units",grid%units)
-            ! call nc_write(fnm,"y2D",grid%y,dim1=xnm,dim2=ynm,grid_mapping="crs")
-            ! call nc_write_attr(fnm,"y2D","units",grid%units)
+            call nc_write(fnm,"x2D",grid%x,dim1=xnm,dim2=ynm,grid_mapping="crs")
+            call nc_write_attr(fnm,"x2D","units",grid%units)
+            call nc_write(fnm,"y2D",grid%y,dim1=xnm,dim2=ynm,grid_mapping="crs")
+            call nc_write_attr(fnm,"y2D","units",grid%units)
             
         end if 
 
         if (.not. (grid%is_cartesian .and. .not. grid%is_projection)) then 
             call nc_write(fnm,"lon2D",grid%lon,dim1=xnm,dim2=ynm,grid_mapping="crs")
-            ! call nc_write_attr(fnm,"lon2D","_CoordinateAxisType","Lon")
+            call nc_write_attr(fnm,"lon2D","_CoordinateAxisType","Lon")
             call nc_write_attr(fnm,"lon2D","units","degrees_east")
                 
             call nc_write(fnm,"lat2D",grid%lat,dim1=xnm,dim2=ynm,grid_mapping="crs")
-            ! call nc_write_attr(fnm,"lat2D","_CoordinateAxisType","Lat")
+            call nc_write_attr(fnm,"lat2D","_CoordinateAxisType","Lat")
             call nc_write_attr(fnm,"lat2D","units","degrees_north")
             
         end if 
 
         call nc_write(fnm,"area",  grid%area,  dim1=xnm,dim2=ynm,grid_mapping="crs")
-        !call nc_write_attr(fnm,"area","coordinates","lat2D lon2D")
+        call nc_write_attr(fnm,"area","coordinates","lat2D lon2D")
         call nc_write(fnm,"border",grid%border,dim1=xnm,dim2=ynm,grid_mapping="crs")
-        !call nc_write_attr(fnm,"border","coordinates","lat2D lon2D")
+        call nc_write_attr(fnm,"border","coordinates","lat2D lon2D")
 
         return
     end subroutine grid_write

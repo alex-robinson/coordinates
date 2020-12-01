@@ -122,17 +122,12 @@ contains
         if (fill_pts) var2_vec = missing_val 
         
         ! First reset new interpolation address to zero 
-        do n = 1, npts2 
-            if (maskp(n)) then 
-                do k = 1, map%num_links 
-                    if (map%dst_address(k) .eq. n) then 
-                        var2_vec(n) = 0.0d0
-                        exit 
-                    end if 
-                end do 
+        do n = 1, map%num_links 
+            if (maskp(map%dst_address(n))) then
+                var2_vec(map%dst_address(n)) = 0.0d0 
             end if 
         end do 
-
+        
         select case(trim(method))
         
             case ("fracarea")
