@@ -67,7 +67,7 @@ contains
         logical,               intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
 
         ! Local variables 
-        integer :: n, npts1, npts2         
+        integer :: n, k, npts1, npts2         
         logical          :: fill_pts
         double precision :: missing_val 
         logical          :: fixed_values  
@@ -121,30 +121,47 @@ contains
         ! If fill is desired, initialize output points to missing values
         if (fill_pts) var2_vec = missing_val 
         
+        ! First reset new interpolation address to zero 
+        do n = 1, npts2 
+            if (maskp(n)) then 
+                do k = 1, map%num_links 
+                    if (map%dst_address(k) .eq. n) then 
+                        var2_vec(n) = 0.0d0
+                        exit 
+                    end if 
+                end do 
+            end if 
+        end do 
 
         select case(trim(method))
         
             case ("fracarea")
 
                 do n = 1,map%num_links
-                    var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +      &
-                                    map%remap_matrix(1,n)*var1_vec(map%src_address(n))
+                    if (maskp(map%dst_address(n)) .and. var1_vec(map%src_address(n)) .ne. missing_val) then 
+                        var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +      &
+                                      map%remap_matrix(1,n)*var1_vec(map%src_address(n))
+                    end if
                 end do
 
             case ("destarea")
 
                 do n = 1, map%num_links
-                    var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +        &
-                                    (map%remap_matrix(1,n)*var1_vec(map%src_address(n)))/ &
-                                    (map%dst_grid_frac(map%dst_address(n)))
+                    if (maskp(map%dst_address(n)) .and. var1_vec(map%src_address(n)) .ne. missing_val) then 
+                        var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +        &
+                                        (map%remap_matrix(1,n)*var1_vec(map%src_address(n)))/ &
+                                        (map%dst_grid_frac(map%dst_address(n)))
+                    end if 
                 end do
 
             case ("none")
 
                 do n = 1, map%num_links
-                    var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +        &
-                                    (map%remap_matrix(1,n)*var1_vec(map%src_address(n)))/ &
-                                    (map%dst_grid_area(map%dst_address(n))*map%dst_grid_frac(map%dst_address(n)))
+                    if (maskp(map%dst_address(n)) .and. var1_vec(map%src_address(n)) .ne. missing_val) then 
+                        var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +        &
+                                       (map%remap_matrix(1,n)*var1_vec(map%src_address(n)))/ &
+                                       (map%dst_grid_area(map%dst_address(n))*map%dst_grid_frac(map%dst_address(n)))
+                    end if
                 end do
 
             case DEFAULT 
