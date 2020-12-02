@@ -242,7 +242,7 @@ program test_ccsm3
     where(CCSM3a%Ts .lt. 250.0) CCSM3a%mask = 1 
 
     call map_scrip_field(mps1,"Ts",  CCSM3a%Ts,  REG%Ts,  method="mean")
-    call map_scrip_field_integer(mps1,"mask",CCSM3a%mask,REG%mask,method="count")
+    call map_scrip_field(mps1,"mask",CCSM3a%mask,REG%mask,method="count")
     
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
     call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
@@ -250,7 +250,7 @@ program test_ccsm3
     
     CCSM3b%Ts = CCSM3a%Ts 
     call map_scrip_field(mps2,"Ts",  REG%Ts,  CCSM3b%Ts,  method="mean",fill=.FALSE.)
-    call map_scrip_field_integer(mps2,"mask",REG%mask,CCSM3b%mask,method="count",fill=.FALSE.)
+    call map_scrip_field(mps2,"mask",REG%mask,CCSM3b%mask,method="count",fill=.FALSE.)
     
     call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.) 
     call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat") 

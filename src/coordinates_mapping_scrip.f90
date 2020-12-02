@@ -10,7 +10,6 @@ module coordinates_mapping_scrip
 
     implicit none 
 
-
     type map_scrip_class
 
         character(len=256) :: src_name 
@@ -49,6 +48,18 @@ module coordinates_mapping_scrip
         real(8), allocatable :: remap_matrix(:,:) 
 
     end type 
+
+    interface map_scrip_field
+        module procedure map_scrip_field_double
+        module procedure map_scrip_field_float
+        module procedure map_scrip_field_integer 
+    end interface 
+
+    private 
+    public :: map_scrip_class 
+    public :: map_scrip_field
+    public :: map_scrip_init
+    public :: map_scrip_load 
 
 
 contains 
@@ -89,7 +100,43 @@ contains
 
     end subroutine map_scrip_field_integer
 
-    subroutine map_scrip_field(map,var_name,var1,var2,method,fill,missing_value,mask_pack)
+    subroutine map_scrip_field_float(map,var_name,var1,var2,method,fill,missing_value,mask_pack)
+        ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
+
+        ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
+        ! desribed in the SCRIP documention (Fig. 2.4 in scripusers.pdf). The 
+        ! other methods normalize_opt=['destarea','none'] have not been implemented.
+
+        implicit none 
+
+        type(map_scrip_class), intent(IN), target :: map 
+        character(len=*),      intent(IN)    :: var_name 
+        real(sp),              intent(IN)    :: var1(:,:) 
+        real(sp),              intent(INOUT) :: var2(:,:) 
+        character(len=*),      intent(IN)    :: method
+        logical,               intent(IN), optional :: fill            ! Fill cells with no available values?
+        double precision,      intent(IN), optional :: missing_value   ! Points not included in mapping
+        logical,               intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
+
+        ! Local variables 
+        real(dp), allocatable :: var1dp(:,:) 
+        real(dp), allocatable :: var2dp(:,:) 
+        
+        allocate(var1dp(size(var1,1),size(var1,2)))
+        allocate(var2dp(size(var2,1),size(var2,2)))
+        
+        var1dp = real(var1,dp)
+        var2dp = real(var2,dp)
+        
+        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value,mask_pack)
+
+        var2 = real(var2dp,sp) 
+
+        return 
+
+    end subroutine map_scrip_field_float
+
+    subroutine map_scrip_field_double(map,var_name,var1,var2,method,fill,missing_value,mask_pack)
         ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
 
         ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
@@ -262,7 +309,7 @@ contains
                             write(*,*) "map_scrip_field:: Error: interpolation method not recognized."
                             write(*,*) "method = ", trim(method) 
                             stop 
-                            
+
                     end select 
 
                 end if 
@@ -276,7 +323,7 @@ contains
 
         return 
 
-    end subroutine map_scrip_field
+    end subroutine map_scrip_field_double
 
     subroutine map_scrip_init(map,src_name,dst_name,fldr,src_nc,load)
         ! Use cdo to generate scrip map based on grid 
