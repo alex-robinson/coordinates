@@ -36,8 +36,8 @@ program test_ccsm3
 
     ! ==== SCRIPS testing ========
 
-    call map_scrip_load(mps1,"ccsm3","ANT-20KM","grids")
-    call map_scrip_load(mps2,"ANT-20KM","ccsm3","grids")
+    ! call map_scrip_load(mps1,"ccsm3","ANT-20KM","grids")
+    ! call map_scrip_load(mps2,"ANT-20KM","ccsm3","grids")
 
     ! ============================
 
@@ -229,17 +229,33 @@ program test_ccsm3
     file_gCCSM3b   = "output/ccsm3/grid_CCSM3-T42b_scrip.nc"
     file_gREG      = "output/ccsm3/grid_"//trim(REG%name)//"_scrip.nc"
     
+    call grid_write_cdo_desc_short(gREG,fldr="maps") 
+    call grid_write_cdo_desc_short(gCCSM3,fldr="maps") 
+    
+    call map_scrip_init(mps1,gCCSM3%name,gREG%name,fldr="maps", &
+                src_nc="data/ccsm_example_dec_feb_pd.nc")
+    call map_scrip_init(mps2,gREG%name,gCCSM3%name,fldr="maps", &
+                src_nc="output/ccsm3/grid_ANT-20KM_bilinear.nc")
+
     write(*,*) "=== SCRIP method ==="
-    call map_scrip_field(mps1,"Ts",CCSM3a%Ts,REG%Ts,method="mean")
+    CCSM3a%mask = 0 
+    where(CCSM3a%Ts .lt. 250.0) CCSM3a%mask = 1 
+
+    call map_scrip_field(mps1,"Ts",  CCSM3a%Ts,  REG%Ts,  method="mean")
+    call map_scrip_field_integer(mps1,"mask",CCSM3a%mask,REG%mask,method="count")
+    
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
     call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
+    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc") 
     
     CCSM3b%Ts = CCSM3a%Ts 
-    call map_scrip_field(mps2,"Ts",REG%Ts,CCSM3b%Ts,method="mean",fill=.FALSE.)
+    call map_scrip_field(mps2,"Ts",  REG%Ts,  CCSM3b%Ts,  method="mean",fill=.FALSE.)
+    call map_scrip_field_integer(mps2,"mask",REG%mask,CCSM3b%mask,method="count",fill=.FALSE.)
+    
     call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.) 
     call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat") 
+    call nc_write(file_gCCSM3b,"mask",CCSM3b%mask,dim1="lon",dim2="lat") 
     
-
 contains
 
     subroutine grid_stats(name,var1,var2,mask2)

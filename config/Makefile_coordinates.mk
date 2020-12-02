@@ -51,7 +51,7 @@ $(objdir)/coordinates_mapping_conservative.o: $(srcdir)/coordinates_mapping_cons
 
 $(objdir)/coordinates_mapping_scrip.o: $(srcdir)/coordinates_mapping_scrip.f90 \
 								 $(objdir)/coordinates.o $(objdir)/coordinates_mapping_scrip.o \
-								 $(objdir)/ncio.o
+								 $(objdir)/ncio.o $(objdir)/index.o
 	$(FC) $(LDFLAGS) -c -o $@ $<
 
 $(objdir)/interp2D_conservative.o: $(srcdir)/interp2D_conservative.f90 \

@@ -4,6 +4,7 @@ module coordinates_mapping_scrip
     ! weights and neighbors.
 
     use coord_constants
+    use coordinates
     use ncio 
     use index 
 
@@ -52,6 +53,42 @@ module coordinates_mapping_scrip
 
 contains 
     
+    subroutine map_scrip_field_integer(map,var_name,var1,var2,method,fill,missing_value,mask_pack)
+        ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
+
+        ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
+        ! desribed in the SCRIP documention (Fig. 2.4 in scripusers.pdf). The 
+        ! other methods normalize_opt=['destarea','none'] have not been implemented.
+
+        implicit none 
+
+        type(map_scrip_class), intent(IN), target :: map 
+        character(len=*),      intent(IN)    :: var_name 
+        integer,               intent(IN)    :: var1(:,:) 
+        integer,               intent(INOUT) :: var2(:,:) 
+        character(len=*),      intent(IN)    :: method
+        logical,               intent(IN), optional :: fill            ! Fill cells with no available values?
+        double precision,      intent(IN), optional :: missing_value   ! Points not included in mapping
+        logical,               intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
+
+        ! Local variables 
+        real(dp), allocatable :: var1dp(:,:) 
+        real(dp), allocatable :: var2dp(:,:) 
+        
+        allocate(var1dp(size(var1,1),size(var1,2)))
+        allocate(var2dp(size(var2,1),size(var2,2)))
+        
+        var1dp = real(var1,dp)
+        var2dp = real(var2,dp)
+        
+        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value,mask_pack)
+
+        var2 = int(var2dp) 
+
+        return 
+
+    end subroutine map_scrip_field_integer
+
     subroutine map_scrip_field(map,var_name,var1,var2,method,fill,missing_value,mask_pack)
         ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
 
@@ -61,7 +98,7 @@ contains
 
         implicit none 
 
-        type(map_scrip_class), intent(IN), target    :: map 
+        type(map_scrip_class), intent(IN), target :: map 
         character(len=*),      intent(IN)    :: var_name 
         real(8),               intent(IN)    :: var1(:,:) 
         real(8),               intent(INOUT) :: var2(:,:) 
@@ -220,6 +257,11 @@ contains
 
                             end if 
 
+                        case DEFAULT 
+
+                            write(*,*) "map_scrip_field:: Error: interpolation method not recognized."
+                            write(*,*) "method = ", trim(method) 
+                            stop 
                             
                     end select 
 
@@ -235,6 +277,84 @@ contains
         return 
 
     end subroutine map_scrip_field
+
+    subroutine map_scrip_init(map,src_name,dst_name,fldr,src_nc,load)
+        ! Use cdo to generate scrip map based on grid 
+        ! definitions. 
+
+        ! 1. Assume that grid description text files already exist
+        !    for each grid. 
+
+        implicit none 
+
+        type(map_scrip_class), intent(INOUT) :: map     ! map object to be initialized
+        character(len=*), intent(IN) :: src_name        ! Source grid name
+        character(len=*), intent(IN) :: dst_name        ! Dest./target grid name
+        character(len=*), intent(IN) :: fldr            ! Folder where grid desciptions can be found
+        character(len=*), intent(IN) :: src_nc          ! Path to source netcdf file containing grid/variables (needed by cdo)
+        logical,          intent(IN), optional :: load  ! Load map from file if available? 
+
+        ! Local variables 
+        character(len=512)  :: fnm1
+        character(len=512)  :: fnm2
+        character(len=512)  :: fnm_map 
+        character(len=2048) :: cdo_cmd
+        logical :: load_map 
+        logical :: map_exists  
+        logical :: cdo_success 
+
+        ! Determine whether map file should be loaded if available 
+        load_map = .TRUE. 
+        if (present(load)) load_map = load 
+
+        ! Step 1: call cdo to generate mapping weights in a scrip file 
+
+        ! Generate grid description filenames 
+        fnm1 = trim(fldr)//"/"//"grid_"//trim(src_name)//".txt"
+        fnm2 = trim(fldr)//"/"//"grid_"//trim(dst_name)//".txt"
+
+        ! Determine map filename from grid names and folder 
+        fnm_map = gen_map_filename(src_name,dst_name,fldr)
+        
+        ! Check if scrip weights file already exists  
+        inquire(file=trim(fnm_map),exist=map_exists)
+
+        if ( (.not. map_exists) .or. (.not. load_map) ) then 
+            ! If no map exists yet, or loading is not desired, 
+            ! then call cdo to generate a new map file. 
+
+            ! Define cdo command to generate mapping weights from 
+            ! src grid (fnm1) to dest grid (fnm2) using example netcdf 
+            ! grid file (src_nc) and storing weights in map file (fnm_map).
+            ! cdo command output is redirected to a file '.tmpcdoout'.
+            cdo_cmd = "cdo gencon,"//trim(fnm2)//" -setgrid,"//trim(fnm1)// &
+                    " "//trim(src_nc)//" "//trim(fnm_map)//" &> .tmpcdoout"
+
+            write(*,*) "cdo command: "
+            write(*,*) trim(cdo_cmd) 
+
+            write(*,"(a)",advance='no') "Calling via system call... "
+            call system(cdo_cmd)
+            write(*,*) "done." 
+
+            ! Check if scrip weights file was written 
+            inquire(file=trim(fnm_map),exist=cdo_success)
+
+            if (.not. cdo_success) then 
+                write(*,*) "map_scrip_init:: Error: scrip map file was not written. &
+                & This may mean that the system call to cdo was unsucessful. Check the &
+                &cdo log file '.tmpcdoout'."
+                stop 
+            end if 
+
+        end if 
+
+        ! Step 2: load map weights and initialize map_scrip_class object 
+        call map_scrip_load(map,src_name,dst_name,fldr)
+
+        return 
+
+    end subroutine map_scrip_init
 
     subroutine map_scrip_load(map,src_name,dst_name,fldr)
         ! Load a map_scrip_class object into memory
@@ -274,13 +394,13 @@ contains
         map%num_wgts  = dims(1)
         map%num_links = dims(2) 
 
-        write(*,*) "src_grid_size:    ", map%src_grid_size 
-        write(*,*) "dst_grid_size:    ", map%dst_grid_size 
-        write(*,*) "dst_grid_corners: ", map%dst_grid_corners 
-        write(*,*) "src_grid_rank:    ", map%src_grid_rank 
-        write(*,*) "dst_grid_rank:    ", map%dst_grid_rank 
-        write(*,*) "num_links:        ", map%num_links 
-        write(*,*) "num_wgts:         ", map%num_wgts 
+        ! write(*,*) "src_grid_size:    ", map%src_grid_size 
+        ! write(*,*) "dst_grid_size:    ", map%dst_grid_size 
+        ! write(*,*) "dst_grid_corners: ", map%dst_grid_corners 
+        ! write(*,*) "src_grid_rank:    ", map%src_grid_rank 
+        ! write(*,*) "dst_grid_rank:    ", map%dst_grid_rank 
+        ! write(*,*) "num_links:        ", map%num_links 
+        ! write(*,*) "num_wgts:         ", map%num_wgts 
         
         ! Allocate map_scrip to match dimensions 
         call map_scrip_alloc(map)

@@ -1,13 +1,14 @@
-
-&map
-    name   = "CCSM3-T42",
-    mtype  = "latlon",
-    units  = "degrees",
-    planet = "WGS84",
-    lon180 = .FALSE.,
-    lambda = 0.0,
-    phi    = 0.0,
-    alpha  = 0.0,
-    x_e    = 0.0,
-    y_n    = 0.0
-/
+gridtype = lonlat
+gridsize =       8192
+xsize    =        128
+ysize    =         64
+xname    = lon
+xunits   = degrees_east
+yname    = lat
+yunits   = degrees_north
+xfirst   =        0.000
+xinc     =        2.812
+yfirst   =      -87.864
+yinc     =        2.789
+grid_mapping = crs
+grid_mapping_name = latitude_longitude

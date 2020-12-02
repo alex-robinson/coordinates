@@ -106,6 +106,7 @@ module coordinates
     public :: grid_to_points, points_to_grid
     public :: compare_coord
     public :: pts_which_nearest 
+    public :: grid_write_cdo_desc_short 
 
 contains
 
@@ -1308,6 +1309,7 @@ contains
 !         write(*,*)
 
         return
+
     end subroutine points_print
     
     function pts_which_nearest(pts,x,y,latlon) result(idx)
@@ -1385,5 +1387,230 @@ contains
 
     end subroutine progress
 
-end module coordinates 
+
+! ==== cdo-related functions ====
+
+    subroutine grid_write_cdo_desc_short(grid,fldr)
+        ! Write a cdo-compliant grid description file 
+        ! based on grid definition 
+
+        implicit none 
+
+        type(grid_class), intent(IN) :: grid    ! Grid definition
+        character(len=*), intent(IN) :: fldr    ! File destination
+
+        ! Local variables 
+        character(len=512) :: filename 
+        integer :: fnum
+        character(len=256) :: grid_type 
+        character(len=32)  :: xnm, ynm 
+        character(len=32)  :: xunits, yunits 
+        real(dp) :: phi_proj_orig
+
+        ! Determine grid type to write 
+        select case(trim(grid%mtype))
+
+            case("latlon")
+            
+                grid_type = "lonlat"
+                xnm       = "lon"
+                ynm       = "lat"
+                xunits    = "degrees_east"
+                yunits    = "degrees_north" 
+
+            case("polar_stereographic","stereographic")
+            
+                grid_type = "projection"
+                xnm       = "xc" 
+                ynm       = "yc" 
+                xunits    = trim(grid%units)
+                yunits    = trim(grid%units)
+                
+            case("cartesian")
+            
+                grid_type = "cartesian"
+                xnm       = "xc" 
+                ynm       = "yc" 
+                xunits    = trim(grid%units)
+                yunits    = trim(grid%units)
+                
+            case DEFAULT 
+
+                grid_type = "generic"
+                xnm       = "xc" 
+                ynm       = "yc" 
+                xunits    = trim(grid%units)
+                yunits    = trim(grid%units)
+                
+        end select
+
+        if (trim(xunits) .eq. "kilometers") xunits = "km"
+        if (trim(yunits) .eq. "kilometers") yunits = "km"
+        
+        ! Generate grid description filename 
+        filename = trim(fldr)//"/"//"grid_"//trim(grid%name)//".txt"
+
+        fnum = 98
+
+        open(fnum,file=filename,status='unknown',action='write')
+
+        write(fnum,"(a)")       "gridtype = "//trim(grid_type)
+        write(fnum,"(a,i10)")   "gridsize = ", grid%G%nx*grid%G%ny 
+        write(fnum,"(a,i10)")   "xsize    = ", grid%G%nx
+        write(fnum,"(a,i10)")   "ysize    = ", grid%G%ny
+        write(fnum,"(a)")       "xname    = "//trim(xnm)
+        write(fnum,"(a)")       "xunits   = "//trim(xunits)
+        write(fnum,"(a)")       "yname    = "//trim(ynm)
+        write(fnum,"(a)")       "yunits   = "//trim(yunits)
+        write(fnum,"(a,f12.3)") "xfirst   = ", grid%G%x(1) 
+        write(fnum,"(a,f12.3)") "xinc     = ", grid%G%dx 
+        write(fnum,"(a,f12.3)") "yfirst   = ", grid%G%y(1) 
+        write(fnum,"(a,f12.3)") "yinc     = ", grid%G%dy 
+          
+        write(fnum,"(a,a)") "grid_mapping = ","crs"
+
+        ! Add grid attributes depending on grid_mapping type
+        select case(trim(grid%mtype))
+
+            case("stereographic")
+                ! Including 'oblique_stereographic' 
+
+                write(fnum,"(a,a)")     "grid_mapping_name = ",trim(grid%mtype)
+                write(fnum,"(a,f12.3)") "longitude_of_projection_origin = ", grid%proj%lambda 
+                write(fnum,"(a,f12.3)") "latitude_of_projection_origin = ", grid%proj%phi 
+                write(fnum,"(a,f12.3)") "angle_of_oblique_tangent = ", grid%proj%alpha 
+                write(fnum,"(a,f12.3)") "scale_factor_at_projection_origin = ", 1.0d0 
+                write(fnum,"(a,f12.3)") "false_easting = ",  0.0d0 
+                write(fnum,"(a,f12.3)") "false_northing = ", 0.0d0 
+                
+            case("polar_stereographic")
+                
+                ! Determine latitude_of_projection_origin, since it must 
+                ! be either -90 or +90 for a polar_stereographic projection:
+                if (grid%proj%phi .gt. 0.0d0) then 
+                    phi_proj_orig = 90.0d0 
+                else 
+                    phi_proj_orig = -90.0d0 
+                end if 
+
+
+                write(fnum,"(a,a)") "grid_mapping_name = ",trim(grid%mtype)
+                write(fnum,"(a,f12.3)") "straight_vertical_longitude_from_pole = ", grid%proj%lambda 
+                write(fnum,"(a,f12.3)") "latitude_of_projection_origin = ", phi_proj_orig
+                write(fnum,"(a,f12.3)") "standard_parallel = ", grid%proj%phi 
+                write(fnum,"(a,f12.3)") "false_easting = ",  0.0d0 
+                write(fnum,"(a,f12.3)") "false_northing = ", 0.0d0 
+                
+            case("latlon")
+                
+                write(fnum,"(a,a)") "grid_mapping_name = ", "latitude_longitude"
+                ! == No additional parameters needed == 
+
+            case DEFAULT
+                ! Do nothing
+
+        end select
+
+        ! Close the text file
+        close(fnum)
+
+        return 
+
+    end subroutine grid_write_cdo_desc_short
+    
+    subroutine grid_write_cdo_desc_explicit(lon2D,lat2D,filename)
+
+        implicit none 
+
+        real(4), intent(IN) :: lon2D(:,:) 
+        real(4), intent(IN) :: lat2D(:,:) 
+        character(len=*), intent(IN) :: filename 
+
+        ! Local variables 
+        integer :: i, j, nx, ny 
+        integer :: im1, jm1, ip1, jp1 
+        integer :: fnum
+        real(4) :: bnds(4) 
+
+        fnum = 98 
+
+        nx = size(lon2D,1)
+        ny = size(lon2D,2)
+
+        open(fnum,file=filename,status='unknown',action='write')
+
+        write(fnum,"(a)")     "gridtype = curvilinear"
+        write(fnum,"(a,i10)") "gridsize = ", nx*ny 
+        write(fnum,"(a,i10)") "xsize    = ", nx
+        write(fnum,"(a,i10)") "ysize    = ", ny
+
+        ! x values 
+        write(fnum,*) ""
+        write(fnum,"(a)") "# Longitudes"
+        write(fnum,"(a)") "xvals = "
+        do j = 1, ny 
+            write(fnum,"(50000f10.3)") lon2D(:,j)
+        end do 
+
+        write(fnum,*) ""
+        write(fnum,"(a)") "# Longitudes of cell corners"
+        write(fnum,"(a)") "xbounds = "
+        do j = 1, ny 
+        do i = 1, nx 
+
+            im1 = max(1,i-1)
+            jm1 = max(1,j-1)
+            ip1 = min(nx,i+1)
+            jp1 = min(ny,j+1)
+
+            ! Determine bounds (lower-right, upper-right, upper-left, lower-left)
+            ! ie, get ab-nodes from aa-nodes
+            bnds(1) = 0.25*(lon2D(i,j)+lon2D(ip1,j)+lon2D(i,jm1)+lon2D(ip1,jm1))
+            bnds(2) = 0.25*(lon2D(i,j)+lon2D(ip1,j)+lon2D(i,jp1)+lon2D(ip1,jp1))
+            bnds(3) = 0.25*(lon2D(i,j)+lon2D(im1,j)+lon2D(i,jp1)+lon2D(im1,jp1))
+            bnds(4) = 0.25*(lon2D(i,j)+lon2D(im1,j)+lon2D(i,jm1)+lon2D(im1,jm1))
+            
+            write(fnum,"(4f10.3)") bnds 
+
+        end do 
+        end do 
+
+        ! y values 
+        write(fnum,*) ""
+        write(fnum,"(a)") "# Latitudes"
+        write(fnum,"(a)") "yvals = "
+        do j = 1, ny 
+            write(fnum,"(50000f10.3)") lat2D(:,j)
+        end do 
+
+        write(fnum,*) ""
+        write(fnum,"(a)") "# Latitudes of cell corners"
+        write(fnum,"(a)") "ybounds = "
+        do j = 1, ny 
+        do i = 1, nx 
+
+            im1 = max(1,i-1)
+            jm1 = max(1,j-1)
+            ip1 = min(nx,i+1)
+            jp1 = min(ny,j+1)
+
+            ! Determine bounds (lower-right, upper-right, upper-left, lower-left)
+            ! ie, get ab-nodes from aa-nodes
+            bnds(1) = 0.25*(lat2D(i,j)+lat2D(ip1,j)+lat2D(i,jm1)+lat2D(ip1,jm1))
+            bnds(2) = 0.25*(lat2D(i,j)+lat2D(ip1,j)+lat2D(i,jp1)+lat2D(ip1,jp1))
+            bnds(3) = 0.25*(lat2D(i,j)+lat2D(im1,j)+lat2D(i,jp1)+lat2D(im1,jp1))
+            bnds(4) = 0.25*(lat2D(i,j)+lat2D(im1,j)+lat2D(i,jm1)+lat2D(im1,jm1))
+            
+            write(fnum,"(4f10.3)") bnds 
+
+        end do 
+        end do 
+
+        close(fnum)
+
+        return 
+
+    end subroutine grid_write_cdo_desc_explicit
+
+end module coordinates
 
