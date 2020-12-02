@@ -5,6 +5,7 @@ module coordinates_mapping_scrip
 
     use coord_constants
     use ncio 
+    use index 
 
     implicit none 
 
@@ -52,12 +53,15 @@ module coordinates_mapping_scrip
 contains 
     
     subroutine map_scrip_field(map,var_name,var1,var2,method,fill,missing_value,mask_pack)
-        ! Load a map_scrip_class object into memory
-        ! from a netcdf file. 
+        ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
+
+        ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
+        ! desribed in the SCRIP documention (Fig. 2.4 in scripusers.pdf). The 
+        ! other methods normalize_opt=['destarea','none'] have not been implemented.
 
         implicit none 
 
-        type(map_scrip_class), intent(IN)    :: map 
+        type(map_scrip_class), intent(IN), target    :: map 
         character(len=*),      intent(IN)    :: var_name 
         real(8),               intent(IN)    :: var1(:,:) 
         real(8),               intent(INOUT) :: var2(:,:) 
@@ -75,10 +79,14 @@ contains
         real(dp), allocatable :: area(:)
         integer :: i, j, j1, j2  
 
-        real(dp), allocatable :: var1_vec(:), var2_vec(:) 
+        real(dp), allocatable, target :: var1_vec(:)
+        real(dp), allocatable :: var2_vec(:) 
         real(dp) :: area_tot, pt_ave, pt_var   
         integer  :: npt_now, num_links_now 
 
+        real(dp), pointer :: var1_now(:) 
+        real(dp), pointer :: wts1_now(:) 
+        real(dp) :: wts1_tot 
 
         npts1 = size(var1,1)*size(var1,2)
         npts2 = size(var2,1)*size(var2,2)
@@ -120,53 +128,6 @@ contains
 
         ! If fill is desired, initialize output points to missing values
         if (fill_pts) var2_vec = missing_val 
-        
-        ! First reset new interpolation address to zero 
-        do n = 1, map%num_links 
-            if (maskp(map%dst_address(n))) then
-                var2_vec(map%dst_address(n)) = 0.0d0 
-            end if 
-        end do 
-
-        select case(trim(method))
-            
-
-            case ("fracarea")
-
-                do n = 1,map%num_links
-                    if (maskp(map%dst_address(n)) .and. var1_vec(map%src_address(n)) .ne. missing_val) then 
-                        var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +      &
-                                      map%remap_matrix(1,n)*var1_vec(map%src_address(n))
-                    end if
-                end do
-
-            case ("destarea")
-
-                do n = 1, map%num_links
-                    if (maskp(map%dst_address(n)) .and. var1_vec(map%src_address(n)) .ne. missing_val) then 
-                        var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +        &
-                                        (map%remap_matrix(1,n)*var1_vec(map%src_address(n)))/ &
-                                        (map%dst_grid_frac(map%dst_address(n)))
-                    end if 
-                end do
-
-            case ("none")
-
-                do n = 1, map%num_links
-                    if (maskp(map%dst_address(n)) .and. var1_vec(map%src_address(n)) .ne. missing_val) then 
-                        var2_vec(map%dst_address(n)) = var2_vec(map%dst_address(n)) +        &
-                                       (map%remap_matrix(1,n)*var1_vec(map%src_address(n)))/ &
-                                       (map%dst_grid_area(map%dst_address(n))*map%dst_grid_frac(map%dst_address(n)))
-                    end if
-                end do
-
-            case DEFAULT 
-
-                write(*,*) "map_scrip_field:: Error: method not recongized."
-                write(*,*) "method = ", trim(method)
-                stop 
-
-        end select
 
         j1 = 0 
         j2 = 0 
@@ -183,13 +144,20 @@ contains
                 ! Note: dst_address can be expected to be sorted 
                 ! in ascending order.
                 j1 = j2+1 
-                do j = j1, map%num_links 
-                    if (map%dst_address(j) .eq. k) then 
-                        j1 = j 
-                        exit 
-                    end if 
-                end do 
 
+                ! Check index associated with this address. If 
+                ! it is greater than the current index k, it 
+                ! means this point has no interpolation links,
+                ! so skip this iteration of the main loop.
+                if (map%dst_address(j1) .gt. k) then 
+                    j1 = j1-1 
+                    cycle 
+                end if 
+
+                ! Given j1 is the start of the addresses associated 
+                ! with the current index k, find the upper range 
+                ! such that map%dst_address(j1:j2) == k and it 
+                ! covers all addresses equal to k.
                 do j = j1, map%num_links
                     if (map%dst_address(j) .eq. map%dst_address(j1) ) then 
                         j2 = j 
@@ -199,21 +167,63 @@ contains
                 end do 
 
                 ! Determine the number of links 
-                ! To do: treat missing values!!
                 num_links_now = j2-j1+1
-                !wt_tot = sum()
 
-                select case(trim(method))
+                ! Define pointers to range of relevant input data and weights
+                nullify(var1_now)
+                nullify(wts1_now) 
+                allocate(var1_now(num_links_now))
+                allocate(wts1_now(num_links_now))
 
-                    case("mean")
-                        ! Calculate the area-weighted mean 
+                ! Assign data and weights to pointers
+                var1_now = var1_vec(map%src_address(j1:j2))
+                wts1_now = map%remap_matrix(1,j1:j2)
 
-                        ! area_tot    = sum(area,mask=area.gt.0.d0)
-                        ! pt_ave      = sum((area/area_tot)*var1_vec(mp(i)%i))
-                        
-                        ! var2_vec(i) = pt_ave 
+                ! Calculate the total weight associated with this point,
+                ! accounting for missing values in the source array.
+                wts1_tot = sum(wts1_now,mask=var1_now .ne. missing_val)
 
-                end select 
+                if (wts1_tot .gt. 0.0d0) then 
+                    ! Interpolation data found, proceed to interpolate this point
+                    
+                    var2_vec(k) = 0.0d0 
+
+                    select case(trim(method))
+
+                        case("mean")
+                            ! Calculate the area-weighted mean 
+
+                            var2_vec(k) = sum((wts1_now/wts1_tot)*var1_now,mask=var1_now .ne. missing_val)
+
+                        case("count")
+                            ! Choose the most frequently occurring value, weighted by area
+
+                            var2_vec(k) = maxcount(var1_now,wts1_now,missing_val)
+
+                        case("stdev")
+                            ! Calculate the weighted standard deviation 
+                            ! using unbiased estimator correction 
+
+                            npt_now = count(var1_now .ne. missing_val)
+
+                            if (npt_now .gt. 2) then
+                                ! Only calculate stdev for 2 or more input points
+
+                                pt_ave      = sum((wts1_now/wts1_tot)*var1_now,mask=var1_now .ne. missing_val)
+                                var2_vec(k) = (npt_now/(npt_now - 1.0)) &
+                                               * sum((wts1_now/wts1_tot)*(var1_now-pt_ave)**2, & 
+                                                                            mask=var1_now .ne. missing_val)
+
+                            else
+                                ! Otherwise assume standard deviation is zero 
+                                var2_vec(k) = 0.0d0 
+
+                            end if 
+
+                            
+                    end select 
+
+                end if 
 
             end if 
 

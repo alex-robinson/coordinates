@@ -106,7 +106,7 @@ contains
                         case("count")
                             ! Choose the most frequently occurring value, weighted by area
 
-                            var2_vec(i) = maxcount(var1_vec(mp(i)%i),area)
+                            var2_vec(i) = maxcount(var1_vec(mp(i)%i),area,missing_val)
 
                         case("stdev")
                             ! Calculate the weighted standard deviation 
@@ -151,45 +151,46 @@ contains
 
     end subroutine map_field_conservative_map1
 
-    function maxcount(var,weight) result (var1)
+!ajr: function maxcount now defined in index.f90
+    ! function maxcount(var,weight) result (var1)
 
-        implicit none 
+    !     implicit none 
 
-        double precision, intent(IN) :: var(:), weight(:) 
-        double precision :: var1 
+    !     double precision, intent(IN) :: var(:), weight(:) 
+    !     double precision :: var1 
 
-        ! Local variables 
-        double precision, allocatable :: var_unique(:) 
-        double precision :: varnow, wtnow, wtmax 
-        integer :: i, j  
+    !     ! Local variables 
+    !     double precision, allocatable :: var_unique(:) 
+    !     double precision :: varnow, wtnow, wtmax 
+    !     integer :: i, j  
 
-        ! Determine unique values to be checked 
-        call unique(var_unique,var)
+    !     ! Determine unique values to be checked 
+    !     call unique(var_unique,var)
 
-        wtmax  = 0.d0  
-        var1   = mv 
+    !     wtmax  = 0.d0  
+    !     var1   = mv 
 
-        do i = 1, size(var_unique)
+    !     do i = 1, size(var_unique)
 
-            varnow = var_unique(i)
+    !         varnow = var_unique(i)
 
-            wtnow = 0.d0
-            do j = 1, size(var)
-                if (var(j) .eq. varnow) then 
-                    wtnow = wtnow + weight(j)
-                end if 
-            end do 
+    !         wtnow = 0.d0
+    !         do j = 1, size(var)
+    !             if (var(j) .eq. varnow) then 
+    !                 wtnow = wtnow + weight(j)
+    !             end if 
+    !         end do 
 
-            if (wtnow .gt. wtmax) then 
-                var1  = varnow 
-                wtmax = wtnow 
-            end if
+    !         if (wtnow .gt. wtmax) then 
+    !             var1  = varnow 
+    !             wtmax = wtnow 
+    !         end if
 
-        end do  
+    !     end do  
 
-        return 
+    !     return 
 
-    end function maxcount
+    ! end function maxcount
 
     function calc_grid_total(x,y,var,xlim,ylim) result(tot)
 

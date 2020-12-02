@@ -8,9 +8,52 @@ module index
     end interface 
 
     private
-    public :: which, unique 
+    public :: maxcount, which, unique 
 
 contains 
+    
+    function maxcount(var,weight,missing_val) result (var1)
+
+        implicit none 
+
+        double precision, intent(IN) :: var(:)
+        double precision, intent(IN) :: weight(:) 
+        double precision, intent(IN) :: missing_val 
+
+        double precision :: var1 
+
+        ! Local variables 
+        double precision, allocatable :: var_unique(:) 
+        double precision :: varnow, wtnow, wtmax 
+        integer :: i, j  
+
+        ! Determine unique values to be checked 
+        call unique(var_unique,var)
+
+        wtmax  = 0.d0  
+        var1   = missing_val 
+
+        do i = 1, size(var_unique)
+
+            varnow = var_unique(i)
+
+            wtnow = 0.d0
+            do j = 1, size(var)
+                if (var(j) .eq. varnow .and. weight(j) .ne. missing_val) then 
+                    wtnow = wtnow + weight(j)
+                end if 
+            end do 
+
+            if (wtnow .gt. wtmax) then 
+                var1  = varnow 
+                wtmax = wtnow 
+            end if
+
+        end do  
+
+        return 
+
+    end function maxcount
 
     subroutine which(x,ind,stat)
         ! Analagous to R::which function
@@ -49,7 +92,7 @@ contains
         
         return 
 
-    end subroutine which 
+    end subroutine which
 
     subroutine unique_float(xu,x)
         ! Return only the unique values of a vector
@@ -90,7 +133,7 @@ contains
 
         return 
 
-    end subroutine unique_float 
+    end subroutine unique_float
 
     subroutine unique_dble(xu,x)
         ! Return only the unique values of a vector
