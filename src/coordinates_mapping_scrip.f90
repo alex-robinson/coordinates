@@ -297,7 +297,8 @@ contains
                                 var2_vec(k) = (npt_now/(npt_now - 1.0)) &
                                                * sum((wts1_now/wts1_tot)*(var1_now-pt_ave)**2, & 
                                                                             mask=var1_now .ne. missing_val)
-
+                                var2_vec(k) = sqrt(var2_vec(k))
+                                
                             else
                                 ! Otherwise assume standard deviation is zero 
                                 var2_vec(k) = 0.0d0 
