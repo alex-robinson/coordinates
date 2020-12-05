@@ -92,11 +92,11 @@ MODULE oblimap_projection_module
     public :: optimal_alpha
     public :: oblimap_projection, oblimap_projection_inverse
 
-CONTAINS
+contains
   
-  SUBROUTINE projection_init(proj,name,planet,lambda,phi,alpha,x_e,y_n,method)
+  subroutine projection_init(proj,name,planet,lambda,phi,alpha,x_e,y_n,method)
     
-    IMPLICIT NONE
+    implicit none
     
     type(projection_class) :: proj 
     character(len=*)       :: name
@@ -209,15 +209,15 @@ CONTAINS
 
         end if 
 
-        ! Make sure phi matches 90/-90 in polar case 
-        ! (since this argument can also be used to prescribe the standard latitude in this case)
-        if ( trim(proj%name) .eq. "polar_stereographic" ) then
-            if (proj%phi .lt. 0.d0) then 
-                proj%phi = -90.d0 
-            else
-                proj%phi = 90.d0 
-            end if 
-        end if 
+        ! ! Make sure phi matches 90/-90 in polar case 
+        ! ! (since this argument can also be used to prescribe the standard latitude in this case)
+        ! if ( trim(proj%name) .eq. "polar_stereographic" ) then
+        !     if (proj%phi .lt. 0.d0) then 
+        !         proj%phi = -90.d0 
+        !     else
+        !         proj%phi = 90.d0 
+        !     end if 
+        ! end if 
 
     end if 
 
@@ -257,7 +257,7 @@ CONTAINS
 
     return
 
-  END SUBROUTINE projection_init 
+  end subroutine projection_init
 
   subroutine projection_print(proj)
 
