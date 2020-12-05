@@ -391,7 +391,7 @@ contains
             if (.not. cdo_success) then 
                 write(*,*) "map_scrip_init:: Error: scrip map file was not written. &
                 & This may mean that the system call to cdo was unsucessful. Check the &
-                &cdo log file '.tmpcdoout'."
+                &cdo log file: .tmpcdoout"
                 stop 
             end if 
 
