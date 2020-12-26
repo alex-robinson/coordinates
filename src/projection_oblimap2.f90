@@ -254,7 +254,7 @@ contains
     proj%D         = proj%am / (proj%R_q_polar * COS(proj%phi_M))
 
 !     if (trim(proj%method) .ne. "Undefined") call projection_print(proj)
-
+    
     return
 
   end subroutine projection_init
@@ -285,13 +285,14 @@ contains
     write(*,"(a20,a)") "planet = ", trim(proj%planet_name)
     write(*,"(a20,l2)") "is sphere? = ", proj%is_sphere
     write(*,"(a20,g15.3)") "lambda = ", proj%lambda
-    write(*,"(a20,g15.3)") "lambda_M = ", proj%lambda_M
     write(*,"(a20,g15.3)") "phi = ", proj%phi
-    write(*,"(a20,g15.3)") "phi_M = ", proj%phi_M
     write(*,"(a20,g15.3)") "alpha = ", proj%alpha
-    write(*,"(a20,g15.3)") "alpha_ster = ", proj%alpha_stereographic
     write(*,"(a20,g15.3)") "x_e = ", proj%x_e
     write(*,"(a20,g15.3)") "y_n = ", proj%y_n
+    write(*,*) 
+    write(*,"(a20,g15.3)") "lambda_M = ", proj%lambda_M
+    write(*,"(a20,g15.3)") "phi_M = ", proj%phi_M
+    write(*,"(a20,g15.3)") "alpha_ster = ", proj%alpha_stereographic
     write(*,*)
     write(*,"(a20,g15.3)") "R = ", proj%R 
     write(*,"(a20,g15.3)") "earth_radius = ", proj%earth_radius 
@@ -632,7 +633,7 @@ contains
 
     ELSE 
 
-     ! See equation (21-15) on page 159 Snyder (1987), because the denumerator is always positive this ATAN doesn't 
+     ! See equation (21-15) on page 159 Snyder (1987), because the denominator is always positive this ATAN doesn't 
      ! need a correction like note 2 on page ix in Snyder (1987):
      angle_C  = 2._dp * ATAN(rho / ((1._dp + COS(proj%alpha_stereographic)) * proj%earth_radius))
      
@@ -868,7 +869,8 @@ contains
     REAL(dp)              :: pf            ! polar factor: -1.0 for SP and +1.0 for NP
     REAL(dp)              :: k0            ! 
 
-    IF(proj%phi_M == - 90.0_dp * degrees_to_radians) THEN
+    !IF(proj%phi_M == -90.0_dp * degrees_to_radians) THEN
+    if(proj%phi_M .lt. 0.0_dp) then 
      pf = -1.0_dp                                       ! The polar factor for the SP
     ELSE
      pf =  1.0_dp                                       ! The polar factor for the NP
@@ -1020,7 +1022,8 @@ contains
     REAL(dp)              :: pf            ! polar factor: -1.0 for SP and +1.0 for NP
     REAL(dp)              :: k0
 
-    IF(proj%phi_M == - 90.0_dp * degrees_to_radians) THEN
+    ! IF(proj%phi_M == -90.0_dp * degrees_to_radians) THEN
+    if (proj%phi_M .lt. 0.0_dp) then 
      pf = -1.0_dp                                       ! The polar factor for the SP
     ELSE
      pf =  1.0_dp                                       ! The polar factor for the NP
