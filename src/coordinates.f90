@@ -107,7 +107,8 @@ module coordinates
     public :: compare_coord
     public :: pts_which_nearest 
     public :: grid_write_cdo_desc_short 
-
+    public :: grid_write_cdo_desc_cdo 
+    
 contains
 
     subroutine axis_init(x,x0,dx)
@@ -1389,6 +1390,55 @@ contains
 
 
 ! ==== cdo-related functions ====
+    
+    subroutine grid_write_cdo_desc_cdo(grid_name,fldr,file_nc)
+        ! Write a cdo-compliant grid description file 
+        ! based on grid definition using cdo call 
+
+        implicit none 
+
+        character(len=*), intent(IN) :: grid_name   ! Name of grid to be described
+        character(len=*), intent(IN) :: fldr        ! File destination
+        character(len=*), intent(IN) :: file_nc     ! Netcdf file with grid definition
+
+
+        ! Local variables 
+        character(len=512)  :: file_grid_desc
+        character(len=2048) :: cdo_cmd
+        logical :: map_exists  
+        logical :: cdo_success 
+
+        ! Determine whether map file should be loaded if available 
+        ! Step 1: call cdo to generate mapping weights in a scrip file 
+
+        ! Generate grid description filename
+        file_grid_desc = trim(fldr)//"/"//"grid_"//trim(grid_name)//".txt"
+
+        ! Define cdo command to generate griddes file from src grid (fnm1) 
+        cdo_cmd = "cdo griddes "//trim(file_nc)//" > "//trim(file_grid_desc)
+
+        write(*,*) "cdo command: "
+        write(*,*) trim(cdo_cmd) 
+
+        write(*,"(a)",advance='no') "Calling via system call... "
+        call system(cdo_cmd)
+        write(*,*) "done." 
+
+        ! Check if scrip weights file was written 
+        inquire(file=trim(file_grid_desc),exist=cdo_success)
+
+        if (.not. cdo_success) then 
+            write(*,*) "map_scrip_init:: Error: scrip map file was not written. &
+            & This may mean that the system call to cdo was unsucessful. Check the &
+            &cdo log file: .tmpcdoout"
+            stop 
+        end if 
+
+        
+
+        return 
+
+    end subroutine grid_write_cdo_desc_cdo
 
     subroutine grid_write_cdo_desc_short(grid,fldr)
         ! Write a cdo-compliant grid description file 
