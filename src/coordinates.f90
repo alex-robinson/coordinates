@@ -108,7 +108,9 @@ module coordinates
     public :: pts_which_nearest 
     public :: grid_write_cdo_desc_short 
     public :: grid_write_cdo_desc_cdo 
-    
+    public :: grid_write_cdo_desc_explicit_proj
+    public :: grid_write_cdo_desc_explicit_latlon
+
 contains
 
     subroutine axis_init(x,x0,dx)
@@ -1568,7 +1570,7 @@ contains
 
     end subroutine grid_write_cdo_desc_short
     
-    subroutine grid_write_cdo_desc_explicit(lon2D,lat2D,filename)
+    subroutine grid_write_cdo_desc_explicit_proj(lon2D,lat2D,filename)
 
         implicit none 
 
@@ -1660,7 +1662,63 @@ contains
 
         return 
 
-    end subroutine grid_write_cdo_desc_explicit
+    end subroutine grid_write_cdo_desc_explicit_proj
+
+
+    subroutine grid_write_cdo_desc_explicit_latlon(lon,lat,filename)
+
+        implicit none 
+
+        real(4), intent(IN) :: lon(:) 
+        real(4), intent(IN) :: lat(:) 
+        character(len=*), intent(IN) :: filename 
+
+        ! Local variables 
+        integer :: nx, ny 
+        real(4), allocatable :: lon2D(:,:) 
+        real(4), allocatable :: lat2D(:,:) 
+
+
+        nx = size(lon,1)
+        ny = size(lat,1)
+    
+        allocate(lon2D(nx,ny))
+        allocate(lat2D(nx,ny))
+
+        call gen_latlon2D(lon2D,lat2D,lon,lat)
+
+        call write_cdo_gridfile(lon2D,lat2D,filename)
+
+        return 
+
+    end subroutine grid_write_cdo_desc_explicit_latlon
+
+    subroutine gen_latlon2D(lon2D,lat2D,lon,lat)
+
+        implicit none 
+
+        real(4), intent(OUT) :: lon2D(:,:) 
+        real(4), intent(OUT) :: lat2D(:,:) 
+        real(4), intent(IN)  :: lon(:) 
+        real(4), intent(IN)  :: lat(:) 
+
+        ! Local variables 
+        integer :: i, j, nx, ny 
+
+        nx = size(lon,1)
+        ny = size(lat,1)
+
+        do j = 1, ny 
+            lon2D(:,j) = lon 
+        end do 
+
+        do i = 1, nx 
+            lat2D(i,:) = lat 
+        end do 
+
+        return 
+
+    end subroutine gen_latlon2D
 
 end module coordinates
 
