@@ -1490,23 +1490,16 @@ contains
         real(4), intent(IN)    :: missing_value 
 
         ! Local variables 
-        integer, parameter :: guess = 1     ! 0: start with guess=0.0, 1: guess zonal mean
-        integer, parameter :: gtype = 0     ! 0: not cyclical; 1: cyclical 
-        integer, parameter :: nscan = 100   ! Max. number of scans, n-dimension
-        integer, parameter :: mscan = 100   ! Max. number of scans, n-dimension
-        double precision, parameter :: epsx = 1d-1 
-        double precision, parameter :: relc = 0.5d0     ! Relaxation coefficent (~0.45-0.6)
-        integer :: mx, ny, ier 
-
+        integer :: nx, ny 
         double precision, allocatable :: var2d_dble(:,:) 
 
-        mx = size(var2d,1)
+        nx = size(var2d,1)
         ny = size(var2d,2) 
 
-        allocate(var2d_dble(mx,ny))
+        allocate(var2d_dble(nx,ny))
 
         var2d_dble = var2d 
-        call poisxy1(var2d_dble,mx,ny,dble(missing_value),guess,gtype,nscan,epsx,relc,mscan,ier)
+        call fill_poisson_dble(var2d_dble,dble(missing_value))
         var2d = var2d_dble
 
         return 
@@ -1526,13 +1519,19 @@ contains
         integer, parameter :: nscan = 100   ! Max. number of scans, n-dimension
         double precision, parameter :: epsx = 1d-1 
         double precision, parameter :: relc = 0.5d0     ! Relaxation coefficent (~0.45-0.6)
-        integer :: mx, ny, ier 
+        integer :: mx, ny
+        integer :: n_missing 
         integer :: nscanned 
-        
+        double precision :: resmax 
+
         mx = size(var2d,1)
         ny = size(var2d,2) 
 
-        call poisxy1(var2d,mx,ny,missing_value,guess,gtype,nscan,epsx,relc,nscanned,ier)
+        n_missing = count(var2d .eq. missing_value) 
+
+        if (n_missing .gt. 0) then 
+            call poisxy2(var2d,mx,ny,missing_value,nscan,epsx,relc,guess,gtype,resmax,nscanned)
+        end if 
 
         return 
 
@@ -1542,37 +1541,10 @@ contains
     ! https://github.com/royalosyin/Fill-Missing-Values/blob/master/poisson_grid_fill/fill_msg_grid.f90
     ! Originally ported from NCL? 
 
-
     !==================================================================================
-    ! This is the entry subroutine to check if necessarty to fill
+    ! this is the worker to perform filling
     !==================================================================================
-    subroutine poisxy1 ( xio, mx,ny, xmsg, guess, gtype, nscan, epsx, relc, mscan, ier)
-        implicit none
-        integer             mx, ny, nscan, guess, gtype, mscan, ier
-        double precision    xio(mx,ny), xmsg, epsx, relc
-        integer             nmsg, n, m
-        double precision    resmax
-
-        ier  = 0
-        nmsg = 0
-        do n = 1, ny
-            do m = 1, mx
-                if (xio(m,n).eq.xmsg) nmsg = nmsg + 1
-            end do
-        end do
-
-        !if no missing values return the original array
-        if (nmsg.eq.0) return
-
-        call poisxy2(xio,mx,ny,xmsg,nscan,epsx,relc,guess,gtype,resmax, mscan)
-
-        return
-    end subroutine poisxy1
-
-    !==================================================================================
-    ! this is the worker to finish filling
-    !==================================================================================
-    subroutine poisxy2(a,il,jl,amsg,maxscn,crit,relc,guess,gtype,resmax, mscan)
+    subroutine poisxy2(a,il,jl,amsg,maxscn,crit,relc,guess,gtype,resmax,mscan)
     !==================================================================================
     ! inputs:
     !     a       = array with missing areas to be filled. 
