@@ -1701,7 +1701,7 @@ contains
 
     end subroutine grid_write_cdo_desc_explicit_proj
 
-        subroutine grid_write_cdo_desc_explicit_latlon(lon,lat,grid_name,fldr)
+    subroutine grid_write_cdo_desc_explicit_latlon(lon,lat,grid_name,fldr)
 
         implicit none 
 
@@ -1753,7 +1753,7 @@ contains
         write(fnum,*) ""
         write(fnum,"(a)") "# Longitudes of cell corners"
         write(fnum,"(a)") "xbounds = "
-        do j = 1, ny 
+        !do j = 1, ny 
         do i = 1, nx 
 
             im1 = max(1,i-1)
@@ -1771,7 +1771,7 @@ contains
             write(fnum,"(4f10.3)") bnds 
 
         end do 
-        end do 
+        !end do 
 
         ! y values 
         write(fnum,*) ""
@@ -1783,7 +1783,7 @@ contains
         write(fnum,"(a)") "# Latitudes of cell corners"
         write(fnum,"(a)") "ybounds = "
         do j = 1, ny 
-        do i = 1, nx 
+        !do i = 1, nx 
 
             im1 = max(1,i-1)
             jm1 = max(1,j-1)
@@ -1799,7 +1799,7 @@ contains
             
             write(fnum,"(4f10.3)") bnds 
 
-        end do 
+        !end do 
         end do 
 
         close(fnum)
