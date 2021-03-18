@@ -110,6 +110,7 @@ module coordinates
     public :: grid_write_cdo_desc_cdo 
     public :: grid_write_cdo_desc_explicit_proj
     public :: grid_write_cdo_desc_explicit_latlon
+    public :: gen_grid_file 
 
 contains
 
@@ -1771,7 +1772,7 @@ contains
             bnds(1) = 0.5*(lon(i)+lon(ip1))
             bnds(2) = 0.5*(lon(im1)+lon(i))
 
-            write(fnum,"(4f10.3)") bnds(1:2)
+            write(fnum,"(2f10.3)") bnds(1:2)
 
         end do 
         !end do 
@@ -1813,6 +1814,91 @@ contains
         return 
 
     end subroutine grid_write_cdo_desc_explicit_latlon
+
+    subroutine gen_grid_file(src_nc,src_var,grid_name,fldr)
+
+        implicit none 
+
+        character(len=*), intent(IN) :: src_nc 
+        character(len=*), intent(IN) :: src_var 
+        character(len=*), intent(IN) :: grid_name 
+        character(len=*), intent(IN) :: fldr 
+
+        ! Local variables 
+        character(len=512)  :: filename
+        character(len=1024) :: cdo_cmd 
+
+        ! Create output filename 
+        filename = trim(fldr)//"/grid_"//trim(grid_name)//".nc"
+
+
+        ! Define cdo command to extract variable into a new file 
+        ! cdo command output is redirected to a file '.tmpcdoout'.
+        cdo_cmd = "cdo selvar,"//trim(src_var)//" "//trim(src_nc)// &
+                " "//trim(filename)
+
+        call call_system_cdo(cdo_cmd)
+        
+        return 
+
+    end subroutine gen_grid_file
+
+    subroutine call_system_cdo(cdo_cmd)
+
+        implicit none 
+
+        character(len=*), intent(IN) :: cdo_cmd 
+
+        ! Local variables 
+        character(len=2048) :: cdo_cmd_ext 
+        character(len=56) :: cdo_output_file 
+        character(len=2048) :: str_now 
+        integer :: i, fnum, io, aborted
+        logical :: cdo_success 
+
+        ! Define diagnostic output filename
+        cdo_output_file = ".tmpcdoout"
+
+        ! Add the diagnostic output filename to the command to be called
+        cdo_cmd_ext = trim(cdo_cmd)//" &> "//trim(cdo_output_file)
+
+        write(*,*) "cdo command: "
+        write(*,*) trim(cdo_cmd_ext) 
+
+        write(*,"(a)",advance='no') "Calling via system call... "
+        call system(cdo_cmd_ext)
+        write(*,*) "done." 
+
+        ! Check if scrip weights file was written 
+        !inquire(file=trim(fnm_map),exist=cdo_success)
+
+        ! ===================================================
+        ! Check to see if 'Abort' was called by cdo: 
+        fnum = 99
+        open(fnum,file=cdo_output_file,status='old',action='read')
+
+        do i = 1, 10000
+            read(fnum,"(a10000)",iostat=io) str_now
+            aborted = index(str_now,"Abort")
+            if (io .lt. 0 .or. aborted .gt. 0) exit 
+        end do 
+        close(fnum)
+        ! ===================================================
+        
+        cdo_success = .TRUE. 
+        if (aborted .gt. 0) cdo_success = .FALSE. 
+
+        if (.not. cdo_success) then 
+            write(*,*) 
+            write(*,*) "call_system_cdo:: Error: cdo call was aborted due to an error. &
+            & Check the cdo log file: .tmpcdoout"
+            write(*,*) 
+            stop 
+        end if 
+
+        return 
+
+    end subroutine call_system_cdo
 
 end module coordinates
 

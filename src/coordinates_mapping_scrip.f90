@@ -326,7 +326,7 @@ contains
 
     end subroutine map_scrip_field_double
 
-    subroutine map_scrip_init(map,src_name,dst_name,fldr,src_nc,load)
+    subroutine map_scrip_init(map,src_name,dst_name,fldr,src_nc,src_var,load)
         ! Use cdo to generate scrip map based on grid 
         ! definitions. 
 
@@ -340,6 +340,7 @@ contains
         character(len=*), intent(IN) :: dst_name        ! Dest./target grid name
         character(len=*), intent(IN) :: fldr            ! Folder where grid desciptions can be found
         character(len=*), intent(IN) :: src_nc          ! Path to source netcdf file containing grid/variables (needed by cdo)
+        character(len=*), intent(IN), optional :: src_var 
         logical,          intent(IN), optional :: load  ! Load map from file if available? 
 
         ! Local variables 
@@ -565,5 +566,5 @@ contains
         return
 
     end function gen_map_filename
-
+    
 end module coordinates_mapping_scrip
