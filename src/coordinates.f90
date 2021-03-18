@@ -1198,7 +1198,9 @@ contains
             
         end if 
 
-        if (.not. (grid%is_cartesian .and. .not. grid%is_projection)) then 
+        if ( grid%is_projection ) then 
+            ! Write 2D arrays of lon/lat values that correspond to current projection
+            ! (else there are no lon/lat values, or they are the 1D axes)
             call nc_write(fnm,"lon2D",grid%lon,dim1=xnm,dim2=ynm,grid_mapping="crs")
             call nc_write_attr(fnm,"lon2D","_CoordinateAxisType","Lon")
             call nc_write_attr(fnm,"lon2D","units","degrees_east")
@@ -1210,11 +1212,19 @@ contains
         end if 
 
         call nc_write(fnm,"area",  grid%area,  dim1=xnm,dim2=ynm,grid_mapping="crs")
-        call nc_write_attr(fnm,"area","coordinates","lat2D lon2D")
         call nc_write(fnm,"border",grid%border,dim1=xnm,dim2=ynm,grid_mapping="crs")
-        call nc_write_attr(fnm,"border","coordinates","lat2D lon2D")
+        
+        ! Add coordinates information as needed
+        if ( grid%is_projection ) then 
+            call nc_write_attr(fnm,"area",  "coordinates","lat2D lon2D")
+            call nc_write_attr(fnm,"border","coordinates","lat2D lon2D")
+        else if ( .not. grid%is_cartesian ) then 
+            call nc_write_attr(fnm,"area",  "coordinates","lat lon")
+            call nc_write_attr(fnm,"border","coordinates","lat lon")
+        end if 
 
         return
+        
     end subroutine grid_write
 
     subroutine points_write(pts,fnm,xnm,ynm,create)
