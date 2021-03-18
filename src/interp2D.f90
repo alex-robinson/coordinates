@@ -38,9 +38,15 @@ module interp2D
         module procedure fill_bilinear_dble !, fill_bilinear_float
     end interface
 
+    interface fill_poisson
+        module procedure fill_poisson_float 
+        module procedure fill_poisson_dble
+    end interface 
+
     private
     public :: interp_bilinear, interp_nearest, interp_nearest_fast
     public :: fill_weighted, fill_nearest, fill_mean
+    public :: fill_poisson 
     public :: diffuse, limit_gradient 
 
 contains
@@ -705,7 +711,7 @@ contains
 
         return 
 
-    end subroutine fill_nearest_dble_new 
+    end subroutine fill_nearest_dble_new
 
     subroutine fill_nearest_dble(z,missing_value,fill_value,n)
         implicit none 
@@ -1039,7 +1045,7 @@ contains
         
         return 
 
-    end function get_nn_indices_line 
+    end function get_nn_indices_line
 
 
     subroutine fill_weighted_dble(z,missing_value,fill_value,n,mask)
@@ -1273,7 +1279,7 @@ contains
 
         return 
 
-    end function interp_nearest_int 
+    end function interp_nearest_int
 
     subroutine fill_nearest_int(z,missing_value,fill_value,n)
 
@@ -1292,7 +1298,7 @@ contains
 
         return 
 
-    end subroutine fill_nearest_int 
+    end subroutine fill_nearest_int
 
     subroutine diffuse(z,iter,missing_value,mask)
 
@@ -1442,7 +1448,7 @@ contains
 
         return 
 
-    end subroutine limit_gradient 
+    end subroutine limit_gradient
 
     function calc_bilinear(x1,x2,x3,x4,xout) result(zout)
         ! Given the points surrounding it, calculate the value at xout
@@ -1468,6 +1474,212 @@ contains
         
         return
 
-    end function calc_bilinear 
+    end function calc_bilinear
+
+
+
+
+
+! ========================
+    
+    subroutine fill_poisson_float(var2d,missing_value)
+
+        implicit none 
+
+        real(4), intent(INOUT) :: var2d(:,:) 
+        real(4), intent(IN)    :: missing_value 
+
+        ! Local variables 
+        integer, parameter :: guess = 1     ! 0: start with guess=0.0, 1: guess zonal mean
+        integer, parameter :: gtype = 0     ! 0: not cyclical; 1: cyclical 
+        integer, parameter :: nscan = 100   ! Max. number of scans, n-dimension
+        integer, parameter :: mscan = 100   ! Max. number of scans, n-dimension
+        double precision, parameter :: epsx = 1d-1 
+        double precision, parameter :: relc = 0.5d0     ! Relaxation coefficent (~0.45-0.6)
+        integer :: mx, ny, ier 
+
+        double precision, allocatable :: var2d_dble(:,:) 
+
+        mx = size(var2d,1)
+        ny = size(var2d,2) 
+
+        allocate(var2d_dble(mx,ny))
+
+        var2d_dble = var2d 
+        call poisxy1(var2d_dble,mx,ny,dble(missing_value),guess,gtype,nscan,epsx,relc,mscan,ier)
+        var2d = var2d_dble
+
+        return 
+
+    end subroutine fill_poisson_float
+
+    subroutine fill_poisson_dble(var2d,missing_value)
+
+        implicit none 
+
+        double precision, intent(INOUT) :: var2d(:,:) 
+        double precision, intent(IN)    :: missing_value 
+
+        ! Local variables 
+        integer, parameter :: guess = 1     ! 0: start with guess=0.0, 1: guess zonal mean
+        integer, parameter :: gtype = 0     ! 0: not cyclical; 1: cyclical 
+        integer, parameter :: nscan = 100   ! Max. number of scans, n-dimension
+        double precision, parameter :: epsx = 1d-1 
+        double precision, parameter :: relc = 0.5d0     ! Relaxation coefficent (~0.45-0.6)
+        integer :: mx, ny, ier 
+        integer :: nscanned 
+        
+        mx = size(var2d,1)
+        ny = size(var2d,2) 
+
+        call poisxy1(var2d,mx,ny,missing_value,guess,gtype,nscan,epsx,relc,nscanned,ier)
+
+        return 
+
+    end subroutine fill_poisson_dble
+
+    ! Poisson fill code obtained from:
+    ! https://github.com/royalosyin/Fill-Missing-Values/blob/master/poisson_grid_fill/fill_msg_grid.f90
+    ! Originally ported from NCL? 
+
+
+    !==================================================================================
+    ! This is the entry subroutine to check if necessarty to fill
+    !==================================================================================
+    subroutine poisxy1 ( xio, mx,ny, xmsg, guess, gtype, nscan, epsx, relc, mscan, ier)
+        implicit none
+        integer             mx, ny, nscan, guess, gtype, mscan, ier
+        double precision    xio(mx,ny), xmsg, epsx, relc
+        integer             nmsg, n, m
+        double precision    resmax
+
+        ier  = 0
+        nmsg = 0
+        do n = 1, ny
+            do m = 1, mx
+                if (xio(m,n).eq.xmsg) nmsg = nmsg + 1
+            end do
+        end do
+
+        !if no missing values return the original array
+        if (nmsg.eq.0) return
+
+        call poisxy2(xio,mx,ny,xmsg,nscan,epsx,relc,guess,gtype,resmax, mscan)
+
+        return
+    end subroutine poisxy1
+
+    !==================================================================================
+    ! this is the worker to finish filling
+    !==================================================================================
+    subroutine poisxy2(a,il,jl,amsg,maxscn,crit,relc,guess,gtype,resmax, mscan)
+    !==================================================================================
+    ! inputs:
+    !     a       = array with missing areas to be filled. 
+    !     il      = number of points along 1st dimension to be filled
+    !     jl      = number of points along 2nd dimension to be filled
+    !     amsg    = missing value
+    !     maxscn  = maximum number of passes allowed in relaxation
+    !     crit    = criterion for ending relaxation before "maxscn" limit
+    !     relc    = relaxation constant
+    !     gtype   = 0 : not cyclic in x
+    !               1 : cyclic in x
+    !     guess   = 0 : use 0.0 as an initial guess
+    !             = 1 : at each "y" use the average values for that "y"
+    !                   think zonal averages
+    ! outputs:
+    !
+    !     a       = array with interpolated values 
+    !               non missing areas remain unchanged.
+    !     resmax  = max residual
+    !==================================================================================
+        implicit   none
+      
+        integer    il, jl, maxscn, guess, gtype, mscan
+        double precision       a(il,jl), amsg, crit, resmax
+
+        ! local variable
+        logical    done
+        integer    i, j, n, im1, ip1, jm1, jp1
+        double precision       p25, relc
+        double precision       sor(il,jl), res, aavg
+        !sor     = scratch area
+
+        p25 = 0.25d0 
+
+        do j = 1, jl
+            n    = 0
+            aavg = 0.0d0
+            do i = 1, il
+                if (a(i,j) .eq. amsg) then
+                    sor(i,j) = relc
+                else
+                    n        = n + 1
+                    aavg     = aavg + a(i,j)
+                    sor(i,j) = 0.0d0
+                endif
+            end do
+
+            if (n.gt.0) then
+                aavg = aavg/n
+            end if
+
+            if (guess.eq.0) then
+                do i = 1, il
+                    if (a(i,j) .eq. amsg) a(i,j) = 0.0d0
+                end do
+            elseif (guess.eq.1) then
+                do i = 1, il
+                    if (a(i,j) .eq. amsg) a(i,j) = aavg
+                end do
+            end if
+
+        end do
+
+        !-----------------------------------------------------------------------
+        !     iterate until errors are acceptable.
+        !-----------------------------------------------------------------------     
+        mscan = 0
+100     continue
+        resmax = 0.0d0
+        done   = .false.
+        mscan  = mscan + 1
+        do j = 1, jl
+            jp1 = j+1
+            jm1 = j-1
+            if (j.eq.1 ) jm1 = 2
+            if (j.eq.jl) jp1 = jl-1
+            do i = 1, il
+                ! only work on missing value locations
+                if (sor(i,j).ne.0.0) then 
+                    im1 = i-1
+                    ip1 = i+1
+                    ! cyclic in x           
+                    if (i.eq.1  .and. gtype.eq.1) im1 = il 
+                    if (i.eq.il .and. gtype.eq.1) ip1 = 1
+                    
+                    ! not cyclic in x           
+                    if (i.eq.1  .and. gtype.eq.0) im1 = 2
+                    if (i.eq.il .and. gtype.eq.0) ip1 = il-1 
+    
+                    res = p25*(a(im1,j)+a(ip1,j)+a(i,jm1)+a(i,jp1))-a(i,j)
+                    res = res*sor(i,j)
+                    a(i,j)  = a(i,j) + res
+                    resmax  = max(abs(res),resmax)
+                end if
+            end do
+        end do
+        
+        ! check if satisfy conditions
+        if (resmax .le. crit .or. n.eq.maxscn)  done = .true.
+        if (.not. done .and. mscan .lt. maxscn) go to 100
+
+        !write (6,99) mscan, resmax
+99      format (1x,'==> Extrapolated  mscan=',i4, ' scans.  max residual=', g14.7)
+
+        return
+    end subroutine poisxy2
+
+! =====================
 
 end module interp2D
