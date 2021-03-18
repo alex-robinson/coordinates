@@ -3,7 +3,8 @@ FC = ifort
 INC_NC  = -I${NETCDF_FORTRANROOT}/include
 LIB_NC  = -L${NETCDF_FORTRANROOT}/lib -lnetcdff -L${NETCDF_CROOT}/lib -lnetcdf
 
-DFLAGS_NODEBUG = -O3 -fp-model precise
+#DFLAGS_NODEBUG = -O3 -fp-model precise
+DFLAGS_NODEBUG = -O3 
 DFLAGS_DEBUG   = -C -traceback -ftrapuv -fpe0 -check all -fp-model precise
 DFLAGS_PROFILE = -fp-model precise -pg
 
