@@ -252,7 +252,7 @@ contains
       phi = lat1 * degree
 ! Ensure cbet1 = +dbleps at poles
       sbet1 = f1 * sin(phi)
-      if (dabs(sbet1) .lt. 1d-20) sbet1 = 0.d0         ! ajr: to avoid underflow
+      !if (dabs(sbet1) .lt. 1d-20) sbet1 = 0.d0         ! ajr: to avoid underflow
       cbet1 = csmgt(tiny, cos(phi), abs(lat1) .eq. 90)
       call Norm(sbet1, cbet1)
       dn1 = sqrt(1 + ep2 * sbet1**2)
@@ -1049,7 +1049,7 @@ contains
 ! Add parens around (csig1 * ssig2) and (ssig1 * csig2) to ensure
 ! accurate cancellation in the case of coincident points.
       ! ajr: make sure small numbers are zero to avoid floating points exception!
-      if (dabs(csig1) .lt. 1e-15) csig1 = 0.d0   
+      ! if (dabs(csig1) .lt. 1e-15) csig1 = 0.d0   
       m12b = dn2 * (csig1 * ssig2) - dn1 * (ssig1 * csig2) -  &
           csig1 * csig2 * J12
 ! Missing a factor of b
@@ -1076,6 +1076,7 @@ contains
 
       p = x**2
       q = y**2
+      if (q.lt.1d-15) q = 0
       r = (p + q - 1) / 6
       if ( .not. (q .eq. 0 .and. r .lt. 0) ) then
 ! Avoid possible division by zero when r = 0 by multiplying equations
@@ -1111,7 +1112,13 @@ contains
         v = sqrt(u**2 + q)
 ! Avoid loss of accuracy when u < 0.
 ! u+v, guaranteed positive
-        uv = csmgt(q / (v - u), u + v, u .lt. 0)
+! ajr/matteo: treat q==0 case explicitely
+        !uv = csmgt(q / (v - u), u + v, u .lt. 0)
+        if (q.eq.0) then
+          uv = csmgt(0d0, u + v, u .lt. 0)
+        else
+          uv = csmgt(q / (v - u), u + v, u .lt. 0)
+        endif
 ! positive?
         w = (uv - q) / (2 * v)
 ! Rearrange expression for k to avoid loss of accuracy due to
@@ -1287,8 +1294,15 @@ contains
 !
 ! Because omg12 is near pi, estimate work with omg12a = pi - omg12
           k = Astrd(x, y)
-          omg12a = lamscl *  &
-              csmgt(-x * k/(1 + k), -y * (1 + k)/k, f .ge. 0)
+          ! ajr/matteo: treat f==0 case explicitly
+          if (f .ge. 0) then
+            omg12a = -x * k/(1 + k)
+          else
+            omg12a = -y * (1 + k)/k
+          end if
+          omg12a = lamscl * omg12a
+          !omg12a = lamscl *  &
+          !    csmgt(-x * k/(1 + k), -y * (1 + k)/k, f .ge. 0)
           somg12 = sin(omg12a)
           comg12 = -cos(omg12a)
 ! Update spherical estimate of alp1 using omg12 instead of lam12
@@ -1795,8 +1809,8 @@ contains
 ! input
       double precision x, y
 
-      if (dabs(x) .lt. 1d-20) x = 0.d0 ! ajr: to prevent an underflow exception
-      if (dabs(y) .lt. 1d-20) y = 0.d0 ! ajr: to prevent an underflow exception
+      !if (dabs(x) .lt. 1d-20) x = 0.d0 ! ajr: to prevent an underflow exception
+      !if (dabs(y) .lt. 1d-20) y = 0.d0 ! ajr: to prevent an underflow exception
       hypotx = sqrt(x**2 + y**2)
 
       return

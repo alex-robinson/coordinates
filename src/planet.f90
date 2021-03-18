@@ -375,7 +375,7 @@ contains
         integer :: quadrant
         real(dp) :: lon1r, lat1r, lon2r, lat2r
         real(dp) :: rot_lon0, rot_lat0  
-        real(dp), parameter :: lat_lim = 80.0_dp 
+        real(dp), parameter :: lat_lim = 90.0_dp 
         real(dp) :: dlon 
 
         lon1r = lon1 
@@ -431,18 +431,40 @@ contains
 
         if( ((lon2r - lon1r) .le.  180.0_dp .and. (lon2r - lon1r) .gt. 0.0_dp) .or. &
             ((lon2r - lon1r) .le. -180.0_dp) ) then
-            if(lat2r .gt. lat1r) then
-                quadrant = 1
-            else
-                quadrant = 4
-            end if
-        else
-            if(lat2r .gt. lat1r) then
-                quadrant = 2
-            else
-                quadrant = 3
-            end if
-        end if
+          if(lat2r .gt. lat1r) then
+            quadrant = 1
+          else
+            quadrant = 4
+          end if
+        else 
+          if(lat2r .gt. lat1r) then
+            quadrant = 2
+          else
+            quadrant = 3
+          end if
+        endif
+
+!        dlon = lon2-lon1
+!        if (dlon.lt.-180._dp) dlon = dlon+360._dp
+!        if (dlon.gt.180._dp) dlon = dlon-360._dp
+!
+!        if (dlon.ge.0.0_dp .and. dlon.le.90._dp) then
+!          if(lat2 .gt. lat1) then
+!            quadrant = 1
+!          else
+!            quadrant = 4
+!          end if
+!        else if (dlon.lt.0.0_dp .and. dlon.ge.-90._dp) then
+!          if(lat2 .gt. lat1) then
+!            quadrant = 2
+!          else
+!            quadrant = 3
+!          end if
+!        else if (dlon.gt.90.0_dp) then
+!          quadrant = 4
+!        else if (dlon.lt.-90.0_dp) then
+!          quadrant = 3
+!        endif
 
         quadrant_latlon = quadrant
 

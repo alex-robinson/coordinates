@@ -404,6 +404,7 @@ contains
         integer :: i, i1, kc, k, n 
         real(dp) :: x, y, lon, lat
         real(dp) :: dist, lat_limit, dist_maximum 
+        real(dp) :: lon180, lon180_1
 
         integer, parameter :: map_nmax = 1000   ! No more than 1000 neighbors 
         type(pt_wts_class) :: mp_all 
@@ -446,9 +447,11 @@ contains
         ! newer solution activated, and revert to not using openmp with the
         ! older compilers (or activate the old solution as needed).
         
-        !$omp parallel do private(i,x,y,lon,lat,mp_all,i1,dist,kc,n)
+        !$omp parallel do private(i,x,y,lon,lat,lon180,lon180_1,mp_all,i1,dist,kc,n)
         do i = 1, pts2%npts
-                
+            
+            !!$ print *,omp_get_thread_num(),'/',omp_get_num_threads()
+
             ! Get current xy and latlon coordinates
             x   = pts2%x(i)*pts2%xy_conv
             y   = pts2%y(i)*pts2%xy_conv
@@ -463,12 +466,31 @@ contains
             mp_all%y        = 0.0_dp 
             mp_all%dist     = ERR_DIST 
             
+            ! longitude between -180 and 180
+            if (lon .ge. 180_dp) then
+                lon180 = lon - 360_dp
+            else if (lon .lt. -180_dp) then
+                lon180 = lon + 360_dp
+            else
+                lon180 = lon
+            end if
+
             ! Get distance in meters to current point on grid2
             ! for each point on grid1
             do i1 = 1, pts1%npts
 
-                if ( dabs(pts1%lat(i1)-lat) .le. lat_limit ) then
- 
+                ! longitude between -180  and 180
+                if (pts1%lon(i1) .ge. 180_dp) then
+                    lon180_1 = pts1%lon(i1) - 360_dp
+                else if (pts1%lon(i1) .lt. -180_dp) then
+                    lon180_1 = pts1%lon(i1) + 360_dp
+                else
+                    lon180_1 = pts1%lon(i1)
+                end if
+
+                !if ( dabs(pts1%lat(i1)-lat).le.lat_limit .and.  (dabs(lon180_1-lon180).le.lat_limit .or. dabs(lon180_1-lon180).ge.(360_dp-lat_lim)) ) then
+                if ( dabs(pts1%lat(i1)-lat).le.lat_limit) then
+
                     if (map%is_same_map .and. map%is_cartesian) then
                         ! Use cartesian values to determine distance
                         dist = cartesian_distance(x,y,pts1%x(i1)*pts1%xy_conv,pts1%y(i1)*pts1%xy_conv)
@@ -522,6 +544,13 @@ contains
                             mp_all%quadrant(kc) = quadrant_latlon(lon,lat,pts1%lon(i1),pts1%lat(i1))
                         end if 
 
+                        ! if (lat.lt.-87.5) then
+                        !     write(*,*)
+                        !     write(*,*) lat,pts1%lat(i1)
+                        !     write(*,*) lon,pts1%lon(i1)
+                        !     write(*,*) dist,mp_all%quadrant(kc)
+                        ! endif
+
                     end if 
                 end if 
 
@@ -572,7 +601,7 @@ contains
             if (mod(i,1000)==0) write(*,"(a,i10,a3,i12,a5,g12.3)")  &
                                     "  ",i, " / ",pts2%npts,"   : ",map%map(i)%dist(1)
         end do
-        !omp end parallel do
+        !$omp end parallel do
 
         call cpu_time(finish)
         write(*,"(a,a,f7.2)") "map_calc_weights:: "//trim(map%name1)//" => "//trim(map%name2)//": ", &
@@ -640,6 +669,7 @@ contains
 
             ! Check number of neighbors available for calculations
             ntot = count(mnow%iquad .ne. ERR_IND)
+            !write(*,*) ntot 
 
             if (ntot.eq.4) then
                 ! All four quadrant neighbors exist 
@@ -700,6 +730,18 @@ contains
                                                                          lon,   lat_mid_0)
                     
                 end if 
+
+                ! if (lat.lt.-87.5) then
+                !     write(*,*)
+                !     write(*,*) lat,lon
+                !     write(*,*) pts1%lat(i1),pts1%lon(i1)
+                !     write(*,*) pts1%lat(i2),pts1%lon(i2)
+                !     write(*,*) pts1%lat(i3),pts1%lon(i3)
+                !     write(*,*) pts1%lat(i4),pts1%lon(i4)
+                !     write(*,*) dx1,dx1_tot
+                !     write(*,*) dx2,dx2_tot
+                !     write(*,*) dy1,dy1_tot
+                ! endif
 
                 if (dx1_tot .gt. 0.0) mnow%alpha1 = dx1 / dx1_tot 
                 if (dx2_tot .gt. 0.0) mnow%alpha2 = dx2 / dx2_tot
@@ -1789,7 +1831,7 @@ contains
                 mp_var(1:n)  = var1(map%map(i)%i)
 
                 ! Find nearest available neighbor, save it if valid
-                k = minloc(map%map(i)%dist,mask=mp_var.ne.missing_val,dim=1)
+                k = minloc(map%map(i)%dist,mask=mp_var(1:n).ne.missing_val,dim=1)
                 if (k .gt. 0) then 
                     if (map%map(i)%dist(k) .lt. max_distance) then
                         var2(i)  = mp_var(k) 
@@ -1803,7 +1845,7 @@ contains
                         
         return 
 
-    end subroutine map_field_nearest 
+    end subroutine map_field_nearest
 
     subroutine map_field_bilinear(map,maskp,var1,var2,mask2,max_distance,missing_val)
 
@@ -1819,7 +1861,7 @@ contains
         real(dp),        intent(IN)  :: missing_val 
 
         ! Local variables 
-        integer  :: i, ntot
+        integer  :: i, ntot, n, k
         real(dp) :: mp_var(4)   ! Only four neighbors needed
 
         ! Loop over the new grid points and perform mapping
@@ -1849,15 +1891,31 @@ contains
 
                     end if 
 
-                end if 
+                else ! nearest neighbour
 
+                    ! Get size of neighborhood
+                    n = size(map%map(i)%i)
+
+                    ! Store neighborhood variable values
+                    mp_var       = missing_val
+                    mp_var(1:n)  = var1(map%map(i)%i)
+
+                    ! Find nearest available neighbor, save it if valid
+                    k = minloc(map%map(i)%dist,mask=mp_var(1:n).ne.missing_val,dim=1)
+                    if (map%map(i)%dist(k) .lt. max_distance) then
+                        var2(i)  = mp_var(k)
+                        mask2(i) = 1
+                    end if
+
+                end if 
+                
             end if 
 
         end do 
                         
         return 
 
-    end subroutine map_field_bilinear 
+    end subroutine map_field_bilinear
     
     subroutine map_field_radius(map,maskp,var1,var2,mask2,max_distance,missing_val,is_quadrant,border)
         ! Map a field using distance weighting
