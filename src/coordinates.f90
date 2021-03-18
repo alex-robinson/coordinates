@@ -140,7 +140,7 @@ contains
         end if 
 
         return 
-    end subroutine axis_init 
+    end subroutine axis_init
 
     subroutine grid_area(grid)
         ! Calculate the area of the cell each grid point represents
@@ -213,7 +213,7 @@ contains
 
         return
 
-    end subroutine grid_area 
+    end subroutine grid_area
 
     subroutine grid_init_from_grid(grid,grid0,name,x,y,x0,dx,nx,y0,dy,ny)
         ! Initialize a new grid based on an old grid but
@@ -1570,19 +1570,29 @@ contains
 
     end subroutine grid_write_cdo_desc_short
     
-    subroutine grid_write_cdo_desc_explicit_proj(lon2D,lat2D,filename)
+    subroutine grid_write_cdo_desc_explicit_proj(lon2D,lat2D,grid_name,fldr,grid_type)
 
         implicit none 
 
         real(4), intent(IN) :: lon2D(:,:) 
         real(4), intent(IN) :: lat2D(:,:) 
-        character(len=*), intent(IN) :: filename 
+        character(len=*), intent(IN) :: grid_name
+        character(len=*), intent(IN) :: fldr 
+        character(len=*), intent(IN), optional :: grid_type 
 
         ! Local variables 
         integer :: i, j, nx, ny 
         integer :: im1, jm1, ip1, jp1 
         integer :: fnum
         real(4) :: bnds(4) 
+        character(len=512) :: filename 
+        character(len=56)  :: grid_type_str 
+
+        ! Generate grid description filename 
+        filename = trim(fldr)//"/"//"grid_"//trim(grid_name)//".txt"
+
+        grid_type_str = "curvilinear"
+        if (present(grid_type)) grid_type_str = trim(grid_type)
 
         fnum = 98 
 
@@ -1591,7 +1601,7 @@ contains
 
         open(fnum,file=filename,status='unknown',action='write')
 
-        write(fnum,"(a)")     "gridtype = curvilinear"
+        write(fnum,"(a,a)")   "gridtype = ",trim(grid_type_str)
         write(fnum,"(a,i10)") "gridsize = ", nx*ny 
         write(fnum,"(a,i10)") "xsize    = ", nx
         write(fnum,"(a,i10)") "ysize    = ", ny
@@ -1665,13 +1675,14 @@ contains
     end subroutine grid_write_cdo_desc_explicit_proj
 
 
-    subroutine grid_write_cdo_desc_explicit_latlon(lon,lat,filename)
+    subroutine grid_write_cdo_desc_explicit_latlon(lon,lat,grid_name,fldr)
 
         implicit none 
 
         real(4), intent(IN) :: lon(:) 
         real(4), intent(IN) :: lat(:) 
-        character(len=*), intent(IN) :: filename 
+        character(len=*), intent(IN) :: grid_name
+        character(len=*), intent(IN) :: fldr    ! File destination
 
         ! Local variables 
         integer :: nx, ny 
@@ -1687,7 +1698,7 @@ contains
 
         call gen_latlon2D(lon2D,lat2D,lon,lat)
 
-        call write_cdo_gridfile(lon2D,lat2D,filename)
+        call grid_write_cdo_desc_explicit_proj(lon2D,lat2D,grid_name,fldr,grid_type="lonlat")
 
         return 
 
