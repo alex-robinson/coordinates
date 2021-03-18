@@ -1393,6 +1393,33 @@ contains
 
 ! ==== cdo-related functions ====
     
+    subroutine gen_latlon2D(lon2D,lat2D,lon,lat)
+
+        implicit none 
+
+        real(4), intent(OUT) :: lon2D(:,:) 
+        real(4), intent(OUT) :: lat2D(:,:) 
+        real(4), intent(IN)  :: lon(:) 
+        real(4), intent(IN)  :: lat(:) 
+
+        ! Local variables 
+        integer :: i, j, nx, ny 
+
+        nx = size(lon,1)
+        ny = size(lat,1)
+
+        do j = 1, ny 
+            lon2D(:,j) = lon 
+        end do 
+
+        do i = 1, nx 
+            lat2D(i,:) = lat 
+        end do 
+
+        return 
+
+    end subroutine gen_latlon2D
+
     subroutine grid_write_cdo_desc_cdo(grid_name,fldr,file_nc)
         ! Write a cdo-compliant grid description file 
         ! based on grid definition using cdo call 
@@ -1674,18 +1701,22 @@ contains
 
     end subroutine grid_write_cdo_desc_explicit_proj
 
-
-    subroutine grid_write_cdo_desc_explicit_latlon(lon,lat,grid_name,fldr)
+        subroutine grid_write_cdo_desc_explicit_latlon(lon,lat,grid_name,fldr)
 
         implicit none 
 
         real(4), intent(IN) :: lon(:) 
         real(4), intent(IN) :: lat(:) 
         character(len=*), intent(IN) :: grid_name
-        character(len=*), intent(IN) :: fldr    ! File destination
+        character(len=*), intent(IN) :: fldr  
 
         ! Local variables 
-        integer :: nx, ny 
+        integer :: i, j, nx, ny 
+        integer :: im1, jm1, ip1, jp1 
+        integer :: fnum
+        real(4) :: bnds(4) 
+        character(len=512) :: filename 
+        character(len=56)  :: grid_type_str 
         real(4), allocatable :: lon2D(:,:) 
         real(4), allocatable :: lat2D(:,:) 
 
@@ -1698,38 +1729,84 @@ contains
 
         call gen_latlon2D(lon2D,lat2D,lon,lat)
 
-        call grid_write_cdo_desc_explicit_proj(lon2D,lat2D,grid_name,fldr,grid_type="lonlat")
+        grid_type_str = "lonlat"
+
+
+        ! Generate grid description filename 
+        filename = trim(fldr)//"/"//"grid_"//trim(grid_name)//".txt"
+
+        fnum = 98 
+
+        open(fnum,file=filename,status='unknown',action='write')
+
+        write(fnum,"(a,a)")   "gridtype = ",trim(grid_type_str)
+        write(fnum,"(a,i10)") "gridsize = ", nx*ny 
+        write(fnum,"(a,i10)") "xsize    = ", nx
+        write(fnum,"(a,i10)") "ysize    = ", ny
+
+        ! x values 
+        write(fnum,*) ""
+        write(fnum,"(a)") "# Longitudes"
+        write(fnum,"(a)") "xvals = "
+        write(fnum,"(50000f10.3)") lon
+
+        write(fnum,*) ""
+        write(fnum,"(a)") "# Longitudes of cell corners"
+        write(fnum,"(a)") "xbounds = "
+        do j = 1, ny 
+        do i = 1, nx 
+
+            im1 = max(1,i-1)
+            jm1 = max(1,j-1)
+            ip1 = min(nx,i+1)
+            jp1 = min(ny,j+1)
+
+            ! Determine bounds (lower-right, upper-right, upper-left, lower-left)
+            ! ie, get ab-nodes from aa-nodes
+            bnds(1) = 0.25*(lon2D(i,j)+lon2D(ip1,j)+lon2D(i,jm1)+lon2D(ip1,jm1))
+            bnds(2) = 0.25*(lon2D(i,j)+lon2D(ip1,j)+lon2D(i,jp1)+lon2D(ip1,jp1))
+            bnds(3) = 0.25*(lon2D(i,j)+lon2D(im1,j)+lon2D(i,jp1)+lon2D(im1,jp1))
+            bnds(4) = 0.25*(lon2D(i,j)+lon2D(im1,j)+lon2D(i,jm1)+lon2D(im1,jm1))
+            
+            write(fnum,"(4f10.3)") bnds 
+
+        end do 
+        end do 
+
+        ! y values 
+        write(fnum,*) ""
+        write(fnum,"(a)") "# Latitudes"
+        write(fnum,"(a)") "yvals = "
+        write(fnum,"(50000f10.3)") lat
+
+        write(fnum,*) ""
+        write(fnum,"(a)") "# Latitudes of cell corners"
+        write(fnum,"(a)") "ybounds = "
+        do j = 1, ny 
+        do i = 1, nx 
+
+            im1 = max(1,i-1)
+            jm1 = max(1,j-1)
+            ip1 = min(nx,i+1)
+            jp1 = min(ny,j+1)
+
+            ! Determine bounds (lower-right, upper-right, upper-left, lower-left)
+            ! ie, get ab-nodes from aa-nodes
+            bnds(1) = 0.25*(lat2D(i,j)+lat2D(ip1,j)+lat2D(i,jm1)+lat2D(ip1,jm1))
+            bnds(2) = 0.25*(lat2D(i,j)+lat2D(ip1,j)+lat2D(i,jp1)+lat2D(ip1,jp1))
+            bnds(3) = 0.25*(lat2D(i,j)+lat2D(im1,j)+lat2D(i,jp1)+lat2D(im1,jp1))
+            bnds(4) = 0.25*(lat2D(i,j)+lat2D(im1,j)+lat2D(i,jm1)+lat2D(im1,jm1))
+            
+            write(fnum,"(4f10.3)") bnds 
+
+        end do 
+        end do 
+
+        close(fnum)
 
         return 
 
     end subroutine grid_write_cdo_desc_explicit_latlon
-
-    subroutine gen_latlon2D(lon2D,lat2D,lon,lat)
-
-        implicit none 
-
-        real(4), intent(OUT) :: lon2D(:,:) 
-        real(4), intent(OUT) :: lat2D(:,:) 
-        real(4), intent(IN)  :: lon(:) 
-        real(4), intent(IN)  :: lat(:) 
-
-        ! Local variables 
-        integer :: i, j, nx, ny 
-
-        nx = size(lon,1)
-        ny = size(lat,1)
-
-        do j = 1, ny 
-            lon2D(:,j) = lon 
-        end do 
-
-        do i = 1, nx 
-            lat2D(i,:) = lat 
-        end do 
-
-        return 
-
-    end subroutine gen_latlon2D
 
 end module coordinates
 
