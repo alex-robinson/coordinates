@@ -43,16 +43,16 @@ module interp2D
         module procedure fill_poisson_dble
     end interface 
         
-    interface smooth_poisson 
-        module procedure smooth_poisson_float 
-        module procedure smooth_poisson_dble
+    interface filter_poisson 
+        module procedure filter_poisson_float 
+        module procedure filter_poisson_dble
     end interface 
 
     private
     public :: interp_bilinear, interp_nearest, interp_nearest_fast
     public :: fill_weighted, fill_nearest, fill_mean
     public :: fill_poisson 
-    public :: smooth_poisson
+    public :: filter_poisson
     public :: diffuse, limit_gradient 
 
 contains
@@ -1534,10 +1534,8 @@ contains
         logical, allocatable :: mask(:,:) 
         double precision     :: varmean
         
-        integer, parameter :: iter_max = 1000  ! Max. number of scans
         double precision, parameter :: tol = 1d-2 
-        double precision, parameter :: rel = 0.5d0     ! Relaxation coefficent (~0.45-0.6)
-        
+
         nx = size(var2d,1)
         ny = size(var2d,2) 
 
@@ -1587,8 +1585,8 @@ contains
 
             end select 
 
-            call smooth_poisson_dble(var2d,mask,iter_max,tol,rel, &
-                                        missing_value,wrapx,verbose,filling=.TRUE.)
+            call filter_poisson_dble(var2d,mask,tol,missing_value, &
+                                            wrapx,verbose,filling=.TRUE.)
 
         end if 
 
@@ -1596,15 +1594,13 @@ contains
 
     end subroutine fill_poisson_dble
 
-    subroutine smooth_poisson_float(var2d,mask,iter_max,tol,rel,missing_value,wrapx,verbose,filling)
+    subroutine filter_poisson_float(var2d,mask,tol,missing_value,wrapx,verbose,filling)
 
         implicit none 
 
         real(4), intent(INOUT) :: var2d(:,:) 
         logical, intent(IN)    :: mask(:,:) 
-        integer, intent(IN)    :: iter_max 
         real(4), intent(IN)    :: tol 
-        real(4), intent(IN)    :: rel 
         real(4), intent(IN)    :: missing_value 
         logical, intent(IN)    :: wrapx 
         logical, intent(IN), optional :: verbose 
@@ -1616,22 +1612,20 @@ contains
         allocate(var2d_dble(size(var2d,1),size(var2d,2)))
 
         var2d_dble = var2d 
-        call smooth_poisson_dble(var2d_dble,mask,iter_max,dble(tol),dble(rel),dble(missing_value),wrapx,verbose,filling)
+        call filter_poisson_dble(var2d_dble,mask,dble(tol),dble(missing_value),wrapx,verbose,filling)
         var2d = var2d_dble 
 
         return 
 
-    end subroutine smooth_poisson_float
+    end subroutine filter_poisson_float
 
-    subroutine smooth_poisson_dble(var2d,mask,iter_max,tol,rel,missing_value,wrapx,verbose,filling)
+    subroutine filter_poisson_dble(var2d,mask,tol,missing_value,wrapx,verbose,filling)
 
         implicit none 
 
         real(8), intent(INOUT) :: var2d(:,:) 
         logical, intent(IN)    :: mask(:,:) 
-        integer, intent(IN)    :: iter_max 
         real(8), intent(IN)    :: tol               ! Fraction
-        real(8), intent(IN)    :: rel
         real(8), intent(IN)    :: missing_value 
         logical, intent(IN)    :: wrapx 
         logical, intent(IN), optional :: verbose 
@@ -1640,11 +1634,14 @@ contains
         ! Local variables 
         integer :: iter, i, j, nx, ny 
         integer :: im1, ip1, jm1, jp1 
-        real(8) :: resid_lim, resid, resid_max 
+        real(8) :: resid_lim, resid_max, resid
         real(8), allocatable :: var2dnew(:,:) 
         real(8) :: var_check
         real(8) :: var4(4)
         real(8) :: wt4(4) 
+
+        integer, parameter :: iter_max = 1000 ! iter usually 10-20
+        real(8), parameter :: rel      = 0.5  ! relaxation coeff (recommended 0.45-0.6)
 
         nx = size(var2d,1) 
         ny = size(var2d,2) 
@@ -1666,32 +1663,33 @@ contains
             do j = 1, ny
             do i = 1, nx 
 
-                jm1 = max(j-1,1) 
-                jp1 = min(j+1,ny)
-                
-                if (j.eq.1 ) jm1 = 2
-                if (j.eq.ny) jp1 = ny-1
-
-                im1 = i-1
-                ip1 = i+1
-
-                ! cyclic in x           
-                if (i.eq.1  .and. wrapx) im1 = nx 
-                if (i.eq.nx .and. wrapx) ip1 = 1
-                
-                ! not cyclic in x           
-                if (i.eq.1  .and. (.not. wrapx)) im1 = 2
-                if (i.eq.nx .and. (.not. wrapx)) ip1 = nx-1 
-                
+                !if (resid(i,j) .gt. resid_lim) then 
                 if (mask(i,j)) then 
                     ! Only work on desired locations 
 
+                    jm1 = max(j-1,1) 
+                    jp1 = min(j+1,ny)
+                    
+                    if (j.eq.1 ) jm1 = 2
+                    if (j.eq.ny) jp1 = ny-1
+
+                    im1 = i-1
+                    ip1 = i+1
+
+                    ! cyclic in x           
+                    if (i.eq.1  .and. wrapx) im1 = nx 
+                    if (i.eq.nx .and. wrapx) ip1 = 1
+                    
+                    ! not cyclic in x           
+                    if (i.eq.1  .and. (.not. wrapx)) im1 = 2
+                    if (i.eq.nx .and. (.not. wrapx)) ip1 = nx-1 
+                
                     var4 = [var2d(im1,j),var2d(ip1,j),var2d(i,jm1),var2d(i,jp1)]
                     wt4  = 1.0d0 
                     where(var4 .eq. missing_value) wt4 = 0.0d0 
                     var_check = sum(wt4*var4) / sum(wt4) 
 
-                    resid = var_check-var2d(i,j)
+                    resid         = (var_check-var2d(i,j))
                     var2dnew(i,j) = var2d(i,j) + resid*rel
                     resid_max     = max(abs(resid),resid_max)
 
@@ -1715,14 +1713,126 @@ contains
             end if 
         else if (present(verbose)) then 
             if (verbose) then 
-                write(*,"(a35,i5,g12.3)") "smooth_poisson: iter, resid_max = ", iter, resid_max 
+                write(*,"(a35,i5,g12.3)") "filter_poisson: iter, resid_max = ", iter, resid_max 
             end if 
         end if 
 
         return 
 
-    end subroutine smooth_poisson_dble
+    end subroutine filter_poisson_dble
 
+    subroutine filter_poisson_dble_new(var2d,mask,dx,iter_max,tol,rel,missing_value,wrapx,verbose,filling)
+
+        implicit none 
+
+        real(8), intent(INOUT) :: var2d(:,:) 
+        logical, intent(IN)    :: mask(:,:) 
+        real(8), intent(IN)    :: dx 
+        integer, intent(IN)    :: iter_max 
+        real(8), intent(IN)    :: tol               ! Gradient dvar/dx
+        real(8), intent(IN)    :: rel
+        real(8), intent(IN)    :: missing_value 
+        logical, intent(IN)    :: wrapx 
+        logical, intent(IN), optional :: verbose 
+        logical, intent(IN), optional :: filling 
+
+        ! Local variables 
+        integer :: iter, i, j, nx, ny 
+        integer :: im1, ip1, jm1, jp1 
+        real(8) :: resid_lim, resid_max 
+        real(8), allocatable :: resid(:,:) 
+        real(8), allocatable :: var2dnew(:,:) 
+        real(8) :: var_check
+        real(8) :: var4(4)
+        real(8) :: wt4(4) 
+
+        nx = size(var2d,1) 
+        ny = size(var2d,2) 
+
+        allocate(resid(nx,ny))
+        allocate(var2dnew(nx,ny)) 
+
+        var2dnew = var2d 
+
+        ! Calculate resid_lim == ~mean grid value X tol
+        resid_lim = tol * &
+                    abs(0.5d0*(maxval(var2d,mask=var2d.ne.missing_value) &
+                               + minval(var2d,mask=var2d.ne.missing_value)))
+        ! resid_lim = tol 
+
+        resid = resid_lim*10.0 
+        where(.not. mask) resid = 0.0 
+
+        ! Perform iterations 
+        do iter = 1, iter_max 
+
+            resid_max = 0.0d0 
+
+            do j = 1, ny
+            do i = 1, nx 
+
+                ! if (resid(i,j) .gt. resid_lim) then 
+                if (mask(i,j)) then 
+                    ! Only work on desired locations 
+
+                    jm1 = max(j-1,1) 
+                    jp1 = min(j+1,ny)
+                    
+                    if (j.eq.1 ) jm1 = 2
+                    if (j.eq.ny) jp1 = ny-1
+
+                    im1 = i-1
+                    ip1 = i+1
+
+                    ! cyclic in x           
+                    if (i.eq.1  .and. wrapx) im1 = nx 
+                    if (i.eq.nx .and. wrapx) ip1 = 1
+                    
+                    ! not cyclic in x           
+                    if (i.eq.1  .and. (.not. wrapx)) im1 = 2
+                    if (i.eq.nx .and. (.not. wrapx)) ip1 = nx-1 
+                
+                    var4 = [var2d(im1,j),var2d(ip1,j),var2d(i,jm1),var2d(i,jp1)]
+                    wt4  = 1.0d0 
+                    where(var4 .eq. missing_value) wt4 = 0.0d0 
+                    var_check = sum(wt4*var4) / sum(wt4) 
+
+                    resid(i,j) = (var_check-var2d(i,j))! / dx 
+
+                    if (resid(i,j) .gt. resid_lim) then 
+                        var2dnew(i,j) = var2d(i,j) + rel*resid(i,j)
+                    end if 
+
+                end if 
+
+            end do 
+            end do 
+
+            ! Get max resid value 
+            resid_max = maxval(resid)
+
+            ! Update var2d 
+            var2d = var2dnew 
+
+            ! If residual is low enough, exit iterations
+            if (resid_max .le. resid_lim) exit 
+
+        end do 
+
+        ! If verbose, print summary
+        if (present(verbose) .and. present(filling)) then 
+            if (verbose .and. filling) then 
+                write(*,"(a35,i5,g12.3)") "fill_poisson: iter, resid_max = ", iter, resid_max 
+            end if 
+        else if (present(verbose)) then 
+            if (verbose) then 
+                write(*,"(a35,i5,g12.3)") "filter_poisson: iter, resid_max = ", iter, resid_max 
+            end if 
+        end if 
+
+        return 
+
+    end subroutine filter_poisson_dble_new
 
 ! =====================
 
