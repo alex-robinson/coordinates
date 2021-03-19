@@ -7,6 +7,8 @@ module coordinates_mapping_scrip
     use coordinates
     use ncio 
     use index 
+    use interp2D 
+    use gaussian_filter 
 
     implicit none 
 
@@ -64,7 +66,7 @@ module coordinates_mapping_scrip
 
 contains 
     
-    subroutine map_scrip_field_integer(map,var_name,var1,var2,method,fill,missing_value,mask_pack)
+    subroutine map_scrip_field_integer(map,var_name,var1,var2,method,fill,missing_value,mask_pack,filt_gauss,filt_poiss)
         ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
 
         ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
@@ -81,7 +83,9 @@ contains
         logical,               intent(IN), optional :: fill            ! Fill cells with no available values?
         double precision,      intent(IN), optional :: missing_value   ! Points not included in mapping
         logical,               intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
-
+        double precision,      intent(IN), optional :: filt_gauss(2)    ! [sigma,dx]
+        double precision,      intent(IN), optional :: filt_poiss       ! tol
+        
         ! Local variables 
         real(dp), allocatable :: var1dp(:,:) 
         real(dp), allocatable :: var2dp(:,:) 
@@ -92,7 +96,7 @@ contains
         var1dp = real(var1,dp)
         var2dp = real(var2,dp)
         
-        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value,mask_pack)
+        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value,mask_pack,filt_gauss,filt_poiss)
 
         var2 = int(var2dp) 
 
@@ -100,7 +104,7 @@ contains
 
     end subroutine map_scrip_field_integer
 
-    subroutine map_scrip_field_float(map,var_name,var1,var2,method,fill,missing_value,mask_pack)
+    subroutine map_scrip_field_float(map,var_name,var1,var2,method,fill,missing_value,mask_pack,filt_gauss,filt_poiss)
         ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
 
         ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
@@ -117,7 +121,9 @@ contains
         logical,               intent(IN), optional :: fill            ! Fill cells with no available values?
         double precision,      intent(IN), optional :: missing_value   ! Points not included in mapping
         logical,               intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
-
+        double precision,      intent(IN), optional :: filt_gauss(2)    ! [sigma,dx]
+        double precision,      intent(IN), optional :: filt_poiss       ! tol
+        
         ! Local variables 
         real(dp), allocatable :: var1dp(:,:) 
         real(dp), allocatable :: var2dp(:,:) 
@@ -128,7 +134,7 @@ contains
         var1dp = real(var1,dp)
         var2dp = real(var2,dp)
         
-        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value,mask_pack)
+        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value,mask_pack,filt_gauss,filt_poiss)
 
         var2 = real(var2dp,sp) 
 
@@ -136,7 +142,8 @@ contains
 
     end subroutine map_scrip_field_float
 
-    subroutine map_scrip_field_double(map,var_name,var1,var2,method,fill,missing_value,mask_pack)
+    subroutine map_scrip_field_double(map,var_name,var1,var2,method,fill, &
+                                        missing_value,mask_pack,filt_gauss,filt_poiss)
         ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
 
         ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
@@ -150,10 +157,12 @@ contains
         real(8),               intent(IN)    :: var1(:,:) 
         real(8),               intent(INOUT) :: var2(:,:) 
         character(len=*),      intent(IN)    :: method
-        logical,               intent(IN), optional :: fill            ! Fill cells with no available values?
-        double precision,      intent(IN), optional :: missing_value   ! Points not included in mapping
-        logical,               intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
-
+        logical,               intent(IN), optional :: fill             ! Fill cells with no available values?
+        double precision,      intent(IN), optional :: missing_value    ! Points not included in mapping
+        logical,               intent(IN), optional :: mask_pack(:,:)   ! Mask for where to interpolate
+        double precision,      intent(IN), optional :: filt_gauss(2)    ! [sigma,dx]
+        double precision,      intent(IN), optional :: filt_poiss       ! tol
+        
         ! Local variables 
         integer :: n, k, npts1, npts2         
         logical          :: fill_pts
@@ -321,6 +330,30 @@ contains
 
         ! Send back to 2D array 
         var2 = reshape(var2_vec,[size(var2,1),size(var2,2)])
+
+        ! === Filtering ===
+        ! Now perform filtering (smoothing) steps if
+        ! the right arguments have been provided. 
+        if (present(filt_gauss) .and. present(filt_poiss)) then 
+            write(*,*) "map_scrip_field:: Error: filt_gauss and filt_poiss &
+                       &arguments were provided, but only one can be used. &
+                       &Please call the subroutine with only one of these &
+                       &arguments specified."
+            stop 
+        end if 
+
+        if (present(filt_gauss)) then 
+            ! Apply gaussian filter 
+        
+            call filter_gaussian(var=var2,sigma=filt_gauss(1),dx=filt_gauss(2),mask=var2.ne.missing_val)
+        
+        else if (present(filt_poiss)) then 
+            ! Apply Poisson filter 
+
+            call filter_poisson(var2,mask=var2.ne.missing_val,tol=filt_poiss, &
+                                missing_value=missing_val,wrapx=.FALSE.,verbose=.FALSE.)
+
+        end if 
 
         return 
 

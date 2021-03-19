@@ -1464,6 +1464,7 @@ contains
         if ( stat .ne. noerr ) then
             ! Define the mapping variable as an integer with no dimensions,
             ! and include the grid mapping name
+            
             call nc_check( nf90_def_var(nc_id, trim(crs_name), NF90_INT, varid) )
             
             ! Add grid attributes depending on grid_mapping type

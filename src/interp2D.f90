@@ -42,11 +42,17 @@ module interp2D
         module procedure fill_poisson_float 
         module procedure fill_poisson_dble
     end interface 
+        
+    interface filter_poisson 
+        module procedure filter_poisson_float 
+        module procedure filter_poisson_dble
+    end interface 
 
     private
     public :: interp_bilinear, interp_nearest, interp_nearest_fast
     public :: fill_weighted, fill_nearest, fill_mean
     public :: fill_poisson 
+    public :: filter_poisson
     public :: diffuse, limit_gradient 
 
 contains
@@ -1482,203 +1488,351 @@ contains
 
 ! ========================
     
-    subroutine fill_poisson_float(var2d,missing_value)
+    subroutine fill_poisson_float(var2d,missing_value,method,wraplon,verbose)
 
         implicit none 
 
-        real(4), intent(INOUT) :: var2d(:,:) 
-        real(4), intent(IN)    :: missing_value 
+        real(4),          intent(INOUT) :: var2d(:,:) 
+        real(4),          intent(IN)    :: missing_value 
+        integer,          intent(IN)    :: method   ! 0: start with guess=0.0, 1: guess zonal mean, 2: grid mean
+        logical,          intent(IN)    :: wraplon  ! Cyclical grid (wrap longitude?)
+        logical,          intent(IN), optional :: verbose 
 
         ! Local variables 
-        integer, parameter :: guess = 1     ! 0: start with guess=0.0, 1: guess zonal mean
-        integer, parameter :: gtype = 0     ! 0: not cyclical; 1: cyclical 
-        integer, parameter :: nscan = 100   ! Max. number of scans, n-dimension
-        integer, parameter :: mscan = 100   ! Max. number of scans, n-dimension
-        double precision, parameter :: epsx = 1d-1 
-        double precision, parameter :: relc = 0.5d0     ! Relaxation coefficent (~0.45-0.6)
-        integer :: mx, ny, ier 
-
+        integer :: nx, ny 
         double precision, allocatable :: var2d_dble(:,:) 
 
-        mx = size(var2d,1)
+        nx = size(var2d,1)
         ny = size(var2d,2) 
 
-        allocate(var2d_dble(mx,ny))
+        allocate(var2d_dble(nx,ny))
 
         var2d_dble = var2d 
-        call poisxy1(var2d_dble,mx,ny,dble(missing_value),guess,gtype,nscan,epsx,relc,mscan,ier)
+        call fill_poisson_dble(var2d_dble,dble(missing_value),method,wraplon,verbose)
         var2d = var2d_dble
 
         return 
 
     end subroutine fill_poisson_float
 
-    subroutine fill_poisson_dble(var2d,missing_value)
+    subroutine fill_poisson_dble(var2d,missing_value,method,wrapx,verbose)
+
+        ! Poisson fill code originally obtained from:
+        ! https://github.com/royalosyin/Fill-Missing-Values/blob/master/poisson_grid_fill/fill_msg_grid.f90
+        ! Originally ported from NCL? 
 
         implicit none 
 
         double precision, intent(INOUT) :: var2d(:,:) 
         double precision, intent(IN)    :: missing_value 
+        integer,          intent(IN)    :: method   ! 0: start with guess=0.0, 1: guess zonal mean, 2: grid mean
+        logical,          intent(IN)    :: wrapx    ! Cyclical grid (wrap longitude?)
+        logical,          intent(IN), optional :: verbose 
 
         ! Local variables 
-        integer, parameter :: guess = 1     ! 0: start with guess=0.0, 1: guess zonal mean
-        integer, parameter :: gtype = 0     ! 0: not cyclical; 1: cyclical 
-        integer, parameter :: nscan = 100   ! Max. number of scans, n-dimension
-        double precision, parameter :: epsx = 1d-1 
-        double precision, parameter :: relc = 0.5d0     ! Relaxation coefficent (~0.45-0.6)
-        integer :: mx, ny, ier 
-        integer :: nscanned 
+        integer :: nx, ny, n, j  
+        logical, allocatable :: mask(:,:) 
+        double precision     :: varmean
         
-        mx = size(var2d,1)
+        double precision, parameter :: tol = 1d-2 
+
+        nx = size(var2d,1)
         ny = size(var2d,2) 
 
-        call poisxy1(var2d,mx,ny,missing_value,guess,gtype,nscan,epsx,relc,nscanned,ier)
+        allocate(mask(nx,ny)) 
+        mask = var2d .eq. missing_value
+
+        if (count(mask) .gt. 0) then 
+            
+            select case(method)
+
+                case(0) 
+                    ! Fill missing values with zeros 
+                    where (var2d .eq. missing_value) var2d = 0.0d0 
+
+                case(1) 
+                    ! Fill missing values with zonal mean 
+                    do j = 1, ny 
+                        n = count(.not. mask(:,j))
+                        if (n .gt.0) then 
+                            varmean = sum(var2d(:,j),mask=(.not. mask(:,j))) / dble(n)
+                        else 
+                            varmean = 0.0d0 
+                        end if 
+                        where(mask(:,j)) var2d(:,j) = varmean 
+                    end do 
+
+                case(2) 
+                    ! Fill missing values with grid mean 
+                    n = count(.not.mask)
+                    if (n .gt. 0) then 
+                        varmean = sum(var2d,mask=(.not.mask)) / dble(n)
+                    else 
+                        varmean = 0.0d0 
+                    end if 
+                    where (mask) var2d = varmean 
+
+                case(3)
+                    ! Fill with neighborhood mean 
+
+                    !call fill_mean_dble(var2d,missing_value=missing_value)
+                    call fill_weighted_dble(var2d,missing_value=missing_value,n=6)
+                    !call fill_nearest_dble(var2d,missing_value=missing_value)
+                    
+                case DEFAULT 
+
+                    write(*,*) "fill_poisson:: Error: guess method not recognized."
+
+            end select 
+
+            call filter_poisson_dble(var2d,mask,tol,missing_value, &
+                                            wrapx,verbose,filling=.TRUE.)
+
+        end if 
 
         return 
 
     end subroutine fill_poisson_dble
 
-    ! Poisson fill code obtained from:
-    ! https://github.com/royalosyin/Fill-Missing-Values/blob/master/poisson_grid_fill/fill_msg_grid.f90
-    ! Originally ported from NCL? 
+    subroutine filter_poisson_float(var2d,mask,tol,missing_value,wrapx,verbose,filling)
 
+        implicit none 
 
-    !==================================================================================
-    ! This is the entry subroutine to check if necessarty to fill
-    !==================================================================================
-    subroutine poisxy1 ( xio, mx,ny, xmsg, guess, gtype, nscan, epsx, relc, mscan, ier)
-        implicit none
-        integer             mx, ny, nscan, guess, gtype, mscan, ier
-        double precision    xio(mx,ny), xmsg, epsx, relc
-        integer             nmsg, n, m
-        double precision    resmax
+        real(4), intent(INOUT) :: var2d(:,:) 
+        logical, intent(IN)    :: mask(:,:) 
+        real(4), intent(IN)    :: tol 
+        real(4), intent(IN)    :: missing_value 
+        logical, intent(IN)    :: wrapx 
+        logical, intent(IN), optional :: verbose 
+        logical, intent(IN), optional :: filling 
 
-        ier  = 0
-        nmsg = 0
-        do n = 1, ny
-            do m = 1, mx
-                if (xio(m,n).eq.xmsg) nmsg = nmsg + 1
-            end do
-        end do
+        ! Local variables 
+        real(8), allocatable :: var2d_dble(:,:) 
 
-        !if no missing values return the original array
-        if (nmsg.eq.0) return
+        allocate(var2d_dble(size(var2d,1),size(var2d,2)))
 
-        call poisxy2(xio,mx,ny,xmsg,nscan,epsx,relc,guess,gtype,resmax, mscan)
+        var2d_dble = var2d 
+        call filter_poisson_dble(var2d_dble,mask,dble(tol),dble(missing_value),wrapx,verbose,filling)
+        var2d = var2d_dble 
 
-        return
-    end subroutine poisxy1
+        return 
 
-    !==================================================================================
-    ! this is the worker to finish filling
-    !==================================================================================
-    subroutine poisxy2(a,il,jl,amsg,maxscn,crit,relc,guess,gtype,resmax, mscan)
-    !==================================================================================
-    ! inputs:
-    !     a       = array with missing areas to be filled. 
-    !     il      = number of points along 1st dimension to be filled
-    !     jl      = number of points along 2nd dimension to be filled
-    !     amsg    = missing value
-    !     maxscn  = maximum number of passes allowed in relaxation
-    !     crit    = criterion for ending relaxation before "maxscn" limit
-    !     relc    = relaxation constant
-    !     gtype   = 0 : not cyclic in x
-    !               1 : cyclic in x
-    !     guess   = 0 : use 0.0 as an initial guess
-    !             = 1 : at each "y" use the average values for that "y"
-    !                   think zonal averages
-    ! outputs:
-    !
-    !     a       = array with interpolated values 
-    !               non missing areas remain unchanged.
-    !     resmax  = max residual
-    !==================================================================================
-        implicit   none
-      
-        integer    il, jl, maxscn, guess, gtype, mscan
-        double precision       a(il,jl), amsg, crit, resmax
+    end subroutine filter_poisson_float
 
-        ! local variable
-        logical    done
-        integer    i, j, n, im1, ip1, jm1, jp1
-        double precision       p25, relc
-        double precision       sor(il,jl), res, aavg
-        !sor     = scratch area
+    subroutine filter_poisson_dble(var2d,mask,tol,missing_value,wrapx,verbose,filling)
 
-        p25 = 0.25d0 
+        implicit none 
 
-        do j = 1, jl
-            n    = 0
-            aavg = 0.0d0
-            do i = 1, il
-                if (a(i,j) .eq. amsg) then
-                    sor(i,j) = relc
-                else
-                    n        = n + 1
-                    aavg     = aavg + a(i,j)
-                    sor(i,j) = 0.0d0
-                endif
-            end do
+        real(8), intent(INOUT) :: var2d(:,:) 
+        logical, intent(IN)    :: mask(:,:) 
+        real(8), intent(IN)    :: tol               ! Fraction
+        real(8), intent(IN)    :: missing_value 
+        logical, intent(IN)    :: wrapx 
+        logical, intent(IN), optional :: verbose 
+        logical, intent(IN), optional :: filling 
 
-            if (n.gt.0) then
-                aavg = aavg/n
-            end if
+        ! Local variables 
+        integer :: iter, i, j, nx, ny 
+        integer :: im1, ip1, jm1, jp1 
+        real(8) :: resid_lim, resid_max, resid
+        real(8), allocatable :: var2dnew(:,:) 
+        real(8) :: var_check
+        real(8) :: var4(4)
+        real(8) :: wt4(4) 
 
-            if (guess.eq.0) then
-                do i = 1, il
-                    if (a(i,j) .eq. amsg) a(i,j) = 0.0d0
-                end do
-            elseif (guess.eq.1) then
-                do i = 1, il
-                    if (a(i,j) .eq. amsg) a(i,j) = aavg
-                end do
-            end if
+        integer, parameter :: iter_max = 1000 ! iter usually 10-20
+        real(8), parameter :: rel      = 0.5  ! relaxation coeff (recommended 0.45-0.6)
 
-        end do
+        nx = size(var2d,1) 
+        ny = size(var2d,2) 
 
-        !-----------------------------------------------------------------------
-        !     iterate until errors are acceptable.
-        !-----------------------------------------------------------------------     
-        mscan = 0
-100     continue
-        resmax = 0.0d0
-        done   = .false.
-        mscan  = mscan + 1
-        do j = 1, jl
-            jp1 = j+1
-            jm1 = j-1
-            if (j.eq.1 ) jm1 = 2
-            if (j.eq.jl) jp1 = jl-1
-            do i = 1, il
-                ! only work on missing value locations
-                if (sor(i,j).ne.0.0) then 
+        allocate(var2dnew(nx,ny)) 
+
+        var2dnew = var2d 
+
+        ! Calculate resid_lim == ~mean grid value X tol
+        resid_lim = tol * &
+                    abs(0.5d0*(maxval(var2d,mask=var2d.ne.missing_value) &
+                               + minval(var2d,mask=var2d.ne.missing_value)))
+
+        ! Perform iterations 
+        do iter = 1, iter_max 
+
+            resid_max = 0.0d0 
+
+            do j = 1, ny
+            do i = 1, nx 
+
+                !if (resid(i,j) .gt. resid_lim) then 
+                if (mask(i,j)) then 
+                    ! Only work on desired locations 
+
+                    jm1 = max(j-1,1) 
+                    jp1 = min(j+1,ny)
+                    
+                    if (j.eq.1 ) jm1 = 2
+                    if (j.eq.ny) jp1 = ny-1
+
                     im1 = i-1
                     ip1 = i+1
+
                     ! cyclic in x           
-                    if (i.eq.1  .and. gtype.eq.1) im1 = il 
-                    if (i.eq.il .and. gtype.eq.1) ip1 = 1
+                    if (i.eq.1  .and. wrapx) im1 = nx 
+                    if (i.eq.nx .and. wrapx) ip1 = 1
                     
                     ! not cyclic in x           
-                    if (i.eq.1  .and. gtype.eq.0) im1 = 2
-                    if (i.eq.il .and. gtype.eq.0) ip1 = il-1 
-    
-                    res = p25*(a(im1,j)+a(ip1,j)+a(i,jm1)+a(i,jp1))-a(i,j)
-                    res = res*sor(i,j)
-                    a(i,j)  = a(i,j) + res
-                    resmax  = max(abs(res),resmax)
-                end if
-            end do
-        end do
-        
-        ! check if satisfy conditions
-        if (resmax .le. crit .or. n.eq.maxscn)  done = .true.
-        if (.not. done .and. mscan .lt. maxscn) go to 100
+                    if (i.eq.1  .and. (.not. wrapx)) im1 = 2
+                    if (i.eq.nx .and. (.not. wrapx)) ip1 = nx-1 
+                
+                    var4 = [var2d(im1,j),var2d(ip1,j),var2d(i,jm1),var2d(i,jp1)]
+                    wt4  = 1.0d0 
+                    where(var4 .eq. missing_value) wt4 = 0.0d0 
+                    var_check = sum(wt4*var4) / sum(wt4) 
 
-        !write (6,99) mscan, resmax
-99      format (1x,'==> Extrapolated  mscan=',i4, ' scans.  max residual=', g14.7)
+                    resid         = (var_check-var2d(i,j))
+                    var2dnew(i,j) = var2d(i,j) + resid*rel
+                    resid_max     = max(abs(resid),resid_max)
 
-        return
-    end subroutine poisxy2
+                end if 
+
+            end do 
+            end do 
+
+            ! Update var2d 
+            var2d = var2dnew 
+
+            ! If residual is low enough, exit iterations
+            if (resid_max .le. resid_lim) exit 
+
+        end do 
+
+        ! If verbose, print summary
+        if (present(verbose) .and. present(filling)) then 
+            if (verbose .and. filling) then 
+                write(*,"(a35,i5,g12.3)") "fill_poisson: iter, resid_max = ", iter, resid_max 
+            end if 
+        else if (present(verbose)) then 
+            if (verbose) then 
+                write(*,"(a35,i5,g12.3)") "filter_poisson: iter, resid_max = ", iter, resid_max 
+            end if 
+        end if 
+
+        return 
+
+    end subroutine filter_poisson_dble
+
+    subroutine filter_poisson_dble_new(var2d,mask,dx,iter_max,tol,rel,missing_value,wrapx,verbose,filling)
+
+        implicit none 
+
+        real(8), intent(INOUT) :: var2d(:,:) 
+        logical, intent(IN)    :: mask(:,:) 
+        real(8), intent(IN)    :: dx 
+        integer, intent(IN)    :: iter_max 
+        real(8), intent(IN)    :: tol               ! Gradient dvar/dx
+        real(8), intent(IN)    :: rel
+        real(8), intent(IN)    :: missing_value 
+        logical, intent(IN)    :: wrapx 
+        logical, intent(IN), optional :: verbose 
+        logical, intent(IN), optional :: filling 
+
+        ! Local variables 
+        integer :: iter, i, j, nx, ny 
+        integer :: im1, ip1, jm1, jp1 
+        real(8) :: resid_lim, resid_max 
+        real(8), allocatable :: resid(:,:) 
+        real(8), allocatable :: var2dnew(:,:) 
+        real(8) :: var_check
+        real(8) :: var4(4)
+        real(8) :: wt4(4) 
+
+        nx = size(var2d,1) 
+        ny = size(var2d,2) 
+
+        allocate(resid(nx,ny))
+        allocate(var2dnew(nx,ny)) 
+
+        var2dnew = var2d 
+
+        ! Calculate resid_lim == ~mean grid value X tol
+        resid_lim = tol * &
+                    abs(0.5d0*(maxval(var2d,mask=var2d.ne.missing_value) &
+                               + minval(var2d,mask=var2d.ne.missing_value)))
+        ! resid_lim = tol 
+
+        resid = resid_lim*10.0 
+        where(.not. mask) resid = 0.0 
+
+        ! Perform iterations 
+        do iter = 1, iter_max 
+
+            resid_max = 0.0d0 
+
+            do j = 1, ny
+            do i = 1, nx 
+
+                ! if (resid(i,j) .gt. resid_lim) then 
+                if (mask(i,j)) then 
+                    ! Only work on desired locations 
+
+                    jm1 = max(j-1,1) 
+                    jp1 = min(j+1,ny)
+                    
+                    if (j.eq.1 ) jm1 = 2
+                    if (j.eq.ny) jp1 = ny-1
+
+                    im1 = i-1
+                    ip1 = i+1
+
+                    ! cyclic in x           
+                    if (i.eq.1  .and. wrapx) im1 = nx 
+                    if (i.eq.nx .and. wrapx) ip1 = 1
+                    
+                    ! not cyclic in x           
+                    if (i.eq.1  .and. (.not. wrapx)) im1 = 2
+                    if (i.eq.nx .and. (.not. wrapx)) ip1 = nx-1 
+                
+                    var4 = [var2d(im1,j),var2d(ip1,j),var2d(i,jm1),var2d(i,jp1)]
+                    wt4  = 1.0d0 
+                    where(var4 .eq. missing_value) wt4 = 0.0d0 
+                    var_check = sum(wt4*var4) / sum(wt4) 
+
+                    resid(i,j) = (var_check-var2d(i,j))! / dx 
+
+                    if (resid(i,j) .gt. resid_lim) then 
+                        var2dnew(i,j) = var2d(i,j) + rel*resid(i,j)
+                    end if 
+
+                end if 
+
+            end do 
+            end do 
+
+            ! Get max resid value 
+            resid_max = maxval(resid)
+
+            ! Update var2d 
+            var2d = var2dnew 
+
+            ! If residual is low enough, exit iterations
+            if (resid_max .le. resid_lim) exit 
+
+        end do 
+
+        ! If verbose, print summary
+        if (present(verbose) .and. present(filling)) then 
+            if (verbose .and. filling) then 
+                write(*,"(a35,i5,g12.3)") "fill_poisson: iter, resid_max = ", iter, resid_max 
+            end if 
+        else if (present(verbose)) then 
+            if (verbose) then 
+                write(*,"(a35,i5,g12.3)") "filter_poisson: iter, resid_max = ", iter, resid_max 
+            end if 
+        end if 
+
+        return 
+
+    end subroutine filter_poisson_dble_new
 
 ! =====================
 

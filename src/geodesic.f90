@@ -1049,7 +1049,9 @@ contains
 ! Add parens around (csig1 * ssig2) and (ssig1 * csig2) to ensure
 ! accurate cancellation in the case of coincident points.
       ! ajr: make sure small numbers are zero to avoid floating points exception!
-      ! if (dabs(csig1) .lt. 1e-15) csig1 = 0.d0   
+      if (dabs(J12)   .lt. 1e-15) J12   = 0.0d0 
+      if (dabs(csig1) .lt. 1e-15) csig1 = 0.d0  
+      if (dabs(csig2) .lt. 1e-15) csig2 = 0.d0  
       m12b = dn2 * (csig1 * ssig2) - dn1 * (ssig1 * csig2) -  &
           csig1 * csig2 * J12
 ! Missing a factor of b
