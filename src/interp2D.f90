@@ -1514,9 +1514,9 @@ contains
         double precision, intent(IN)    :: missing_value 
 
         ! Local variables 
-        integer, parameter :: guess = 1     ! 0: start with guess=0.0, 1: guess zonal mean
+        integer, parameter :: guess = 1     ! 0: start with guess=0.0, 1: guess zonal mean, 2: grid mean
         integer, parameter :: gtype = 0     ! 0: not cyclical; 1: cyclical 
-        integer, parameter :: nscan = 100   ! Max. number of scans, n-dimension
+        integer, parameter :: nscan = 1000  ! Max. number of scans
         double precision, parameter :: epsx = 1d-1 
         double precision, parameter :: relc = 0.5d0     ! Relaxation coefficent (~0.45-0.6)
         integer :: mx, ny
@@ -1577,41 +1577,55 @@ contains
         double precision       sor(il,jl), res, aavg
         !sor     = scratch area
 
+        double precision anew(il,jl) 
+
         p25 = 0.25d0 
 
-        do j = 1, jl
-            n    = 0
-            aavg = 0.0d0
-            do i = 1, il
-                if (a(i,j) .eq. amsg) then
-                    sor(i,j) = relc
-                else
-                    n        = n + 1
-                    aavg     = aavg + a(i,j)
-                    sor(i,j) = 0.0d0
-                endif
-            end do
+        where(a .eq. amsg)
+            sor = relc 
+        elsewhere 
+            sor = 0.0d0 
+        end where 
 
-            if (n.gt.0) then
-                aavg = aavg/n
-            end if
+        select case(guess)
 
-            if (guess.eq.0) then
-                do i = 1, il
-                    if (a(i,j) .eq. amsg) a(i,j) = 0.0d0
-                end do
-            elseif (guess.eq.1) then
-                do i = 1, il
-                    if (a(i,j) .eq. amsg) a(i,j) = aavg
-                end do
-            end if
+            case(0) 
+                ! Fill missing values with zeros 
+                where (a .eq. amsg) a = 0.0d0 
 
-        end do
+            case(1) 
+                ! Fill missing values with zonal mean 
+                do j = 1, jl
+                    n = count(a(:,j).ne.amsg)
+                    if (n .gt.0) then 
+                        aavg = sum(a(:,j),mask=a(:,j).ne.amsg) / dble(n)
+                    else 
+                        aavg = 0.0d0 
+                    end if 
+                    where(a(:,j).eq.amsg) a(:,j) = aavg 
+                end do 
+
+            case(2) 
+                ! Fill missing values with grid mean 
+                n = count(a.ne.amsg)
+                if (n .gt. 0) then 
+                    aavg = sum(a,mask=a.ne.amsg) / dble(n)
+                else 
+                    aavg = 0.0d0 
+                end if 
+                where (a .eq. amsg) a = aavg 
+
+            case DEFAULT 
+
+                write(*,*) "poisxy2:: Error: guess method not recognized."
+
+        end select 
 
         !-----------------------------------------------------------------------
         !     iterate until errors are acceptable.
         !-----------------------------------------------------------------------     
         mscan = 0
+        anew  = a 
 100     continue
         resmax = 0.0d0
         done   = .false.
@@ -1636,17 +1650,19 @@ contains
     
                     res = p25*(a(im1,j)+a(ip1,j)+a(i,jm1)+a(i,jp1))-a(i,j)
                     res = res*sor(i,j)
-                    a(i,j)  = a(i,j) + res
-                    resmax  = max(abs(res),resmax)
+                    anew(i,j) = a(i,j) + res
+                    resmax    = max(abs(res),resmax)
                 end if
             end do
         end do
-        
+
+        a = anew 
+
         ! check if satisfy conditions
         if (resmax .le. crit .or. n.eq.maxscn)  done = .true.
         if (.not. done .and. mscan .lt. maxscn) go to 100
 
-        !write (6,99) mscan, resmax
+        write (6,99) mscan, resmax
 99      format (1x,'==> Extrapolated  mscan=',i4, ' scans.  max residual=', g14.7)
 
         return

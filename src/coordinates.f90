@@ -1712,7 +1712,7 @@ contains
 
     end subroutine grid_write_cdo_desc_explicit_proj
 
-    subroutine grid_write_cdo_desc_explicit_latlon(lon,lat,grid_name,fldr)
+    subroutine grid_write_cdo_desc_explicit_latlon(lon,lat,grid_name,fldr,wraplon)
 
         implicit none 
 
@@ -1720,6 +1720,7 @@ contains
         real(4), intent(IN) :: lat(:) 
         character(len=*), intent(IN) :: grid_name
         character(len=*), intent(IN) :: fldr  
+        logical,          intent(IN) :: wraplon 
 
         ! Local variables 
         integer :: i, j, nx, ny 
@@ -1742,7 +1743,17 @@ contains
 
         grid_type_str = "lonlat"
 
-
+        if (wraplon) then 
+            write(*,*) "grid_write_cdo_desc_explicit_latlon:: &
+                       &wraplon is currently broken. If this grid descrition &
+                       &routine is used, and lon=0deg exists in the grid, &
+                       &the mapping may produce missing values around lon=0deg. &
+                       &wraplon was intended to address this, but is not successful so far. &
+                       &When used, all the rest of the cells are missing and the cells &
+                       &with lon=0deg are filled in. Needs improvement, don't use."
+            stop 
+        end if 
+        
         ! Generate grid description filename 
         filename = trim(fldr)//"/"//"grid_"//trim(grid_name)//".txt"
 
@@ -1772,6 +1783,9 @@ contains
             ip1 = min(nx,i+1)
             jp1 = min(ny,j+1)
 
+            if (i .eq. 1 .and. wraplon) im1  = nx 
+            if (i .eq. nx .and. wraplon) ip1 = 1 
+
             ! Determine bounds (lower-right, upper-right, upper-left, lower-left)
             ! ie, get ab-nodes from aa-nodes
             ! bnds(1) = 0.25*(lon2D(i,j)+lon2D(ip1,j)+lon2D(i,jm1)+lon2D(ip1,jm1))
@@ -1781,6 +1795,14 @@ contains
             
             bnds(1) = 0.5*(lon(i)+lon(ip1))
             bnds(2) = 0.5*(lon(im1)+lon(i))
+
+            if (i .eq. 1 .and. wraplon) then 
+                bnds(2) = 0.5*((lon(im1)-360.0)+lon(i))
+            end if 
+
+            if (i .eq. nx .and. wraplon) then 
+                bnds(1) = 0.5*((lon(i)-360.0)+lon(ip1))
+            end if 
 
             write(fnum,"(2f10.3)") bnds(1:2)
 
