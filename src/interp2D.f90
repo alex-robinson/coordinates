@@ -1482,12 +1482,15 @@ contains
 
 ! ========================
     
-    subroutine fill_poisson_float(var2d,missing_value)
+    subroutine fill_poisson_float(var2d,missing_value,method,wraplon,verbose)
 
         implicit none 
 
-        real(4), intent(INOUT) :: var2d(:,:) 
-        real(4), intent(IN)    :: missing_value 
+        real(4),          intent(INOUT) :: var2d(:,:) 
+        real(4),          intent(IN)    :: missing_value 
+        integer,          intent(IN)    :: method   ! 0: start with guess=0.0, 1: guess zonal mean, 2: grid mean
+        logical,          intent(IN)    :: wraplon  ! Cyclical grid (wrap longitude?)
+        logical,          intent(IN), optional :: verbose 
 
         ! Local variables 
         integer :: nx, ny 
@@ -1499,38 +1502,52 @@ contains
         allocate(var2d_dble(nx,ny))
 
         var2d_dble = var2d 
-        call fill_poisson_dble(var2d_dble,dble(missing_value))
+        call fill_poisson_dble(var2d_dble,dble(missing_value),method,wraplon,verbose)
         var2d = var2d_dble
 
         return 
 
     end subroutine fill_poisson_float
 
-    subroutine fill_poisson_dble(var2d,missing_value)
+    subroutine fill_poisson_dble(var2d,missing_value,method,wraplon,verbose)
 
         implicit none 
 
         double precision, intent(INOUT) :: var2d(:,:) 
         double precision, intent(IN)    :: missing_value 
+        integer,          intent(IN)    :: method   ! 0: start with guess=0.0, 1: guess zonal mean, 2: grid mean
+        logical,          intent(IN)    :: wraplon  ! Cyclical grid (wrap longitude?)
+        logical,          intent(IN), optional :: verbose 
 
         ! Local variables 
-        integer, parameter :: guess = 1     ! 0: start with guess=0.0, 1: guess zonal mean, 2: grid mean
-        integer, parameter :: gtype = 0     ! 0: not cyclical; 1: cyclical 
-        integer, parameter :: nscan = 1000  ! Max. number of scans
         double precision, parameter :: epsx = 1d-1 
         double precision, parameter :: relc = 0.5d0     ! Relaxation coefficent (~0.45-0.6)
         integer :: mx, ny
-        integer :: n_missing 
-        integer :: nscanned 
-        double precision :: resmax 
+        integer :: n_missing, gtype  
+        integer :: n_iter 
+        double precision :: res_max 
 
+        integer, parameter :: iter_max = 1000  ! Max. number of scans
+        
         mx = size(var2d,1)
         ny = size(var2d,2) 
 
         n_missing = count(var2d .eq. missing_value) 
 
+        ! Cyclical grid in horizontal dimension?
+        gtype = 0 
+        if (wraplon) gtype = 1 
+
         if (n_missing .gt. 0) then 
-            call poisxy2(var2d,mx,ny,missing_value,nscan,epsx,relc,guess,gtype,resmax,nscanned)
+            call poisxy2(var2d,mx,ny,missing_value,iter_max,epsx,relc,method,gtype,res_max,n_iter)
+        
+            ! If verbose, print summary
+            if (present(verbose)) then 
+                if (verbose) then 
+                    write(*,"(a,i5,g12.3)") "fill_poisson: n_iter, max_resid = ", n_iter, res_max 
+                end if 
+            end if 
+
         end if 
 
         return 
@@ -1615,6 +1632,14 @@ contains
                 end if 
                 where (a .eq. amsg) a = aavg 
 
+            case(3)
+                ! Fill with neighborhood mean 
+
+                !call fill_mean_dble(a,missing_value=amsg)
+                call fill_weighted_dble(a,missing_value=amsg,n=6)
+                !call fill_nearest_dble(a,missing_value=amsg)
+
+                
             case DEFAULT 
 
                 write(*,*) "poisxy2:: Error: guess method not recognized."
@@ -1662,8 +1687,8 @@ contains
         if (resmax .le. crit .or. n.eq.maxscn)  done = .true.
         if (.not. done .and. mscan .lt. maxscn) go to 100
 
-        write (6,99) mscan, resmax
-99      format (1x,'==> Extrapolated  mscan=',i4, ' scans.  max residual=', g14.7)
+!         write (6,99) mscan, resmax
+! 99      format (1x,'==> Extrapolated  mscan=',i4, ' scans.  max residual=', g14.7)
 
         return
     end subroutine poisxy2
