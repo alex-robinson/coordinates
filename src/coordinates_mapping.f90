@@ -232,7 +232,7 @@ contains
 
         ! Check if the same map is defined for both sets of points
         map%is_same_map = compare_coord(pts1,pts2)
-
+        
         ! Note: do not assign max distance here, save all distances
         ! up until the maximum number of neighbors
         ! Later, when loading map, let use choose max_distance
@@ -250,7 +250,7 @@ contains
             call map_read(map,mapfldr)
 
         else
-
+            
             ! Reallocate and assign map point arrays
             if(allocated(map%x)) deallocate(map%x)
             if(allocated(map%y)) deallocate(map%y)
