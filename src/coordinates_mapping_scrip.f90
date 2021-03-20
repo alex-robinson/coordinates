@@ -61,6 +61,7 @@ module coordinates_mapping_scrip
     public :: map_scrip_class 
     public :: map_scrip_field
     public :: map_scrip_init
+    public :: map_scrip_init_from_griddesc
     public :: map_scrip_load 
 
 
@@ -360,7 +361,102 @@ contains
 
     end subroutine map_scrip_field_double
 
-    subroutine map_scrip_init(map,src_name,dst_name,fldr,src_nc,src_var,load)
+    subroutine map_scrip_init(mps,grid1,grid2,fldr,load,save)
+        ! Generate mapping weights from grid1 to grid2
+
+        implicit none 
+
+        type(map_scrip_class), intent(INOUT) :: mps 
+        type(grid_class), intent(IN)    :: grid1
+        type(grid_class), intent(IN)    :: grid2 
+        character(len=*), intent(IN), optional :: fldr      ! Directory in which to save/load map
+        logical,          intent(IN), optional :: load      ! Whether loading is desired if map exists already
+        logical,          intent(IN), optional :: save      ! Whether to save map to file after it's generated
+
+        ! Local variables 
+        logical :: load_file, save_file, fldr_exists, file_exists 
+        character(len=256) :: mapfldr 
+        character(len=512) :: src_nc 
+        character(len=12)  :: xnm, ynm 
+
+        ! Load file if it exists by default
+        load_file = .TRUE. 
+        if (present(load)) load_file = load 
+
+        ! Save generated map to file by default
+        save_file = .TRUE. 
+        if (present(save)) save_file = save 
+
+        mapfldr = "maps"
+        if (present(fldr)) mapfldr = trim(fldr)
+
+if (.FALSE.) then
+    ! To do - add to scrip file? 
+
+        ! ! Assign map constant information
+        ! mps%name1         = trim(grid1%name) 
+        ! mps%name2         = trim(grid2%name)
+        ! mps%mtype         = trim(grid2%mtype)
+        ! mps%units         = trim(grid2%units)
+        ! mps%is_projection = grid2%is_projection 
+        ! mps%is_cartesian  = grid2%is_cartesian
+        ! mps%is_lon180     = grid2%is_lon180
+        ! mps%planet        = grid2%planet
+        ! mps%proj          = grid2%proj 
+        ! mps%npts          = grid2%npts
+        ! mps%nmax          = max_neighbors 
+        ! mps%xy_conv       = grid2%xy_conv 
+
+        ! ! Check if the same map is defined for both sets of points
+        ! mps%is_same_map = compare_coord(grid1,grid2)
+end if 
+
+        ! Note: do not assign max distance here, save all distances
+        ! up until the maximum number of neighbors
+        ! Later, when loading map, let use choose max_distance
+        ! In this way, less recalculation of maps will be needed
+        ! when the max_distance changes.
+
+        ! Determine if file matching these characteristics exists
+        inquire(file=gen_map_filename(grid1%name,grid2%name,mapfldr),exist=file_exists)
+
+        !! Now load map information from file if exists and is desired
+        !! or else calculate weights and store in file. 
+        if ( load_file .and. file_exists ) then 
+
+            ! Read map from file
+            call map_scrip_load(mps,grid1%name,grid2%name,mapfldr)
+
+        else
+            
+            ! Write grid description files to mapfldr
+            call grid_write_cdo_desc_short(grid1,fldr=mapfldr) 
+            call grid_write_cdo_desc_short(grid2,fldr=mapfldr) 
+
+            ! Generate source-grid file for use with `cdo gencon` call
+            
+            src_nc = trim(mapfldr)//"/grid_"//trim(grid1%name)//".nc"
+            
+            xnm = "xc"
+            ynm = "yc"
+            if ( (.not. grid1%is_projection) .and. (.not. grid1%is_cartesian) ) then 
+                xnm = "lon"
+                ynm = "lat"
+            end if 
+
+            call grid_write(grid1,fnm=src_nc,xnm=xnm,ynm=ynm,create=.TRUE.)
+
+            ! Generate the SCRIP map via a cdo call:
+
+            call map_scrip_init_from_griddesc(mps,grid1%name,grid2%name,mapfldr,src_nc)
+
+        end if 
+
+        return 
+
+    end subroutine map_scrip_init
+
+    subroutine map_scrip_init_from_griddesc(map,src_name,dst_name,fldr,src_nc,load)
         ! Use cdo to generate scrip map based on grid 
         ! definitions. 
 
@@ -373,8 +469,7 @@ contains
         character(len=*), intent(IN) :: src_name        ! Source grid name
         character(len=*), intent(IN) :: dst_name        ! Dest./target grid name
         character(len=*), intent(IN) :: fldr            ! Folder where grid desciptions can be found
-        character(len=*), intent(IN) :: src_nc          ! Path to source netcdf file containing grid/variables (needed by cdo)
-        character(len=*), intent(IN), optional :: src_var 
+        character(len=*), intent(IN) :: src_nc          ! Path to source netcdf file containing grid/variables (needed by cdo) 
         logical,          intent(IN), optional :: load  ! Load map from file if available? 
 
         ! Local variables 
@@ -437,7 +532,7 @@ contains
 
         return 
 
-    end subroutine map_scrip_init
+    end subroutine map_scrip_init_from_griddesc
 
     subroutine map_scrip_load(map,src_name,dst_name,fldr)
         ! Load a map_scrip_class object into memory
