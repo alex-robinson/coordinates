@@ -67,7 +67,7 @@ module coordinates_mapping_scrip
 
 contains 
     
-    subroutine map_scrip_field_integer(map,var_name,var1,var2,method,fill,missing_value,mask_pack,filt_gauss,filt_poiss)
+    subroutine map_scrip_field_integer(map,var_name,var1,var2,method,fill,missing_value,mask_pack,filt_method,filt_par)
         ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
 
         ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
@@ -81,11 +81,11 @@ contains
         integer,               intent(IN)    :: var1(:,:) 
         integer,               intent(INOUT) :: var2(:,:) 
         character(len=*),      intent(IN)    :: method
-        logical,               intent(IN), optional :: fill            ! Fill cells with no available values?
-        double precision,      intent(IN), optional :: missing_value   ! Points not included in mapping
-        logical,               intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
-        double precision,      intent(IN), optional :: filt_gauss(2)    ! [sigma,dx]
-        double precision,      intent(IN), optional :: filt_poiss       ! tol
+        logical,               intent(IN), optional :: fill             ! Fill cells with no available values?
+        double precision,      intent(IN), optional :: missing_value    ! Points not included in mapping
+        logical,               intent(IN), optional :: mask_pack(:,:)   ! Mask for where to interpolate
+        character(len=*),      intent(IN), optional :: filt_method      ! Method to use for filtering
+        double precision,      intent(IN), optional :: filt_par(:)      ! gaussian=[sigma,dx]; poisson=[tol]
         
         ! Local variables 
         real(dp), allocatable :: var1dp(:,:) 
@@ -97,7 +97,7 @@ contains
         var1dp = real(var1,dp)
         var2dp = real(var2,dp)
         
-        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value,mask_pack,filt_gauss,filt_poiss)
+        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value,mask_pack,filt_method,filt_par)
 
         var2 = int(var2dp) 
 
@@ -105,7 +105,7 @@ contains
 
     end subroutine map_scrip_field_integer
 
-    subroutine map_scrip_field_float(map,var_name,var1,var2,method,fill,missing_value,mask_pack,filt_gauss,filt_poiss)
+    subroutine map_scrip_field_float(map,var_name,var1,var2,method,fill,missing_value,mask_pack,filt_method,filt_par)
         ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
 
         ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
@@ -119,11 +119,11 @@ contains
         real(sp),              intent(IN)    :: var1(:,:) 
         real(sp),              intent(INOUT) :: var2(:,:) 
         character(len=*),      intent(IN)    :: method
-        logical,               intent(IN), optional :: fill            ! Fill cells with no available values?
-        double precision,      intent(IN), optional :: missing_value   ! Points not included in mapping
-        logical,               intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
-        double precision,      intent(IN), optional :: filt_gauss(2)    ! [sigma,dx]
-        double precision,      intent(IN), optional :: filt_poiss       ! tol
+        logical,               intent(IN), optional :: fill             ! Fill cells with no available values?
+        double precision,      intent(IN), optional :: missing_value    ! Points not included in mapping
+        logical,               intent(IN), optional :: mask_pack(:,:)   ! Mask for where to interpolate
+        character(len=*),      intent(IN), optional :: filt_method      ! Method to use for filtering
+        double precision,      intent(IN), optional :: filt_par(:)      ! gaussian=[sigma,dx]; poisson=[tol]
         
         ! Local variables 
         real(dp), allocatable :: var1dp(:,:) 
@@ -135,7 +135,7 @@ contains
         var1dp = real(var1,dp)
         var2dp = real(var2,dp)
         
-        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value,mask_pack,filt_gauss,filt_poiss)
+        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value,mask_pack,filt_method,filt_par)
 
         var2 = real(var2dp,sp) 
 
@@ -144,7 +144,7 @@ contains
     end subroutine map_scrip_field_float
 
     subroutine map_scrip_field_double(map,var_name,var1,var2,method,fill, &
-                                        missing_value,mask_pack,filt_gauss,filt_poiss)
+                                        missing_value,mask_pack,filt_method,filt_par)
         ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
 
         ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
@@ -161,8 +161,8 @@ contains
         logical,               intent(IN), optional :: fill             ! Fill cells with no available values?
         double precision,      intent(IN), optional :: missing_value    ! Points not included in mapping
         logical,               intent(IN), optional :: mask_pack(:,:)   ! Mask for where to interpolate
-        double precision,      intent(IN), optional :: filt_gauss(2)    ! [sigma,dx]
-        double precision,      intent(IN), optional :: filt_poiss       ! tol
+        character(len=*),      intent(IN), optional :: filt_method      ! Method to use for filtering
+        double precision,      intent(IN), optional :: filt_par(:)      ! gaussian=[sigma,dx]; poisson=[tol]
         
         ! Local variables 
         integer :: n, k, npts1, npts2         
@@ -181,6 +181,8 @@ contains
         real(dp), pointer :: var1_now(:) 
         real(dp), pointer :: wts1_now(:) 
         real(dp) :: wts1_tot 
+
+        logical, allocatable  :: mask2(:,:) 
 
         npts1 = size(var1,1)*size(var1,2)
         npts2 = size(var2,1)*size(var2,2)
@@ -335,33 +337,42 @@ contains
         ! === Filtering ===
         ! Now perform filtering (smoothing) steps if
         ! the right arguments have been provided. 
-        if (present(filt_gauss) .and. present(filt_poiss)) then 
-            write(*,*) "map_scrip_field:: Error: filt_gauss and filt_poiss &
-                       &arguments were provided, but only one can be used. &
-                       &Please call the subroutine with only one of these &
-                       &arguments specified."
-            stop 
+        
+        if (present(filt_method)) then 
+
+            allocate(mask2(size(var2,1),size(var2,2)))
+            mask2 = reshape(maskp,[size(var2,1),size(var2,2)])
+
+            select case(trim(filt_method))
+
+                case("gaussian")
+
+                    call filter_gaussian(var2,sigma=filt_par(1),dx=filt_par(2),mask=mask2)
+
+                case("gaussian-fast")
+
+                    call filter_gaussian_fast(var2,sigma=filt_par(1),dx=filt_par(2),mask=mask2)
+        
+
+                case("poisson")
+
+                    call filter_poisson(var2,mask=mask2,tol=filt_par(1), &
+                                    missing_value=missing_val,wrapx=.FALSE.,verbose=.FALSE.)
+
+                case DEFAULT ! == "none"
+
+                    ! Pass - no filtering applied 
+
+            end select 
+
         end if 
 
-        if (present(filt_gauss)) then 
-            ! Apply gaussian filter 
-        
-            !call filter_gaussian(var=var2,sigma=filt_gauss(1),dx=filt_gauss(2),mask=var2.ne.missing_val)
-            call filter_gaussian_fast(var=var2,sigma=filt_gauss(1),dx=filt_gauss(2),mask=var2.ne.missing_val)
-        
-        else if (present(filt_poiss)) then 
-            ! Apply Poisson filter 
-
-            call filter_poisson(var2,mask=var2.ne.missing_val,tol=filt_poiss, &
-                                missing_value=missing_val,wrapx=.FALSE.,verbose=.FALSE.)
-
-        end if 
 
         return 
 
     end subroutine map_scrip_field_double
 
-    subroutine map_scrip_init(mps,grid1,grid2,fldr,load,save)
+    subroutine map_scrip_init(mps,grid1,grid2,fldr,load,clean)
         ! Generate mapping weights from grid1 to grid2
 
         implicit none 
@@ -371,21 +382,18 @@ contains
         type(grid_class), intent(IN)    :: grid2 
         character(len=*), intent(IN), optional :: fldr      ! Directory in which to save/load map
         logical,          intent(IN), optional :: load      ! Whether loading is desired if map exists already
-        logical,          intent(IN), optional :: save      ! Whether to save map to file after it's generated
+        logical,          intent(IN), optional :: clean     ! Whether to delete intermediate grid desc / grid files
 
         ! Local variables 
-        logical :: load_file, save_file, fldr_exists, file_exists 
+        logical :: load_file, fldr_exists, file_exists 
         character(len=256) :: mapfldr 
         character(len=512) :: src_nc 
         character(len=12)  :: xnm, ynm 
+        character(len=512) :: filename, cmd 
 
         ! Load file if it exists by default
         load_file = .TRUE. 
         if (present(load)) load_file = load 
-
-        ! Save generated map to file by default
-        save_file = .TRUE. 
-        if (present(save)) save_file = save 
 
         mapfldr = "maps"
         if (present(fldr)) mapfldr = trim(fldr)
@@ -449,6 +457,37 @@ end if
             ! Generate the SCRIP map via a cdo call:
 
             call map_scrip_init_from_griddesc(mps,grid1%name,grid2%name,mapfldr,src_nc)
+
+
+            ! Delete intermediate files if desired
+            if (clean) then 
+
+                ! Remove source grid file 
+                cmd = "rm "//trim(src_nc)
+                write(*,*) trim(cmd) 
+
+                write(*,"(a)",advance='no') "Calling via system call... "
+                call system(cmd)
+                write(*,*) "done." 
+
+                ! Remove grid description files 
+                filename = trim(mapfldr)//"/"//"grid_"//trim(grid1%name)//".txt"
+                cmd = "rm "//trim(filename)
+                write(*,*) trim(cmd) 
+
+                write(*,"(a)",advance='no') "Calling via system call... "
+                call system(cmd)
+                write(*,*) "done." 
+
+                filename = trim(mapfldr)//"/"//"grid_"//trim(grid2%name)//".txt"
+                cmd = "rm "//trim(filename)
+                write(*,*) trim(cmd) 
+
+                write(*,"(a)",advance='no') "Calling via system call... "
+                call system(cmd)
+                write(*,*) "done." 
+
+            end if 
 
         end if 
 

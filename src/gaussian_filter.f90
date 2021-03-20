@@ -104,7 +104,7 @@ contains
         call calc_gauss_values(kernel_ref,dx,dx,sigma,nk)
 
         ! Get output array with buffer on sides 
-        allocate(varext(nx+2*nk2,ny+2*nk2))
+        allocate(varext(nx+2*nk2, ny+2*nk2))
         allocate(maskext(nx+2*nk2,ny+2*nk2))
 
         varext  = -9999.0 
@@ -112,7 +112,10 @@ contains
 
         ! Fill in values 
         varext(nk2+1:(nk2+nx),nk2+1:(nk2+ny))  = var 
-        maskext(nk2+1:(nk2+nx),nk2+1:(nk2+ny)) = mask 
+
+        if (present(mask)) then 
+            maskext(nk2+1:(nk2+nx),nk2+1:(nk2+ny)) = mask 
+        end if 
 
         ! Fill in borders, except corners that won't be used for simplicity
         do i = 1, nk2
@@ -121,10 +124,12 @@ contains
             varext(nk2+1:nk2+nx,i)           = var(:,nk2-i+1) 
             varext(nk2+1:nk2+nx,(nk2+ny+i))  = var(:,ny-i+1)
 
-            maskext(i,nk2+1:nk2+ny)          = mask(nk2-i+1,:) 
-            maskext((nk2+nx+i),nk2+1:nk2+ny) = mask(nx-i+1,:)
-            maskext(nk2+1:nk2+nx,i)          = mask(:,nk2-i+1) 
-            maskext(nk2+1:nk2+nx,(nk2+ny+i)) = mask(:,ny-i+1)
+            if (present(mask)) then 
+                maskext(i,nk2+1:nk2+ny)          = mask(nk2-i+1,:) 
+                maskext((nk2+nx+i),nk2+1:nk2+ny) = mask(nx-i+1,:)
+                maskext(nk2+1:nk2+nx,i)          = mask(:,nk2-i+1) 
+                maskext(nk2+1:nk2+nx,(nk2+ny+i)) = mask(:,ny-i+1)
+            end if 
         end do 
         
         ! Loop over points corresponding to actual var array 
