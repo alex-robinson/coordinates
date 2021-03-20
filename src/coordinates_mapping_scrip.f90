@@ -345,7 +345,8 @@ contains
         if (present(filt_gauss)) then 
             ! Apply gaussian filter 
         
-            call filter_gaussian(var=var2,sigma=filt_gauss(1),dx=filt_gauss(2),mask=var2.ne.missing_val)
+            !call filter_gaussian(var=var2,sigma=filt_gauss(1),dx=filt_gauss(2),mask=var2.ne.missing_val)
+            call filter_gaussian_fast(var=var2,sigma=filt_gauss(1),dx=filt_gauss(2),mask=var2.ne.missing_val)
         
         else if (present(filt_poiss)) then 
             ! Apply Poisson filter 
