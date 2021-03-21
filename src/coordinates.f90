@@ -1552,10 +1552,10 @@ contains
         write(fnum,"(a)")       "xunits   = "//trim(xunits)
         write(fnum,"(a)")       "yname    = "//trim(ynm)
         write(fnum,"(a)")       "yunits   = "//trim(yunits)
-        write(fnum,"(a,f12.3)") "xfirst   = ", grid%G%x(1) 
-        write(fnum,"(a,f12.3)") "xinc     = ", grid%G%dx 
-        write(fnum,"(a,f12.3)") "yfirst   = ", grid%G%y(1) 
-        write(fnum,"(a,f12.3)") "yinc     = ", grid%G%dy 
+        write(fnum,"(a,f15.6)") "xfirst   = ", grid%G%x(1) 
+        write(fnum,"(a,f15.6)") "xinc     = ", grid%G%dx 
+        write(fnum,"(a,f15.6)") "yfirst   = ", grid%G%y(1) 
+        write(fnum,"(a,f15.6)") "yinc     = ", grid%G%dy 
           
         write(fnum,"(a,a)") "grid_mapping = ","crs"
 
