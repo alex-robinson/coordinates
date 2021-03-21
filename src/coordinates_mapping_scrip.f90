@@ -67,8 +67,8 @@ module coordinates_mapping_scrip
 
 contains 
     
-    subroutine map_scrip_field_integer(map,var_name,var1,var2,method,fill,missing_value, &
-                                                        mask_pack,filt_method,filt_par,verbose)
+    subroutine map_scrip_field_integer(map,var_name,var1,var2,method,reset,missing_value, &
+                                        mask_pack,fill_method,filt_method,filt_par,verbose)
         ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
 
         ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
@@ -82,9 +82,10 @@ contains
         integer,                intent(IN)    :: var1(:,:) 
         integer,                intent(INOUT) :: var2(:,:) 
         character(len=*),       intent(IN)    :: method
-        logical,                intent(IN), optional :: fill            ! Fill cells with no available values?
+        logical,                intent(IN), optional :: reset           ! Fill cells with no available values?
         double precision,       intent(IN), optional :: missing_value   ! Points not included in mapping
         logical,                intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
+        character(len=*),       intent(IN), optional :: fill_method     ! Method to fill in remaining missing values
         character(len=*),       intent(IN), optional :: filt_method     ! Method to use for filtering
         double precision,       intent(IN), optional :: filt_par(:)     ! gaussian=[sigma,dx]; poisson=[tol]
         logical,                intent(IN), optional :: verbose         ! Print information
@@ -99,8 +100,8 @@ contains
         var1dp = real(var1,dp)
         var2dp = real(var2,dp)
         
-        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value, &
-                                                        mask_pack,filt_method,filt_par)
+        call map_scrip_field(map,var_name,var1dp,var2dp,method,reset,missing_value, &
+                                            mask_pack,fill_method,filt_method,filt_par)
 
         var2 = int(var2dp) 
 
@@ -108,8 +109,8 @@ contains
 
     end subroutine map_scrip_field_integer
 
-    subroutine map_scrip_field_float(map,var_name,var1,var2,method,fill,missing_value, &
-                                                        mask_pack,filt_method,filt_par,verbose)
+    subroutine map_scrip_field_float(map,var_name,var1,var2,method,reset,missing_value, &
+                                            mask_pack,fill_method,filt_method,filt_par,verbose)
         ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
 
         ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
@@ -123,9 +124,10 @@ contains
         real(sp),               intent(IN)    :: var1(:,:) 
         real(sp),               intent(INOUT) :: var2(:,:) 
         character(len=*),       intent(IN)    :: method
-        logical,                intent(IN), optional :: fill            ! Fill cells with no available values?
+        logical,                intent(IN), optional :: reset           ! Reset var2 initially to missing_value?
         double precision,       intent(IN), optional :: missing_value   ! Points not included in mapping
         logical,                intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
+        character(len=*),       intent(IN), optional :: fill_method     ! Method to fill in remaining missing values
         character(len=*),       intent(IN), optional :: filt_method     ! Method to use for filtering
         double precision,       intent(IN), optional :: filt_par(:)     ! gaussian=[sigma,dx]; poisson=[tol]
         logical,                intent(IN), optional :: verbose         ! Print information
@@ -140,7 +142,8 @@ contains
         var1dp = real(var1,dp)
         var2dp = real(var2,dp)
         
-        call map_scrip_field(map,var_name,var1dp,var2dp,method,fill,missing_value,mask_pack,filt_method,filt_par)
+        call map_scrip_field(map,var_name,var1dp,var2dp,method,reset,missing_value, &
+                                            mask_pack,fill_method,filt_method,filt_par)
 
         var2 = real(var2dp,sp) 
 
@@ -148,8 +151,8 @@ contains
 
     end subroutine map_scrip_field_float
 
-    subroutine map_scrip_field_double(map,var_name,var1,var2,method,fill,missing_value, &
-                                                        mask_pack,filt_method,filt_par,verbose)
+    subroutine map_scrip_field_double(map,var_name,var1,var2,method,reset,missing_value, &
+                                                        mask_pack,fill_method,filt_method,filt_par,verbose)
         ! Map a variable field var1 from a src_grid to variable field var2 on dst_grid 
 
         ! Note: method='mean' is analogous to the method normalize_opt='fracarea' 
@@ -163,18 +166,19 @@ contains
         real(8),                intent(IN)    :: var1(:,:) 
         real(8),                intent(INOUT) :: var2(:,:) 
         character(len=*),       intent(IN)    :: method
-        logical,                intent(IN), optional :: fill            ! Fill cells with no available values?
+        logical,                intent(IN), optional :: reset           ! Reset var2 initially to missing_value?
         double precision,       intent(IN), optional :: missing_value   ! Points not included in mapping
         logical,                intent(IN), optional :: mask_pack(:,:)  ! Mask for where to interpolate
+        character(len=*),       intent(IN), optional :: fill_method     ! Method to fill in remaining missing values
         character(len=*),       intent(IN), optional :: filt_method     ! Method to use for filtering
         double precision,       intent(IN), optional :: filt_par(:)     ! gaussian=[sigma,dx]; poisson=[tol]
         logical,                intent(IN), optional :: verbose         ! Print information
         
         ! Local variables 
         integer :: n, k, npts1, npts2         
-        logical          :: fill_pts
+        logical          :: reset_pts
         double precision :: missing_val 
-        logical          :: fixed_values  
+        logical          :: verbose_out
         logical, allocatable  :: maskp(:)
         real(dp), allocatable :: area(:)
         integer :: i, j, j1, j2  
@@ -211,13 +215,18 @@ contains
             stop 
         end if 
         
-        ! By default, fill in target grid points with missing values
-        fill_pts = .TRUE. 
-        if (present(fill)) fill_pts = fill 
+        ! By default, reset target grid points to missing values initially
+        reset_pts = .TRUE. 
+        if (present(reset)) reset_pts = reset 
 
+        ! By defualt missing value is the coordinates package default value
         missing_val = mv 
         if (present(missing_value)) missing_val = missing_value
 
+        ! By default, not verbose output 
+        verbose_out = .FALSE. 
+        if (present(verbose)) verbose_out = verbose 
+        
         ! By default, all var2 points are interpolated
         allocate(maskp(npts2))
         maskp = .TRUE. 
@@ -234,8 +243,8 @@ contains
         allocate(var2_vec(npts2))
         var2_vec = reshape(var2,[npts2])
 
-        ! If fill is desired, initialize output points to missing values
-        if (fill_pts) var2_vec = missing_val 
+        ! Reset output points to missing values
+        if (reset_pts) var2_vec = missing_val 
 
         j1 = 0 
         j2 = 0 
@@ -346,17 +355,41 @@ contains
         ! Send back to 2D array 
         var2 = reshape(var2_vec,[size(var2,1),size(var2,2)])
 
+        ! Allocate mask if needed 
+        if (present(fill_method) .or. present(filt_method)) then
+
+            allocate(mask2(size(var2,1),size(var2,2)))
+            mask2 = reshape(maskp,[size(var2,1),size(var2,2)])
+
+        end if 
+
+        ! === Filling ===
+        ! Fill in remaining missing values 
+
+        if (present(fill_method)) then 
+
+            select case(trim(fill_method))
+
+                case("weighted")
+
+                    call fill_weighted(var2,missing_val,n=6,mask=mask2)
+
+                case DEFAULT ! eg "none"
+
+                    ! Pass - no filling applied 
+
+            end select
+
+        end if 
+
         ! === Filtering ===
         ! Now perform filtering (smoothing) steps if
         ! the right arguments have been provided. 
         
         if (present(filt_method)) then 
 
-            allocate(mask2(size(var2,1),size(var2,2)))
-            mask2 = reshape(maskp,[size(var2,1),size(var2,2)])
-
             ! Calculate grid average before filtering 
-            if (verbose .and. npts_apply .gt. 0) then 
+            if (verbose_out .and. npts_apply .gt. 0) then 
                 mean2 = sum(var2,mask=mask2) / real(npts_apply,dp)
             end if 
 
@@ -383,11 +416,11 @@ contains
             end select 
 
             ! Calculate grid average after filtering 
-            if (verbose .and. npts_apply .gt. 0) then 
+            if (verbose_out .and. npts_apply .gt. 0) then 
                 mean2b = sum(var2,mask=mask2) / real(npts_apply,dp)
             end if 
-
-            if (verbose) then 
+            
+            if (verbose_out) then 
                 ! Print summary of filtering 
                 write(*,"(4a,2g14.5)") var_name, " - ",filt_method, ": mean[orig,filtered]: ", mean2, mean2b
             end if 
