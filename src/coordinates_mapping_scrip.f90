@@ -600,9 +600,14 @@ end if
 
         call nc_dims(map%map_fname,"src_grid_center_lat",dim_names,dims)
         map%src_grid_size = dims(1) 
-        call nc_dims(map%map_fname,"dst_grid_corner_lat",dim_names,dims)
-        map%dst_grid_corners = dims(1) 
-        map%dst_grid_size    = dims(2) 
+        call nc_dims(map%map_fname,"dst_grid_center_lat",dim_names,dims)
+        map%dst_grid_size = dims(1) 
+        if (nc_exists_var(map%map_fname,"dst_grid_corner_lat")) then 
+          call nc_dims(map%map_fname,"dst_grid_corner_lat",dim_names,dims)
+          map%dst_grid_corners = dims(1) 
+        else
+          map%dst_grid_corners = 0
+        endif
         call nc_dims(map%map_fname,"src_grid_dims",dim_names,dims)
         map%src_grid_rank = dims(1) 
         call nc_dims(map%map_fname,"dst_grid_dims",dim_names,dims)
@@ -682,8 +687,10 @@ end if
         allocate(map%dst_grid_center_lat(map%dst_grid_size))
         allocate(map%src_grid_center_lon(map%src_grid_size))
         allocate(map%dst_grid_center_lon(map%dst_grid_size))
-        allocate(map%dst_grid_corner_lat(map%dst_grid_corners,map%dst_grid_size))
-        allocate(map%dst_grid_corner_lon(map%dst_grid_corners,map%dst_grid_size))
+        if (map%dst_grid_corners>0) then
+          allocate(map%dst_grid_corner_lat(map%dst_grid_corners,map%dst_grid_size))
+          allocate(map%dst_grid_corner_lon(map%dst_grid_corners,map%dst_grid_size))
+        endif
         allocate(map%src_grid_imask(map%src_grid_size))
         allocate(map%dst_grid_imask(map%dst_grid_size))
         allocate(map%src_grid_area(map%src_grid_size))
