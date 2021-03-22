@@ -1811,8 +1811,8 @@ contains
 ! input
       double precision x, y
 
-      !if (dabs(x) .lt. 1d-20) x = 0.d0 ! ajr: to prevent an underflow exception
-      !if (dabs(y) .lt. 1d-20) y = 0.d0 ! ajr: to prevent an underflow exception
+      if (dabs(x) .lt. 1d-20) x = 0.d0 ! ajr: to prevent an underflow exception
+      if (dabs(y) .lt. 1d-20) y = 0.d0 ! ajr: to prevent an underflow exception
       hypotx = sqrt(x**2 + y**2)
 
       return

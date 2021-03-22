@@ -63,7 +63,7 @@ module coordinates_mapping_scrip
     public :: map_scrip_init
     public :: map_scrip_init_from_griddesc
     public :: map_scrip_load 
-
+    public :: map_scrip_end
 
 contains 
     
@@ -226,7 +226,7 @@ contains
         ! By default, not verbose output 
         verbose_out = .FALSE. 
         if (present(verbose)) verbose_out = verbose 
-        
+
         ! By default, all var2 points are interpolated
         allocate(maskp(npts2))
         maskp = .TRUE. 
@@ -419,7 +419,7 @@ contains
             if (verbose_out .and. npts_apply .gt. 0) then 
                 mean2b = sum(var2,mask=mask2) / real(npts_apply,dp)
             end if 
-            
+
             if (verbose_out) then 
                 ! Print summary of filtering 
                 write(*,"(4a,2g14.5)") var_name, " - ",filt_method, ": mean[orig,filtered]: ", mean2, mean2b
@@ -725,6 +725,22 @@ end if
         return 
 
     end subroutine map_scrip_load
+
+    subroutine map_scrip_end(map)
+        ! Allocate arrays in map_scrip_class. This
+        ! routine assumes that size parameters within
+        ! the object are already specified. 
+
+        implicit none 
+
+        type(map_scrip_class), intent(INOUT) :: map 
+        
+        ! Simply deallocate the map object 
+        call map_scrip_dealloc(map) 
+
+        return 
+
+    end subroutine map_scrip_end
 
     subroutine map_scrip_alloc(map)
         ! Allocate arrays in map_scrip_class. This
