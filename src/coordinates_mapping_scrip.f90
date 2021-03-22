@@ -173,13 +173,16 @@ contains
         real(dp), allocatable :: area(:)
         integer :: i, j, j1, j2  
 
-        real(dp), allocatable, target :: var1_vec(:)
+!cmw        real(dp), allocatable, target :: var1_vec(:)
+        real(dp), allocatable :: var1_vec(:)
         real(dp), allocatable :: var2_vec(:) 
         real(dp) :: area_tot, pt_ave, pt_var   
         integer  :: npt_now, num_links_now 
 
-        real(dp), pointer :: var1_now(:) 
-        real(dp), pointer :: wts1_now(:) 
+!cmw        real(dp), pointer :: var1_now(:) 
+!cmw        real(dp), pointer :: wts1_now(:) 
+        real(dp), allocatable :: var1_now(:) 
+        real(dp), allocatable :: wts1_now(:) 
         real(dp) :: wts1_tot 
 
         logical, allocatable  :: mask2(:,:) 
@@ -266,8 +269,8 @@ contains
                 num_links_now = j2-j1+1
 
                 ! Define pointers to range of relevant input data and weights
-                nullify(var1_now)
-                nullify(wts1_now) 
+!cmw                nullify(var1_now)
+!cmw                nullify(wts1_now) 
                 allocate(var1_now(num_links_now))
                 allocate(wts1_now(num_links_now))
 
@@ -326,6 +329,10 @@ contains
                     end select 
 
                 end if 
+
+                ! cmw
+                deallocate(var1_now)
+                deallocate(wts1_now)
 
             end if 
 
