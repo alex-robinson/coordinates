@@ -1216,6 +1216,8 @@ contains
         
         ! Add coordinates information as needed
         if ( grid%is_projection ) then 
+            call nc_write_attr(fnm,"x2D",   "coordinates","lat2D lon2D")
+            call nc_write_attr(fnm,"y2D",   "coordinates","lat2D lon2D")
             call nc_write_attr(fnm,"area",  "coordinates","lat2D lon2D")
             call nc_write_attr(fnm,"border","coordinates","lat2D lon2D")
         else if ( .not. grid%is_cartesian ) then 

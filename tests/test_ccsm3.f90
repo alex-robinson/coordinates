@@ -96,19 +96,33 @@ program test_ccsm3
     !
     ! =======================================================================
 
-    REG%name = "ANT-20KM"
-    REG%nx   = 281
-    REG%ny   = 281 
-    REG%lambda =   0.d0 
-    REG%phi    = -90.d0
-    REG%alpha  =  19.d0 
+    ! REG%name = "ANT-20KM"
+    ! REG%nx   = 281
+    ! REG%ny   = 281 
+    ! REG%lambda =   0.d0 
+    ! REG%phi    = -90.d0
+    ! REG%alpha  =  19.d0 
 
-!     REG%name = "GRL-20KM"
-!     REG%nx   = 76
-!     REG%ny   = 151 
-!     REG%lambda = 320.d0 
-!     REG%phi    = 72.d0
-!     REG%alpha  = 7.5d0
+    ! REG%name = "GRL-20KM"
+    ! REG%nx   = 76
+    ! REG%ny   = 151 
+    ! REG%lambda = 320.d0 
+    ! REG%phi    = 72.d0
+    ! REG%alpha  = 7.5d0
+
+    ! REG%name = "GRL-20KM"
+    ! REG%nx   = 76
+    ! REG%ny   = 151 
+    ! REG%lambda = -45.d0 
+    ! REG%phi    =  70.d0
+    ! REG%alpha  = 7.5d0
+
+    REG%name = "NH-40KM"
+    REG%nx   = 313
+    REG%ny   = 313 
+    REG%lambda = -44.d0 
+    REG%phi    =  70.d0
+    REG%alpha  = 7.5d0
 
 !     REG%name = "HIM-20KM"
 !     REG%nx   = 200
@@ -124,6 +138,10 @@ program test_ccsm3
     call grid_init(gREG,name=REG%name,mtype="polar_stereographic",units="km",lon180=.FALSE., &
                      dx=20.d0,nx=REG%nx,dy=20.d0,ny=REG%ny, &
                      lambda=REG%lambda,phi=REG%phi,alpha=REG%alpha)
+
+    ! call grid_init(gREG,name=REG%name,mtype="polar_stereographic",units="km",lon180=.TRUE., &
+    !                  x0=-720.d0,dx=20.d0,nx=REG%nx,y0=-3450.0d0,dy=20.d0,ny=REG%ny, &
+    !                  lambda=REG%lambda,phi=REG%phi,alpha=REG%alpha)
 
     ! Allocate arrays of the size of the regional grid
     call grid_allocate(gREG, REG%Ts)
@@ -215,46 +233,83 @@ program test_ccsm3
     call grid_stats("Hs",CCSM3a%Hs,CCSM3b%Hs,CCSM3b%mask)
 
     
-    ! Other tests 
+    ! === Nearest-neighbor method ===
+    file_gCCSM3b   = "output/ccsm3/grid_CCSM3-T42b_nn.nc"
+    file_gREG      = "output/ccsm3/grid_"//trim(REG%name)//"_nn.nc"
 
-!     call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="nng",sigma=80.d0)
-!     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="nng",sigma=80.d0)
-!     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="nng",sigma=80.d0)
+    call map_field(mCCSM3_REG,"Ts",CCSM3a%Ts,REG%Ts,method="nn")
+    call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="nn")
+    call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="nn")
 
-!     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
-!     call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
-!     call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
+    call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
+    call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
+    call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
     
-    ! SCRIP interpolation weights 
+    ! Write new regional data to grid file
+    call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
+    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
+    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
+
+    ! Write new CCSM3 data to grid file 
+    call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.)
+    call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"MB",  CCSM3b%MB,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"Hs",  CCSM3b%Hs,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"mask",CCSM3b%mask,dim1="lon",dim2="lat")
+
+    ! (as in Table 3 of Reerink et al, 2010)
+    write(*,*) "=== Nearest-neighbor method ==="
+    call grid_stats("Ts",CCSM3a%Ts,CCSM3b%Ts,CCSM3b%mask)
+    call grid_stats("MB",CCSM3a%MB,CCSM3b%MB,CCSM3b%mask)
+    call grid_stats("Hs",CCSM3a%Hs,CCSM3b%Hs,CCSM3b%mask)
+
+    
+    ! === SCRIP method ===
+
     file_gCCSM3b   = "output/ccsm3/grid_CCSM3-T42b_scrip.nc"
     file_gREG      = "output/ccsm3/grid_"//trim(REG%name)//"_scrip.nc"
     
-    call grid_write_cdo_desc_short(gREG,fldr="maps") 
-    call grid_write_cdo_desc_short(gCCSM3,fldr="maps") 
-    
-    call map_scrip_init(mps1,gCCSM3%name,gREG%name,fldr="maps", &
-                src_nc="data/ccsm_example_dec_feb_pd.nc")
-    call map_scrip_init(mps2,gREG%name,gCCSM3%name,fldr="maps", &
-                src_nc="output/ccsm3/grid_ANT-20KM_bilinear.nc")
-
     write(*,*) "=== SCRIP method ==="
+    
+    call map_scrip_init(mps1,gCCSM3,gREG,fldr="maps",load=.TRUE.,clean=.FALSE.)
+    call map_scrip_init(mps2,gREG,gCCSM3,fldr="maps",load=.TRUE.,clean=.FALSE.)
+
     CCSM3a%mask = 0 
     where(CCSM3a%Ts .lt. 250.0) CCSM3a%mask = 1 
 
     call map_scrip_field(mps1,"Ts",  CCSM3a%Ts,  REG%Ts,  method="mean")
+    call map_scrip_field(mps1,"MB",  CCSM3a%MB,  REG%MB,  method="mean")
+    call map_scrip_field(mps1,"Hs",  CCSM3a%Hs,  REG%Hs,  method="mean")
     call map_scrip_field(mps1,"mask",CCSM3a%mask,REG%mask,method="count")
     
+    CCSM3b%Ts = CCSM3a%Ts 
+    call map_scrip_field(mps2,"Ts",  REG%Ts,  CCSM3b%Ts,  method="mean",reset=.FALSE.)
+    call map_scrip_field(mps2,"MB",  REG%MB,  CCSM3b%MB,  method="mean",reset=.FALSE.)
+    call map_scrip_field(mps2,"Hs",  REG%Hs,  CCSM3b%Hs,  method="mean",reset=.FALSE.)
+    call map_scrip_field(mps2,"mask",REG%mask,CCSM3b%mask,method="count",reset=.FALSE.)
+    
+    ! Write new regional data to grid file
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
     call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
-    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc") 
-    
-    CCSM3b%Ts = CCSM3a%Ts 
-    call map_scrip_field(mps2,"Ts",  REG%Ts,  CCSM3b%Ts,  method="mean",fill=.FALSE.)
-    call map_scrip_field(mps2,"mask",REG%mask,CCSM3b%mask,method="count",fill=.FALSE.)
-    
-    call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.) 
-    call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat") 
-    call nc_write(file_gCCSM3b,"mask",CCSM3b%mask,dim1="lon",dim2="lat") 
+    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
+
+    ! Write new CCSM3 data to grid file 
+    call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.)
+    call nc_write(file_gCCSM3b,"Ts",  CCSM3b%Ts,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"MB",  CCSM3b%MB,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"Hs",  CCSM3b%Hs,  dim1="lon",dim2="lat")
+    call nc_write(file_gCCSM3b,"mask",CCSM3b%mask,dim1="lon",dim2="lat")
+
+    ! (as in Table 3 of Reerink et al, 2010)
+    write(*,*) "=== SCRIP-mean method ==="
+    call grid_stats("Ts",CCSM3a%Ts,CCSM3b%Ts,CCSM3b%mask)
+    call grid_stats("MB",CCSM3a%MB,CCSM3b%MB,CCSM3b%mask)
+    call grid_stats("Hs",CCSM3a%Hs,CCSM3b%Hs,CCSM3b%mask)
+
     
 contains
 

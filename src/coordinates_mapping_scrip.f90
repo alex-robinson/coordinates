@@ -523,7 +523,7 @@ end if
 
             ! Generate the SCRIP map via a cdo call:
 
-            call map_scrip_init_from_griddesc(mps,grid1%name,grid2%name,mapfldr,src_nc)
+            call map_scrip_init_from_griddesc(mps,grid1%name,grid2%name,mapfldr,src_nc,load=.FALSE.)
 
 
             ! Delete intermediate files if desired
