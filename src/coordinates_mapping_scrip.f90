@@ -266,40 +266,40 @@ contains
         ! Loop over target points
         do k = 1, npts2 
 
+            ! Find the range of link indices that correspond 
+            ! to the current point k, ie, such that:
+            ! map%dst_address(j1:j2) == k 
+            ! Note: dst_address can be expected to be sorted 
+            ! in ascending order.
+            j1 = j2+1 
+
+            ! Check index associated with this address. If 
+            ! it is greater than the current index k, it 
+            ! means this point has no interpolation links,
+            ! so skip this iteration of the main loop.
+            if (map%dst_address(j1) .gt. k) then 
+                j1 = j1-1 
+                cycle 
+            end if 
+
+            ! Given j1 is the start of the addresses associated 
+            ! with the current index k, find the upper range 
+            ! such that map%dst_address(j1:j2) == k and it 
+            ! covers all addresses equal to k.
+            do j = j1, map%num_links
+                if (map%dst_address(j) .eq. map%dst_address(j1) ) then 
+                    j2 = j 
+                else 
+                    exit 
+                end if 
+            end do 
+
+            ! Determine the number of links 
+            num_links_now = j2-j1+1
+
             if (maskp(k)) then 
                 ! Only interpolate for desired target points 
-        
-                ! Find the range of link indices that correspond 
-                ! to the current point k, ie, such that:
-                ! map%dst_address(j1:j2) == k 
-                ! Note: dst_address can be expected to be sorted 
-                ! in ascending order.
-                j1 = j2+1 
-
-                ! Check index associated with this address. If 
-                ! it is greater than the current index k, it 
-                ! means this point has no interpolation links,
-                ! so skip this iteration of the main loop.
-                if (map%dst_address(j1) .gt. k) then 
-                    j1 = j1-1 
-                    cycle 
-                end if 
-
-                ! Given j1 is the start of the addresses associated 
-                ! with the current index k, find the upper range 
-                ! such that map%dst_address(j1:j2) == k and it 
-                ! covers all addresses equal to k.
-                do j = j1, map%num_links
-                    if (map%dst_address(j) .eq. map%dst_address(j1) ) then 
-                        j2 = j 
-                    else 
-                        exit 
-                    end if 
-                end do 
-
-                ! Determine the number of links 
-                num_links_now = j2-j1+1
-
+            
                 ! Allocate vectors to hold input data and weights
                 allocate(var1_now(num_links_now))
                 allocate(wts1_now(num_links_now))
