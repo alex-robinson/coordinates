@@ -614,26 +614,10 @@ end if
             ! cdo command output is redirected to a file '.tmpcdoout'.
             cdo_cmd = "cdo gencon,"//trim(fnm2)//" -setgrid,"//trim(fnm1)// &
                     " "//trim(src_nc)//" "//trim(fnm_map)//" &> .tmpcdoout"
-
-            ! write(*,*) "cdo command: "
-            ! write(*,*) trim(cdo_cmd) 
-
-            ! write(*,"(a)",advance='no') "Calling via system call... "
-            ! call system(cdo_cmd)
-            ! write(*,*) "done." 
-
-            ! ! Check if scrip weights file was written 
-            ! inquire(file=trim(fnm_map),exist=cdo_success)
-
-            ! if (.not. cdo_success) then 
-            !     write(*,*) "map_scrip_init:: Error: scrip map file was not written. &
-            !     & This may mean that the system call to cdo was unsucessful. Check the &
-            !     &cdo log file: .tmpcdoout"
-            !     stop 
-            ! end if 
-
-            call call_system_cdo(cdo_cmd)
             
+            ! Call cdo command via system call
+            call call_system_cdo(cdo_cmd)
+
         end if 
 
         ! Step 2: load map weights and initialize map_scrip_class object 

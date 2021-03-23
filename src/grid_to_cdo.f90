@@ -434,23 +434,7 @@ contains
         ! Define cdo command to generate griddes file from src grid (fnm1) 
         cdo_cmd = "cdo griddes "//trim(file_nc)//" > "//trim(file_grid_desc)
 
-        ! write(*,*) "cdo command: "
-        ! write(*,*) trim(cdo_cmd) 
-
-        ! write(*,"(a)",advance='no') "Calling via system call... "
-        ! call system(cdo_cmd)
-        ! write(*,*) "done." 
-
-        ! ! Check if scrip weights file was written 
-        ! inquire(file=trim(file_grid_desc),exist=cdo_success)
-
-        ! if (.not. cdo_success) then 
-        !     write(*,*) "map_scrip_init:: Error: scrip map file was not written. &
-        !     & This may mean that the system call to cdo was unsucessful. Check the &
-        !     &cdo log file: .tmpcdoout"
-        !     stop 
-        ! end if 
-
+        ! Call cdo command via system call
         call call_system_cdo(cdo_cmd)
 
         return 
@@ -476,12 +460,12 @@ contains
         ! Create output filename 
         filename = trim(fldr)//"/grid_"//trim(grid_name)//".nc"
 
-
         ! Define cdo command to extract variable into a new file 
         ! cdo command output is redirected to a file '.tmpcdoout'.
         cdo_cmd = "cdo selvar,"//trim(src_var)//" "//trim(src_nc)// &
                 " "//trim(filename)
 
+        ! Call cdo command via system call
         call call_system_cdo(cdo_cmd)
         
         return 
