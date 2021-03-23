@@ -193,8 +193,9 @@ contains
         integer, allocatable  :: mask2_vec(:) 
         real(dp) :: area_tot, pt_ave, pt_var   
         integer  :: npt_now, num_links_now 
-        real(dp), allocatable :: var1_now(:) 
-        real(dp), allocatable :: wts1_now(:) 
+        integer, parameter :: max_num_links_now = 10000
+        real(dp), dimension(max_num_links_now) :: var1_now 
+        real(dp), dimension(max_num_links_now) :: wts1_now 
         real(dp) :: wts1_tot 
 
         logical, allocatable  :: maskp2d(:,:) 
@@ -297,20 +298,23 @@ contains
             ! Determine the number of links 
             num_links_now = j2-j1+1
 
+            if (num_links_now>max_num_links_now) then
+              write(*,*) "map_scrip_field:: Error: num_links_now>max_num_links_now: ",num_links_now,max_num_links_now
+              write(*,*) " increase max_num_links_now"
+              write(*,*) 
+              stop 
+            endif
+
             if (maskp(k)) then 
                 ! Only interpolate for desired target points 
             
-                ! Allocate vectors to hold input data and weights
-                allocate(var1_now(num_links_now))
-                allocate(wts1_now(num_links_now))
-
                 ! Assign data and weights to pointers
-                var1_now = var1_vec(map%src_address(j1:j2))
-                wts1_now = map%remap_matrix(1,j1:j2)
+                var1_now(1:num_links_now) = var1_vec(map%src_address(j1:j2))
+                wts1_now(1:num_links_now) = map%remap_matrix(1,j1:j2)
 
                 ! Calculate the total weight associated with this point,
                 ! accounting for missing values in the source array.
-                wts1_tot = sum(wts1_now,mask=var1_now .ne. missing_val)
+                wts1_tot = sum(wts1_now(1:num_links_now),mask=var1_now(1:num_links_now) .ne. missing_val)
 
                 if (wts1_tot .gt. 0.0d0) then 
                     ! Interpolation data found, proceed to interpolate this point
@@ -323,26 +327,26 @@ contains
                         case("mean")
                             ! Calculate the area-weighted mean 
 
-                            var2_vec(k) = sum((wts1_now/wts1_tot)*var1_now,mask=var1_now .ne. missing_val)
+                            var2_vec(k) = sum((wts1_now(1:num_links_now)/wts1_tot)*var1_now(1:num_links_now),mask=var1_now(1:num_links_now) .ne. missing_val)
 
                         case("count")
                             ! Choose the most frequently occurring value, weighted by area
 
-                            var2_vec(k) = maxcount(var1_now,wts1_now,missing_val)
+                            var2_vec(k) = maxcount(var1_now(1:num_links_now),wts1_now(1:num_links_now),missing_val)
 
                         case("stdev")
                             ! Calculate the weighted standard deviation 
                             ! using unbiased estimator correction 
 
-                            npt_now = count(var1_now .ne. missing_val)
+                            npt_now = count(var1_now(1:num_links_now) .ne. missing_val)
 
                             if (npt_now .gt. 2) then
                                 ! Only calculate stdev for 2 or more input points
 
-                                pt_ave      = sum((wts1_now/wts1_tot)*var1_now,mask=var1_now .ne. missing_val)
+                                pt_ave      = sum((wts1_now(1:num_links_now)/wts1_tot)*var1_now(1:num_links_now),mask=var1_now(1:num_links_now) .ne. missing_val)
                                 var2_vec(k) = (npt_now/(npt_now - 1.0)) &
-                                               * sum((wts1_now/wts1_tot)*(var1_now-pt_ave)**2, & 
-                                                                            mask=var1_now .ne. missing_val)
+                                               * sum((wts1_now(1:num_links_now)/wts1_tot)*(var1_now(1:num_links_now)-pt_ave)**2, & 
+                                                                            mask=var1_now(1:num_links_now) .ne. missing_val)
                                 var2_vec(k) = sqrt(var2_vec(k))
                                 
                             else
@@ -360,10 +364,6 @@ contains
                     end select 
 
                 end if 
-
-                ! Deallocate temporary vectors for reallocation in loop
-                deallocate(var1_now)
-                deallocate(wts1_now)
 
             end if 
 
