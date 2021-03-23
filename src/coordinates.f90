@@ -387,33 +387,40 @@ contains
         grid%border(:,grid%G%ny) = 1 
 
         ! Adjust border points if global latlon grid is being used 
-        if ( trim(grid%mtype) .eq. "latlon" ) then 
+        select case(trim(grid%mtype))
 
-            ! First check longitude distances
-            tmp1 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(2),grid%G%y(1))
-            tmp2 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(grid%G%nx),grid%G%y(1))
-            
-            ! If distance between first and last longitude is less than 
-            ! twice the distance of the first and second longitude,
-            ! then grid wraps around the globe longitudinally
-            if (tmp2 .le. tmp1*2.0_dp) then 
-                grid%border(1,:)         = 0
-                grid%border(grid%G%nx,:) = 0 
-            end if 
+            case("latitude_longitude","latlon","gaussian")
+                ! latitude_longitude grid 
 
-            ! Next check latitude distances
+                ! First check longitude distances
+                tmp1 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(2),grid%G%y(1))
+                tmp2 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(grid%G%nx),grid%G%y(1))
+                
+                ! If distance between first and last longitude is less than 
+                ! twice the distance of the first and second longitude,
+                ! then grid wraps around the globe longitudinally
+                if (tmp2 .le. tmp1*2.0_dp) then 
+                    grid%border(1,:)         = 0
+                    grid%border(grid%G%nx,:) = 0 
+                end if 
 
-            ! First check lower latitude
-            tmp1 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(1),grid%G%y(2))
-            tmp2 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(1),-90.0_dp)
-            if (tmp2 .le. tmp1*2.0_dp) grid%border(:,1)         = 0
+                ! Next check latitude distances
 
-            ! Next check upper latitude
-            tmp1 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(grid%G%ny),grid%G%x(1),grid%G%y(grid%G%ny-1))
-            tmp2 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(grid%G%ny),grid%G%x(1),90.0_dp)
-            if (tmp2 .le. tmp1*2.0_dp) grid%border(:,grid%G%ny) = 0 
+                ! First check lower latitude
+                tmp1 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(1),grid%G%y(2))
+                tmp2 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(1),grid%G%x(1),-90.0_dp)
+                if (tmp2 .le. tmp1*2.0_dp) grid%border(:,1)         = 0
 
-        end if 
+                ! Next check upper latitude
+                tmp1 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(grid%G%ny),grid%G%x(1),grid%G%y(grid%G%ny-1))
+                tmp2 = planet_distance(grid%planet%a,grid%planet%f,grid%G%x(1),grid%G%y(grid%G%ny),grid%G%x(1),90.0_dp)
+                if (tmp2 .le. tmp1*2.0_dp) grid%border(:,grid%G%ny) = 0 
+
+            case DEFAULT 
+                ! Projection and/or cartesian grid 
+
+                ! Pass - no adjustment needed 
+        end select 
 
         ! Make sure final lon/lat values are in desired range
         ! (default range is 0=>360)
@@ -631,7 +638,7 @@ contains
 
         ! Also define the standard cf name
         select case(trim(pts%mtype))
-            case("latlon")
+            case("latitude_longitude","latlon","gaussian")
                 pts%is_cartesian  = .FALSE. 
                 pts%is_projection = .FALSE. 
             case("stereographic","polar_stereographic","lambert_azimuthal_equal_area")
@@ -644,7 +651,9 @@ contains
                 write(*,"(a7,a20,a)")  &
                     "coord::","points_init: ","error: map type not allowed:"//trim(pts%mtype)
                 write(*,*) "    map type must be one of the following: "
+                write(*,*) "        latitude_longitude"
                 write(*,*) "        latlon"
+                write(*,*) "        gaussian"
                 write(*,*) "        cartesian"
                 write(*,*) "        stereographic"
                 write(*,*) "        polar_stereographic"
@@ -1244,7 +1253,9 @@ contains
         ! Add projection information if needed
         if (pts%is_projection) &
             call nc_write_map(fnm,pts%mtype,pts%proj%lambda,phi=pts%proj%phi,&
-                              alpha=pts%proj%alpha,x_e=pts%proj%x_e,y_n=pts%proj%y_n)
+                            alpha=pts%proj%alpha,x_e=pts%proj%x_e,y_n=pts%proj%y_n, &
+                            is_sphere=pts%planet%is_sphere,semi_major_axis=pts%planet%a, &
+                            inverse_flattening=1.d0/pts%planet%f)
 
         if (pts%is_projection .or. pts%is_cartesian) then 
             call nc_write(fnm,xnm,pts%x,dim1="point",grid_mapping=pts%mtype)
@@ -1263,8 +1274,8 @@ contains
 
         end if 
 
-!         call nc_write(fnm,"area",  pts%area,  dim1="point",grid_mapping=pts%mtype)
-!         call nc_write(fnm,"border",pts%border,dim1="point",grid_mapping=pts%mtype)
+!         call nc_write(fnm,"area",  pts%area,  dim1="point",grid_mapping="crs")
+!         call nc_write(fnm,"border",pts%border,dim1="point",grid_mapping="crs")
 
         return
     end subroutine points_write
@@ -1310,13 +1321,13 @@ contains
         if (pts%is_projection) then 
 !             write(*,*) "Projection information"
             write(*,"(a16,a)")         "proj method = ", trim(pts%proj%method)
-            write(*,"(a16,g12.5)")     "a = ",     pts%proj%a
-            write(*,"(a16,g12.5)")     "f = ",     pts%proj%f
-            write(*,"(a16,g12.5)")     "lambda = ",pts%proj%lambda
-            write(*,"(a16,g12.5)")     "phi = ",   pts%proj%phi
-            write(*,"(a16,g12.5)")     "alpha = ", pts%proj%alpha
-            write(*,"(a16,g12.5)")     "x_e = ",   pts%proj%x_e
-            write(*,"(a16,g12.5)")     "y_n = ",   pts%proj%y_n
+            write(*,"(a16,g12.5)")     "          a = ", pts%proj%a
+            write(*,"(a16,g12.5)")     "          f = ", pts%proj%f
+            write(*,"(a16,g12.5)")     "     lambda = ", pts%proj%lambda
+            write(*,"(a16,g12.5)")     "        phi = ", pts%proj%phi
+            write(*,"(a16,g12.5)")     "      alpha = ", pts%proj%alpha
+            write(*,"(a16,g12.5)")     "        x_e = ", pts%proj%x_e
+            write(*,"(a16,g12.5)")     "        y_n = ", pts%proj%y_n
         end if 
         
 !         write(*,*)

@@ -169,6 +169,7 @@ contains
     if (present(y_n))    proj%y_n    = y_n 
 
     if (trim(proj%method) .ne. "Undefined") then 
+        ! latitude_longitude grid assumed.
 
         ! === Determine alpha ================================
 
@@ -203,7 +204,7 @@ contains
             stop
 
         end if 
-        
+
     end if 
 
     proj%phi_M               = degrees_to_radians * proj%phi

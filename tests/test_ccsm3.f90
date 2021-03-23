@@ -55,7 +55,7 @@ program test_ccsm3
     ! CCSM3 T42 latlon grid
     call nc_read(file_input,"lon",tmplon)
     call nc_read(file_input,"lat",tmplat)
-    call grid_init(gCCSM3,name="CCSM3-T42",mtype="latlon",units="degrees",lon180=.FALSE., &
+    call grid_init(gCCSM3,name="CCSM3-T42",mtype="gaussian",units="degrees",lon180=.FALSE., &
                      x=tmplon,y=tmplat)
 !     call grid_init(gCCSM3,filename="maps/grid_CCSM3-T42.txt",x=tmplon,y=tmplat)
 
@@ -122,7 +122,7 @@ program test_ccsm3
     REG%ny   = 313 
     REG%lambda = -44.d0 
     REG%phi    =  70.d0
-    REG%alpha  = 7.5d0
+    REG%alpha  = 0.0d0
 
 !     REG%name = "HIM-20KM"
 !     REG%nx   = 200
@@ -273,8 +273,8 @@ program test_ccsm3
     
     write(*,*) "=== SCRIP method ==="
     
-    call map_scrip_init(mps1,gCCSM3,gREG,fldr="maps",load=.TRUE.,clean=.FALSE.)
-    call map_scrip_init(mps2,gREG,gCCSM3,fldr="maps",load=.TRUE.,clean=.FALSE.)
+    call map_scrip_init(mps1,gCCSM3,gREG,fldr="maps",load=.FALSE.,clean=.FALSE.)
+    call map_scrip_init(mps2,gREG,gCCSM3,fldr="maps",load=.FALSE.,clean=.FALSE.)
 
     CCSM3a%mask = 0 
     where(CCSM3a%Ts .lt. 250.0) CCSM3a%mask = 1 

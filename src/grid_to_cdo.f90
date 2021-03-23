@@ -24,7 +24,7 @@ contains
 
         ! Local variables 
         character(len=512) :: filename 
-        integer :: fnum
+        integer :: fnum, j 
         character(len=256) :: grid_type 
         character(len=32)  :: xnm, ynm 
         character(len=32)  :: xunits, yunits 
@@ -33,7 +33,7 @@ contains
         ! Determine grid type to write 
         select case(trim(grid%mtype))
 
-            case("latlon")
+            case("latitude_longitude","latlon","gaussian")
             
                 grid_type = "lonlat"
                 xnm       = "lon"
@@ -87,9 +87,21 @@ contains
         write(fnum,"(a)")       "yunits   = "//trim(yunits)
         write(fnum,"(a,f15.6)") "xfirst   = ", grid%G%x(1) 
         write(fnum,"(a,f15.6)") "xinc     = ", grid%G%dx 
-        write(fnum,"(a,f15.6)") "yfirst   = ", grid%G%y(1) 
-        write(fnum,"(a,f15.6)") "yinc     = ", grid%G%dy 
-          
+
+        if (trim(grid%mtype) .eq. "gaussian") then 
+            ! Write the y-values directly 
+
+            write(fnum,"(a)") "yvals = "
+            write(fnum,"(50000f10.3)") grid%G%y
+
+        else
+            ! Just write first y value and y-increment
+
+            write(fnum,"(a,f15.6)") "yfirst   = ", grid%G%y(1) 
+            write(fnum,"(a,f15.6)") "yinc     = ", grid%G%dy 
+
+        end if 
+
         write(fnum,"(a,a)") "grid_mapping = ","crs"
 
         ! Add grid attributes depending on grid_mapping type
@@ -142,7 +154,7 @@ contains
                     write(fnum,"(a,f20.8)") "inverse_flattening = ", 1.d0/grid%planet%f
                 end if 
 
-            case("latlon")
+            case("latitude_longitude","latlon","gaussian")
                 
                 write(fnum,"(a,a)") "grid_mapping_name = ", "latitude_longitude"
                 

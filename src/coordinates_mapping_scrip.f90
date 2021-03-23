@@ -510,11 +510,23 @@ end if
             call grid_cdo_write_desc_short(grid1,fldr=mapfldr) 
             call grid_cdo_write_desc_short(grid2,fldr=mapfldr) 
 
+if (.FALSE.) then 
+    ! Short grid descriptions above are working quite well for latlon and polar_stereographic!
+    ! Below code is problematic on the side of cdo. 
+    ! Using grid_cdo_write_desc_explicit_proj works properly, but 
+    ! will potentially produce missing values at the poles and around lon=0deg. 
+    ! Also, using cdo to generate the desc file is not working correctly,
+    ! getting error from cdo:
+    ! >     cdo    gencon (Abort): Target grid cell corner coordinates missing!
+    ! Use below code with caution therefore...
+
             ! Testing: overwrite projection grid desc with explicit cells
             if (grid1%is_projection) then 
                 
                 call grid_cdo_write_desc_explicit_proj(grid1%lon,grid1%lat,grid1%name,mapfldr)
-            
+                
+                ! ajr: note: using below to use cdo to generate the desc file is not working correctly,
+                ! getting error: cdo    gencon (Abort): Target grid cell corner coordinates missing!
                 ! src_nc = trim(mapfldr)//"/grid_"//trim(grid1%name)//".nc"
                 ! if ( (.not. grid1%is_projection) .and. (.not. grid1%is_cartesian) ) then 
                 !     xnm = "lon"
@@ -533,6 +545,8 @@ end if
                 
                 call grid_cdo_write_desc_explicit_proj(grid2%lon,grid2%lat,grid2%name,mapfldr)
                 
+                ! ajr: note: using below to use cdo to generate the desc file is not working correctly,
+                ! getting error: cdo    gencon (Abort): Target grid cell corner coordinates missing!
                 ! src_nc = trim(mapfldr)//"/grid_"//trim(grid2%name)//".nc"
                 ! if ( (.not. grid2%is_projection) .and. (.not. grid2%is_cartesian) ) then 
                 !     xnm = "lon"
@@ -547,6 +561,7 @@ end if
                 ! call grid_cdo_write_desc_via_cdo(grid2%name,mapfldr,src_nc)
 
             end if 
+end if 
 
             ! == Generate source-grid file for use with `cdo gencon` call
 

@@ -914,17 +914,24 @@ contains
         if (map%is_grid) then
             ! Write variables in a gridded format
 
-            if (trim(map%mtype) .eq. "latlon") then 
-                dim1 = "lon"
-                dim2 = "lat"
-                call nc_write_dim(fnm,dim1,x=map%G%x)
-                call nc_write_dim(fnm,dim2,x=map%G%y)
-            else 
-                dim1 = "xc"
-                dim2 = "yc" 
-                call nc_write_dim(fnm,dim1,x=map%G%x,units=trim(map%units))
-                call nc_write_dim(fnm,dim2,x=map%G%y,units=trim(map%units))
-            end if 
+            select case(trim(map%mtype))
+
+                case("latitude_longitude","latlon","gaussian")
+                    ! latitude_longitude 
+
+                    dim1 = "lon"
+                    dim2 = "lat"
+                    call nc_write_dim(fnm,dim1,x=map%G%x)
+                    call nc_write_dim(fnm,dim2,x=map%G%y)
+                
+                case DEFAULT 
+                    ! Projection and/or cartesian 
+
+                    dim1 = "xc"
+                    dim2 = "yc" 
+                    call nc_write_dim(fnm,dim1,x=map%G%x,units=trim(map%units))
+                    call nc_write_dim(fnm,dim2,x=map%G%y,units=trim(map%units))
+            end select  
 
             call nc_write(fnm,"x2D",  map%x,  dim1=dim1,dim2=dim2)
             call nc_write(fnm,"y2D",  map%y,  dim1=dim1,dim2=dim2)
@@ -1095,13 +1102,21 @@ contains
             allocate(map%G%x(map%G%nx))
             allocate(map%G%y(map%G%ny))
 
-            if (trim(map%mtype) .eq. "latlon") then 
-                call nc_read(fnm,"lon",map%G%x)
-                call nc_read(fnm,"lat",map%G%y)
-            else 
-                call nc_read(fnm,"xc",map%G%x)
-                call nc_read(fnm,"yc",map%G%y)
-            end if 
+            select case(trim(map%mtype))
+
+                case("latitude_longitude","latlon","gaussian")
+                    ! latitude_longitude 
+
+                    call nc_read(fnm,"lon",map%G%x)
+                    call nc_read(fnm,"lat",map%G%y)
+
+                case DEFAULT 
+                    ! Projection and/or cartesian 
+
+                    call nc_read(fnm,"xc",map%G%x)
+                    call nc_read(fnm,"yc",map%G%y)
+
+            end select 
 
             if (allocated(tmpd)) deallocate(tmpd)
             allocate(tmpd(map%G%nx,map%G%ny,1))
