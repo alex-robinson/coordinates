@@ -5,6 +5,7 @@ module coordinates_mapping_scrip
 
     use coord_constants
     use coordinates
+    use grid_to_cdo 
     use ncio 
     use index 
     use interp2D 
@@ -505,8 +506,8 @@ end if
         else
             
             ! Write grid description files to mapfldr
-            call grid_write_cdo_desc_short(grid1,fldr=mapfldr) 
-            call grid_write_cdo_desc_short(grid2,fldr=mapfldr) 
+            call grid_cdo_write_desc_short(grid1,fldr=mapfldr) 
+            call grid_cdo_write_desc_short(grid2,fldr=mapfldr) 
 
             ! Generate source-grid file for use with `cdo gencon` call
             
@@ -614,23 +615,25 @@ end if
             cdo_cmd = "cdo gencon,"//trim(fnm2)//" -setgrid,"//trim(fnm1)// &
                     " "//trim(src_nc)//" "//trim(fnm_map)//" &> .tmpcdoout"
 
-            write(*,*) "cdo command: "
-            write(*,*) trim(cdo_cmd) 
+            ! write(*,*) "cdo command: "
+            ! write(*,*) trim(cdo_cmd) 
 
-            write(*,"(a)",advance='no') "Calling via system call... "
-            call system(cdo_cmd)
-            write(*,*) "done." 
+            ! write(*,"(a)",advance='no') "Calling via system call... "
+            ! call system(cdo_cmd)
+            ! write(*,*) "done." 
 
-            ! Check if scrip weights file was written 
-            inquire(file=trim(fnm_map),exist=cdo_success)
+            ! ! Check if scrip weights file was written 
+            ! inquire(file=trim(fnm_map),exist=cdo_success)
 
-            if (.not. cdo_success) then 
-                write(*,*) "map_scrip_init:: Error: scrip map file was not written. &
-                & This may mean that the system call to cdo was unsucessful. Check the &
-                &cdo log file: .tmpcdoout"
-                stop 
-            end if 
+            ! if (.not. cdo_success) then 
+            !     write(*,*) "map_scrip_init:: Error: scrip map file was not written. &
+            !     & This may mean that the system call to cdo was unsucessful. Check the &
+            !     &cdo log file: .tmpcdoout"
+            !     stop 
+            ! end if 
 
+            call call_system_cdo(cdo_cmd)
+            
         end if 
 
         ! Step 2: load map weights and initialize map_scrip_class object 

@@ -40,7 +40,7 @@ contains
         now%name = trim(name)
         
         now%a         = 1.0_dp 
-        now%f         = 1.0_dp 
+        now%f         = 1e8_dp 
         now%e         = 0.0_dp
         now%is_sphere = .TRUE. 
 
@@ -55,7 +55,7 @@ contains
             case("Spherical Earth")
                 now%R = 6.371221E6_dp            ! Radius of round Earth
                 now%a = now%R                    ! a is the same as the radius
-                now%f = 1.0_dp                   ! flattening is zero 
+                now%f = 1e8_dp                   ! flattening is zero (ie, 1/f=0)
                 now%e = 0.0_dp                   ! Elliptical parameter is zero 
 
             case DEFAULT
@@ -72,7 +72,7 @@ contains
 
         return
 
-    end subroutine planet_init 
+    end subroutine planet_init
 
     subroutine planet_print(now)
 
@@ -143,7 +143,7 @@ contains
 
         return
 
-    end function cartesian_distance_float  
+    end function cartesian_distance_float
 
     elemental function cartesian_distance_dble(x1,y1,x2,y2) result(dist)
 
@@ -156,7 +156,7 @@ contains
 
         return
 
-    end function cartesian_distance_dble 
+    end function cartesian_distance_dble
 
     function spherical_distance(a,f,lon1,lat1,lon2,lat2)
         ! Based on python code here:
@@ -220,7 +220,7 @@ contains
 
         return 
     
-    end function planet_area 
+    end function planet_area
 
     function cartesian_area(x,y)
         
@@ -261,7 +261,7 @@ contains
 
         return 
     
-    end function cartesian_area 
+    end function cartesian_area
 
     elemental function shepard_weight(dist,shepard_exponent)
         implicit none 
@@ -277,7 +277,7 @@ contains
         shepard_weight = 1.0_dp / (dist**shep_e)
 
         return 
-    end function shepard_weight 
+    end function shepard_weight
 
 
     function weighted_ave(var,weight,mask)

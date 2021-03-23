@@ -136,7 +136,7 @@ program test_ccsm3
     !                  dx=20.d0,nx=REG%nx,dy=20.d0,ny=REG%ny, &
     !                  lambda=REG%lambda,phi=REG%phi,alpha=REG%alpha)
     call grid_init(gREG,name=REG%name,mtype="polar_stereographic",units="km",lon180=.FALSE., &
-                     dx=20.d0,nx=REG%nx,dy=20.d0,ny=REG%ny, &
+                     dx=40.d0,nx=REG%nx,dy=40.d0,ny=REG%ny, &
                      lambda=REG%lambda,phi=REG%phi,alpha=REG%alpha)
 
     ! call grid_init(gREG,name=REG%name,mtype="polar_stereographic",units="km",lon180=.TRUE., &
@@ -348,6 +348,6 @@ contains
 
         return 
 
-    end subroutine grid_stats 
+    end subroutine grid_stats
 
 end program test_ccsm3

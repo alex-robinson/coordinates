@@ -45,12 +45,16 @@ $(objdir)/coordinates.o: $(srcdir)/coordinates.f90 $(objdir)/ncio.o $(objdir)/pl
 $(objdir)/coordinates_mapping.o: $(srcdir)/coordinates_mapping.f90 $(objdir)/coordinates.o
 	$(FC) $(LDFLAGS) -c -o $@ $<
 
+
+$(objdir)/grid_to_cdo.o: $(srcdir)/grid_to_cdo.f90 $(objdir)/coordinates.o
+	$(FC) $(LDFLAGS) -c -o $@ $<
+
 $(objdir)/coordinates_mapping_conservative.o: $(srcdir)/coordinates_mapping_conservative.f90 \
 								 $(objdir)/coordinates.o $(objdir)/coordinates_mapping.o
 	$(FC) $(LDFLAGS) -c -o $@ $<
 
 $(objdir)/coordinates_mapping_scrip.o: $(srcdir)/coordinates_mapping_scrip.f90 \
-								 $(objdir)/coordinates.o \
+								 $(objdir)/coordinates.o $(objdir)/grid_to_cdo.o \
 								 $(objdir)/ncio.o $(objdir)/index.o $(objdir)/interp2D.o $(objdir)/gaussian_filter.o
 	$(FC) $(LDFLAGS) -c -o $@ $<
 
@@ -85,6 +89,7 @@ coord_obj = $(objdir)/coord_constants.o \
 		    $(objdir)/coordinates_mapping.o \
 		    $(objdir)/coordinates_mapping_conservative.o \
 		    $(objdir)/coordinates_mapping_scrip.o \
+		    $(objdir)/grid_to_cdo.o \
 		    $(objdir)/subset2.o \
 		    $(objdir)/grid_gen.o \
 		    $(objdir)/interp2D_conservative.o
