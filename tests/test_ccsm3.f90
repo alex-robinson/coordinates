@@ -174,6 +174,9 @@ program test_ccsm3
     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="quadrant")
     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="quadrant") 
 
+    CCSM3b%Ts = CCSM3a%Ts 
+    CCSM3b%MB = CCSM3a%MB 
+    CCSM3b%Hs = CCSM3a%Hs 
     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
     call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
     call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
@@ -207,6 +210,9 @@ program test_ccsm3
     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="bilinear")
     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="bilinear")
 
+    CCSM3b%Ts = CCSM3a%Ts 
+    CCSM3b%MB = CCSM3a%MB 
+    CCSM3b%Hs = CCSM3a%Hs 
     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
     call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
     call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"shepard",125.d3,fill=.FALSE.)
@@ -241,6 +247,9 @@ program test_ccsm3
     call map_field(mCCSM3_REG,"MB",CCSM3a%MB,REG%MB,method="nn")
     call map_field(mCCSM3_REG,"Hs",CCSM3a%Hs,REG%Hs,method="nn")
 
+    CCSM3b%Ts = CCSM3a%Ts 
+    CCSM3b%MB = CCSM3a%MB 
+    CCSM3b%Hs = CCSM3a%Hs 
     call map_field(mREG_CCSM3,"Ts",REG%Ts,CCSM3b%Ts,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
     call map_field(mREG_CCSM3,"MB",REG%MB,CCSM3b%MB,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
     call map_field(mREG_CCSM3,"Hs",REG%Hs,CCSM3b%Hs,CCSM3b%mask,"nn",125.d3,fill=.FALSE.)
@@ -276,20 +285,17 @@ program test_ccsm3
     call map_scrip_init(mps1,gCCSM3,gREG,fldr="maps",load=.FALSE.,clean=.FALSE.)
     call map_scrip_init(mps2,gREG,gCCSM3,fldr="maps",load=.FALSE.,clean=.FALSE.)
 
-    CCSM3a%mask = 0 
-    where(CCSM3a%Ts .lt. 250.0) CCSM3a%mask = 1 
+    call map_scrip_field(mps1,"Ts",  CCSM3a%Ts,  REG%Ts,  REG%mask, method="mean")
+    call map_scrip_field(mps1,"MB",  CCSM3a%MB,  REG%MB,  REG%mask, method="mean")
+    call map_scrip_field(mps1,"Hs",  CCSM3a%Hs,  REG%Hs,  REG%mask, method="mean")
 
-    call map_scrip_field(mps1,"Ts",  CCSM3a%Ts,  REG%Ts,  method="mean")
-    call map_scrip_field(mps1,"MB",  CCSM3a%MB,  REG%MB,  method="mean")
-    call map_scrip_field(mps1,"Hs",  CCSM3a%Hs,  REG%Hs,  method="mean")
-    call map_scrip_field(mps1,"mask",CCSM3a%mask,REG%mask,method="count")
-    
     CCSM3b%Ts = CCSM3a%Ts 
-    call map_scrip_field(mps2,"Ts",  REG%Ts,  CCSM3b%Ts,  method="mean",reset=.FALSE.)
-    call map_scrip_field(mps2,"MB",  REG%MB,  CCSM3b%MB,  method="mean",reset=.FALSE.)
-    call map_scrip_field(mps2,"Hs",  REG%Hs,  CCSM3b%Hs,  method="mean",reset=.FALSE.)
-    call map_scrip_field(mps2,"mask",REG%mask,CCSM3b%mask,method="count",reset=.FALSE.)
-    
+    CCSM3b%MB = CCSM3a%MB 
+    CCSM3b%Hs = CCSM3a%Hs 
+    call map_scrip_field(mps2,"Ts",  REG%Ts,  CCSM3b%Ts,  CCSM3b%mask, method="mean",reset=.FALSE.)
+    call map_scrip_field(mps2,"MB",  REG%MB,  CCSM3b%MB,  CCSM3b%mask, method="mean",reset=.FALSE.)
+    call map_scrip_field(mps2,"Hs",  REG%Hs,  CCSM3b%Hs,  CCSM3b%mask, method="mean",reset=.FALSE.)
+
     ! Write new regional data to grid file
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
     call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
