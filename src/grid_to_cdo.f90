@@ -108,11 +108,11 @@ contains
                 
                 ! Add planet information
                 if (grid%planet%is_sphere) then 
-                    write(fnum,"(a,f15.8)") "semi_major_axis = ",    grid%planet%a 
-                    write(fnum,"(a,f15.8)") "inverse_flattening = ", 0.0d0 
+                    write(fnum,"(a,f18.3)") "semi_major_axis = ",    grid%planet%a 
+                    write(fnum,"(a,f20.8)") "inverse_flattening = ", 0.0d0 
                 else 
-                    write(fnum,"(a,f15.8)") "semi_major_axis = ",    grid%planet%a 
-                    write(fnum,"(a,f15.8)") "inverse_flattening = ", 1.d0/grid%planet%f
+                    write(fnum,"(a,f18.3)") "semi_major_axis = ",    grid%planet%a 
+                    write(fnum,"(a,f20.8)") "inverse_flattening = ", 1.d0/grid%planet%f
                 end if 
 
             case("polar_stereographic")
@@ -135,11 +135,11 @@ contains
                 
                 ! Add planet information
                 if (grid%planet%is_sphere) then 
-                    write(fnum,"(a,f15.8)") "semi_major_axis = ",    grid%planet%a 
-                    write(fnum,"(a,f15.8)") "inverse_flattening = ", 0.0d0 
+                    write(fnum,"(a,f18.3)") "semi_major_axis = ",    grid%planet%a 
+                    write(fnum,"(a,f20.8)") "inverse_flattening = ", 0.0d0 
                 else 
-                    write(fnum,"(a,f15.8)") "semi_major_axis = ",    grid%planet%a 
-                    write(fnum,"(a,f15.8)") "inverse_flattening = ", 1.d0/grid%planet%f
+                    write(fnum,"(a,f18.3)") "semi_major_axis = ",    grid%planet%a 
+                    write(fnum,"(a,f20.8)") "inverse_flattening = ", 1.d0/grid%planet%f
                 end if 
 
             case("latlon")
@@ -148,11 +148,11 @@ contains
                 
                 ! Add planet information
                 if (grid%planet%is_sphere) then 
-                    write(fnum,"(a,f15.8)") "semi_major_axis = ",    grid%planet%a 
-                    write(fnum,"(a,f15.8)") "inverse_flattening = ", 0.0d0 
+                    write(fnum,"(a,f18.3)") "semi_major_axis = ",    grid%planet%a 
+                    write(fnum,"(a,f20.8)") "inverse_flattening = ", 0.0d0 
                 else 
-                    write(fnum,"(a,f15.8)") "semi_major_axis = ",    grid%planet%a 
-                    write(fnum,"(a,f15.8)") "inverse_flattening = ", 1.d0/grid%planet%f
+                    write(fnum,"(a,f18.3)") "semi_major_axis = ",    grid%planet%a 
+                    write(fnum,"(a,f20.8)") "inverse_flattening = ", 1.d0/grid%planet%f
                 end if 
 
                 ! == No additional parameters needed == 
@@ -173,8 +173,8 @@ contains
 
         implicit none 
 
-        real(4), intent(IN) :: lon2D(:,:) 
-        real(4), intent(IN) :: lat2D(:,:) 
+        real(8), intent(IN) :: lon2D(:,:) 
+        real(8), intent(IN) :: lat2D(:,:) 
         character(len=*), intent(IN) :: grid_name
         character(len=*), intent(IN) :: fldr 
         character(len=*), intent(IN), optional :: grid_type 
@@ -183,7 +183,7 @@ contains
         integer :: i, j, nx, ny 
         integer :: im1, jm1, ip1, jp1 
         integer :: fnum
-        real(4) :: bnds(4) 
+        real(8) :: bnds(4) 
         character(len=512) :: filename 
         character(len=56)  :: grid_type_str 
 
@@ -277,8 +277,8 @@ contains
 
         implicit none 
 
-        real(4), intent(IN) :: lon(:) 
-        real(4), intent(IN) :: lat(:) 
+        real(8), intent(IN) :: lon(:) 
+        real(8), intent(IN) :: lat(:) 
         character(len=*), intent(IN) :: grid_name
         character(len=*), intent(IN) :: fldr  
         logical,          intent(IN) :: wraplon 
@@ -290,18 +290,10 @@ contains
         real(4) :: bnds(4) 
         character(len=512) :: filename 
         character(len=56)  :: grid_type_str 
-        real(4), allocatable :: lon2D(:,:) 
-        real(4), allocatable :: lat2D(:,:) 
-
-
+        
         nx = size(lon,1)
         ny = size(lat,1)
-    
-        allocate(lon2D(nx,ny))
-        allocate(lat2D(nx,ny))
-
-        call gen_latlon2D(lon2D,lat2D,lon,lat)
-
+        
         grid_type_str = "lonlat"
 
         if (wraplon) then 
@@ -533,10 +525,10 @@ contains
 
         implicit none 
 
-        real(4), intent(OUT) :: lon2D(:,:) 
-        real(4), intent(OUT) :: lat2D(:,:) 
-        real(4), intent(IN)  :: lon(:) 
-        real(4), intent(IN)  :: lat(:) 
+        real(8), intent(OUT) :: lon2D(:,:) 
+        real(8), intent(OUT) :: lat2D(:,:) 
+        real(8), intent(IN)  :: lon(:) 
+        real(8), intent(IN)  :: lat(:) 
 
         ! Local variables 
         integer :: i, j, nx, ny 
