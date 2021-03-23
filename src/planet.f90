@@ -9,7 +9,12 @@ module planet
         character(len=256) :: name 
         logical :: is_sphere
         real(dp) :: a, e, f
-        real(dp) :: R      ! in case of sphere (equivalent to a=R, f=1)
+        real(dp) :: R      ! in case of sphere (equivalent to a=R, f=inf)
+
+        ! Parameters for output grid information (above are for internal calcs)
+        real(dp) :: semi_major_axis 
+        real(dp) :: inverse_flattening 
+
     end type 
 
     interface cartesian_distance
@@ -68,6 +73,15 @@ contains
 
         end select
 
+        ! Get summary grid parameters 
+        if (now%is_sphere) then 
+            now%semi_major_axis    = now%a 
+            now%inverse_flattening = 0.0_dp 
+        else 
+            now%semi_major_axis    = now%a 
+            now%inverse_flattening = 1.0_dp / now%f 
+        end if 
+
         !call planet_print(now) 
 
         return
@@ -86,10 +100,12 @@ contains
         write(*,*) "e = ", now%e 
         write(*,*) "R = ", now%R
         write(*,*) "is sphere? ", now%is_sphere 
+        write(*,*) "semi_major_axis    = ", now%semi_major_axis
+        write(*,*) "inverse_flattening = ", now%inverse_flattening
 
         return
 
-    end subroutine planet_print 
+    end subroutine planet_print
 
     function planet_distance_float(a,f,lon1,lat1,lon2,lat2) result(dist)
 

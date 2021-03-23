@@ -1029,7 +1029,7 @@ contains
         
         return 
 
-    end subroutine grid_allocate_logical 
+    end subroutine grid_allocate_logical
 
     subroutine points_allocate_integer(points,var,value)
 
@@ -1183,7 +1183,9 @@ contains
 
         ! Add coordinate reference system information 
         call nc_write_map(fnm,grid%mtype,grid%proj%lambda,phi=grid%proj%phi, &
-                          alpha=grid%proj%alpha,x_e=grid%proj%x_e,y_n=grid%proj%y_n)
+                          alpha=grid%proj%alpha,x_e=grid%proj%x_e,y_n=grid%proj%y_n, &
+                          is_sphere=grid%planet%is_sphere,semi_major_axis=grid%planet%a, &
+                          inverse_flattening=1.d0/grid%planet%f)
         
         if (grid%is_projection .or. grid%is_cartesian) then 
             call nc_write(fnm,"x2D",grid%x,dim1=xnm,dim2=ynm,grid_mapping="crs")

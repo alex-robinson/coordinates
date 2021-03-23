@@ -474,24 +474,49 @@ contains
         character(len=2048) :: cdo_cmd_ext 
         character(len=56) :: cdo_output_file 
         character(len=2048) :: str_now 
-        integer :: i, fnum, io, aborted
+        integer :: i, fnum, io, stat, aborted
         logical :: cdo_success 
+        character(len=2048) :: cmdmsg 
 
         ! Define diagnostic output filename
         cdo_output_file = ".tmpcdoout"
 
         ! Add the diagnostic output filename to the command to be called
-        cdo_cmd_ext = trim(cdo_cmd)//" &> "//trim(cdo_output_file)
+        ! cdo_cmd_ext = trim(cdo_cmd)//" &> "//trim(cdo_output_file)
+        !cdo_cmd_ext = trim(cdo_cmd)//" > "//trim(cdo_output_file)
+        !cdo_cmd_ext = trim(cdo_cmd)//" | tee "//trim(cdo_output_file)
+        cdo_cmd_ext = trim(cdo_cmd)
 
-        write(*,*) "cdo command: "
-        write(*,*) trim(cdo_cmd_ext) 
+        write(*,"(a)") "cdo command: "
+        write(*,"(2x,a)") trim(cdo_cmd_ext) 
 
-        write(*,"(a)",advance='no') "Calling via system call... "
-        call system(cdo_cmd_ext)
-        write(*,*) "done." 
+        ! write(*,"(a)",advance='no') "Calling via system call... "
+        ! call system(cdo_cmd_ext)
+        ! write(*,*) "done." 
+        write(*,"(a)") "===== Calling cdo via system call..."
+        ! call system(cdo_cmd_ext)
+        call execute_command_line(cdo_cmd_ext,exitstat=stat,cmdmsg=cmdmsg)
+        
+        ! Check if an error was found. 
+        if (stat .gt. 0) then
+            write(*,*) 
+            write(*,"(a)") "call_system_cdo:: Error: cdo call was aborted due to an error."
+            write(*,*) 
+            ! ajr: cmdmsg is not properly defined from cdo call, do not print it.
+            ! write(*,*) "Command error message:"
+            ! write(*,*) trim(cmdmsg)
+            stop 
+        else 
+            write(*,"(a)") "===== Calling cdo via system call... done." 
+        end if 
 
-        ! Check if scrip weights file was written 
-        !inquire(file=trim(fnm_map),exist=cdo_success)
+if (.FALSE.) then 
+    ! ajr: code below is for checking if code 'Abort' is found in the 
+    ! cdo command output file .tmpcdoout. This was relevant when using 
+    ! the `call system(cdo_cmd_ext)` approach. Now using 
+    ! `call execute_command_line(cdo_cmd_ext,...)`, this temporary file 
+    ! is no longer needed, since the error code `stat` can be checked 
+    ! directly. Leave the code here for now, but can be deleted eventually.
 
         ! ===================================================
         ! Check to see if 'Abort' was called by cdo: 
@@ -516,6 +541,7 @@ contains
             write(*,*) 
             stop 
         end if 
+end if 
 
         return 
 

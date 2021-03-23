@@ -510,43 +510,44 @@ end if
             call grid_cdo_write_desc_short(grid1,fldr=mapfldr) 
             call grid_cdo_write_desc_short(grid2,fldr=mapfldr) 
 
-            ! ! Testing: overwrite projection grid desc with explicit cells
-            ! if (grid1%is_projection) then 
-            !     ! call grid_cdo_write_desc_explicit_proj(grid1%lon,grid1%lat,grid1%name,mapfldr)
-            
-            !     src_nc = trim(mapfldr)//"/grid_"//trim(grid1%name)//".nc"
-            !     if ( (.not. grid1%is_projection) .and. (.not. grid1%is_cartesian) ) then 
-            !         xnm = "lon"
-            !         ynm = "lat"
-            !     else 
-            !         xnm = "xc"
-            !         ynm = "yc"
-            !     end if 
-
-            !     call grid_write(grid1,fnm=src_nc,xnm=xnm,ynm=ynm,create=.TRUE.)
-
-            !     call grid_cdo_write_desc_via_cdo(grid1%name,mapfldr,src_nc)
-
-            ! end if 
-            ! if (grid2%is_projection) then 
-            !     ! call grid_cdo_write_desc_explicit_proj(grid2%lon,grid2%lat,grid2%name,mapfldr)
+            ! Testing: overwrite projection grid desc with explicit cells
+            if (grid1%is_projection) then 
                 
-            !     src_nc = trim(mapfldr)//"/grid_"//trim(grid2%name)//".nc"
-            !     if ( (.not. grid2%is_projection) .and. (.not. grid2%is_cartesian) ) then 
-            !         xnm = "lon"
-            !         ynm = "lat"
-            !     else 
-            !         xnm = "xc"
-            !         ynm = "yc"
-            !     end if 
-
-            !     call grid_write(grid2,fnm=src_nc,xnm=xnm,ynm=ynm,create=.TRUE.)
-
-            !     call grid_cdo_write_desc_via_cdo(grid2%name,mapfldr,src_nc)
-
-            ! end if 
-
+                call grid_cdo_write_desc_explicit_proj(grid1%lon,grid1%lat,grid1%name,mapfldr)
             
+                ! src_nc = trim(mapfldr)//"/grid_"//trim(grid1%name)//".nc"
+                ! if ( (.not. grid1%is_projection) .and. (.not. grid1%is_cartesian) ) then 
+                !     xnm = "lon"
+                !     ynm = "lat"
+                ! else 
+                !     xnm = "xc"
+                !     ynm = "yc"
+                ! end if 
+
+                ! call grid_write(grid1,fnm=src_nc,xnm=xnm,ynm=ynm,create=.TRUE.)
+
+                ! call grid_cdo_write_desc_via_cdo(grid1%name,mapfldr,src_nc)
+
+            end if 
+            if (grid2%is_projection) then 
+                
+                call grid_cdo_write_desc_explicit_proj(grid2%lon,grid2%lat,grid2%name,mapfldr)
+                
+                ! src_nc = trim(mapfldr)//"/grid_"//trim(grid2%name)//".nc"
+                ! if ( (.not. grid2%is_projection) .and. (.not. grid2%is_cartesian) ) then 
+                !     xnm = "lon"
+                !     ynm = "lat"
+                ! else 
+                !     xnm = "xc"
+                !     ynm = "yc"
+                ! end if 
+
+                ! call grid_write(grid2,fnm=src_nc,xnm=xnm,ynm=ynm,create=.TRUE.)
+
+                ! call grid_cdo_write_desc_via_cdo(grid2%name,mapfldr,src_nc)
+
+            end if 
+
             ! == Generate source-grid file for use with `cdo gencon` call
 
             src_nc = trim(mapfldr)//"/grid_"//trim(grid1%name)//".nc"
@@ -651,9 +652,8 @@ end if
             ! Define cdo command to generate mapping weights from 
             ! src grid (fnm1) to dest grid (fnm2) using example netcdf 
             ! grid file (src_nc) and storing weights in map file (fnm_map).
-            ! cdo command output is redirected to a file '.tmpcdoout'.
             cdo_cmd = "cdo gencon,"//trim(fnm2)//" -setgrid,"//trim(fnm1)// &
-                    " "//trim(src_nc)//" "//trim(fnm_map)//" &> .tmpcdoout"
+                    " "//trim(src_nc)//" "//trim(fnm_map)
 
             ! Call cdo command via system call
             call call_system_cdo(cdo_cmd)

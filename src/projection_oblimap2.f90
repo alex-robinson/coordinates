@@ -170,7 +170,15 @@ contains
 
     if (trim(proj%method) .ne. "Undefined") then 
 
-        if (present(alpha)) then 
+        ! === Determine alpha ================================
+
+        if ( trim(proj%name) .eq. "polar_stereographic" ) then 
+            ! Use alpha determined from phi directly 
+            ! If desired phi = 90 or -90, make sure alpha is non-zero
+
+            proj%alpha = max(90.0_dp - dabs(proj%phi),0.0001_dp) 
+
+        else if (present(alpha)) then 
             ! Use user-determined alpha
 
             if ( alpha .gt. 0.0_dp ) then 
@@ -185,19 +193,6 @@ contains
             
             end if 
 
-        else if ( trim(proj%name) .eq. "polar_stereographic" ) then 
-            ! Use alpha determined from phi directly 
-
-            ! Make sure alpha is non-zero
-            ! But small, if desired phi = 90 or -90
-            proj%alpha = max(90.0_dp - dabs(proj%phi),0.0001_dp) 
-
-            if (dabs(proj%phi) .eq. 90.0_dp) then 
-                write(*,*) "oblimap_projection_module::"
-                write(*,*) "    Note alpha set to small, but non-zero value to avoid"
-                write(*,*) "    errors. This should introduce no noticable errors in projection."
-            end if 
-
         else 
             ! Use optimal alpha 
 
@@ -208,17 +203,7 @@ contains
             stop
 
         end if 
-
-        ! ! Make sure phi matches 90/-90 in polar case 
-        ! ! (since this argument can also be used to prescribe the standard latitude in this case)
-        ! if ( trim(proj%name) .eq. "polar_stereographic" ) then
-        !     if (proj%phi .lt. 0.d0) then 
-        !         proj%phi = -90.d0 
-        !     else
-        !         proj%phi = 90.d0 
-        !     end if 
-        ! end if 
-
+        
     end if 
 
     proj%phi_M               = degrees_to_radians * proj%phi
@@ -253,7 +238,7 @@ contains
     ! See equation (24-20) on page 187 in Snyder (1987):
     proj%D         = proj%am / (proj%R_q_polar * COS(proj%phi_M))
 
-!     if (trim(proj%method) .ne. "Undefined") call projection_print(proj)
+    ! if (trim(proj%method) .ne. "Undefined") call projection_print(proj)
     
     return
 
