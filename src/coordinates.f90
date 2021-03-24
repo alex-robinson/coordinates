@@ -1177,25 +1177,42 @@ contains
         character(len=*) :: fnm,xnm,ynm
         logical :: create  
 
+        ! Local variables 
+        character(len=24) :: xunits, yunits 
+
+        if (trim(grid%units) .eq. "degrees") then 
+            xunits = "degrees_east"
+            yunits = "degrees_north"
+        else 
+            xunits = trim(grid%units)
+            yunits = trim(grid%units)
+        end if 
+
         ! Create the netcdf file if desired
         if (create) then 
             call nc_create(fnm)
         
             ! Add grid axis variables to netcdf file
-            call nc_write_dim(fnm,xnm,x=grid%G%x,units=grid%units)
-            call nc_write_attr(fnm,xnm,"_CoordinateAxisType","GeoX")
-
-            call nc_write_dim(fnm,ynm,x=grid%G%y,units=grid%units)
-            call nc_write_attr(fnm,ynm,"_CoordinateAxisType","GeoY")
+            call nc_write_dim(fnm,xnm,x=grid%G%x,units=xunits)
+            call nc_write_dim(fnm,ynm,x=grid%G%y,units=yunits)
+            
+            if (grid%is_projection) then 
+                call nc_write_attr(fnm,xnm,"standard_name","projection_x_coordinate")
+                call nc_write_attr(fnm,ynm,"standard_name","projection_y_coordinate")
+                ! call nc_write_attr(fnm,xnm,"_CoordinateAxisType","GeoX")
+                ! call nc_write_attr(fnm,ynm,"_CoordinateAxisType","GeoY")
+            end if 
 
         end if 
 
-        ! Add coordinate reference system information 
-        call nc_write_map(fnm,grid%mtype,grid%proj%lambda,phi=grid%proj%phi, &
-                          alpha=grid%proj%alpha,x_e=grid%proj%x_e,y_n=grid%proj%y_n, &
-                          is_sphere=grid%planet%is_sphere,semi_major_axis=grid%planet%a, &
-                          inverse_flattening=1.d0/grid%planet%f)
-        
+        if (grid%is_projection) then 
+            ! Add coordinate reference system information 
+            call nc_write_map(fnm,grid%mtype,grid%proj%lambda,phi=grid%proj%phi, &
+                              alpha=grid%proj%alpha,x_e=grid%proj%x_e,y_n=grid%proj%y_n, &
+                              is_sphere=grid%planet%is_sphere,semi_major_axis=grid%planet%a, &
+                              inverse_flattening=1.d0/grid%planet%f)
+        end if 
+
         if (grid%is_projection .or. grid%is_cartesian) then 
             call nc_write(fnm,"x2D",grid%x,dim1=xnm,dim2=ynm,grid_mapping="crs")
             call nc_write_attr(fnm,"x2D","units",grid%units)
@@ -1208,27 +1225,29 @@ contains
             ! Write 2D arrays of lon/lat values that correspond to current projection
             ! (else there are no lon/lat values, or they are the 1D axes)
             call nc_write(fnm,"lon2D",grid%lon,dim1=xnm,dim2=ynm,grid_mapping="crs")
-            call nc_write_attr(fnm,"lon2D","_CoordinateAxisType","Lon")
+            !call nc_write_attr(fnm,"lon2D","_CoordinateAxisType","Lon")
             call nc_write_attr(fnm,"lon2D","units","degrees_east")
                 
             call nc_write(fnm,"lat2D",grid%lat,dim1=xnm,dim2=ynm,grid_mapping="crs")
-            call nc_write_attr(fnm,"lat2D","_CoordinateAxisType","Lat")
+            !call nc_write_attr(fnm,"lat2D","_CoordinateAxisType","Lat")
             call nc_write_attr(fnm,"lat2D","units","degrees_north")
             
         end if 
 
-        call nc_write(fnm,"area",  grid%area,  dim1=xnm,dim2=ynm,grid_mapping="crs")
-        call nc_write(fnm,"border",grid%border,dim1=xnm,dim2=ynm,grid_mapping="crs")
-        
+        if ( grid%is_projection ) then
+            call nc_write(fnm,"area",  grid%area,  dim1=xnm,dim2=ynm,grid_mapping="crs")
+            call nc_write(fnm,"border",grid%border,dim1=xnm,dim2=ynm,grid_mapping="crs")
+        else 
+            call nc_write(fnm,"area",  grid%area,  dim1=xnm,dim2=ynm)
+            call nc_write(fnm,"border",grid%border,dim1=xnm,dim2=ynm)
+        end if
+
         ! Add coordinates information as needed
         if ( grid%is_projection ) then 
             call nc_write_attr(fnm,"x2D",   "coordinates","lat2D lon2D")
             call nc_write_attr(fnm,"y2D",   "coordinates","lat2D lon2D")
             call nc_write_attr(fnm,"area",  "coordinates","lat2D lon2D")
             call nc_write_attr(fnm,"border","coordinates","lat2D lon2D")
-        else if ( .not. grid%is_cartesian ) then 
-            call nc_write_attr(fnm,"area",  "coordinates","lat lon")
-            call nc_write_attr(fnm,"border","coordinates","lat lon")
         end if 
 
         return
@@ -1242,6 +1261,17 @@ contains
         character(len=*) :: fnm,xnm,ynm
         logical :: create  
 
+        ! Local variables 
+        character(len=24) :: xunits, yunits 
+
+        if (trim(pts%units) .eq. "degrees") then 
+            xunits = "degrees_east"
+            yunits = "degrees_north"
+        else 
+            xunits = trim(pts%units)
+            yunits = trim(pts%units)
+        end if 
+
         ! Create the netcdf file if desired
         if (create) then 
             call nc_create(fnm)
@@ -1251,33 +1281,46 @@ contains
         end if 
 
         ! Add projection information if needed
-        if (pts%is_projection) &
+        if (pts%is_projection) then 
             call nc_write_map(fnm,pts%mtype,pts%proj%lambda,phi=pts%proj%phi,&
                             alpha=pts%proj%alpha,x_e=pts%proj%x_e,y_n=pts%proj%y_n, &
                             is_sphere=pts%planet%is_sphere,semi_major_axis=pts%planet%a, &
                             inverse_flattening=1.d0/pts%planet%f)
+        end if 
 
         if (pts%is_projection .or. pts%is_cartesian) then 
             call nc_write(fnm,xnm,pts%x,dim1="point",grid_mapping=pts%mtype)
-            call nc_write_attr(fnm,xnm,"_CoordinateAxisType","GeoX")
-
+            call nc_write_attr(fnm,xnm,"units",xunits)
             call nc_write(fnm,ynm,pts%y,dim1="point",grid_mapping=pts%mtype)
-            call nc_write_attr(fnm,ynm,"_CoordinateAxisType","GeoY")
-
+            call nc_write_attr(fnm,ynm,"units",yunits)
         end if 
-        if (.not. (pts%is_cartesian .and. .not. pts%is_projection)) then 
+
+        if (pts%is_projection) then 
+            call nc_write_attr(fnm,xnm,"standard_name","projection_x_coordinate")
+            call nc_write_attr(fnm,ynm,"standard_name","projection_y_coordinate")
+            ! call nc_write_attr(fnm,xnm,"_CoordinateAxisType","GeoX")
+            ! call nc_write_attr(fnm,ynm,"_CoordinateAxisType","GeoY")
+        end if 
+
+        if ( pts%is_projection .or. (.not. pts%is_cartesian) ) then  
             call nc_write(fnm,"lon",pts%lon,dim1="point",grid_mapping=pts%mtype)
-            call nc_write_attr(fnm,"lon","_CoordinateAxisType","Lon")
+            !call nc_write_attr(fnm,"lon","_CoordinateAxisType","Lon")
 
             call nc_write(fnm,"lat",pts%lat,dim1="point",grid_mapping=pts%mtype)
-            call nc_write_attr(fnm,"lat","_CoordinateAxisType","Lat")
+            !call nc_write_attr(fnm,"lat","_CoordinateAxisType","Lat")
 
         end if 
 
-!         call nc_write(fnm,"area",  pts%area,  dim1="point",grid_mapping="crs")
-!         call nc_write(fnm,"border",pts%border,dim1="point",grid_mapping="crs")
+        ! if ( pts%is_projection ) then
+        !     call nc_write(fnm,"area",  pts%area,  dim1=xnm,dim2=ynm,pts_mapping="crs")
+        !     call nc_write(fnm,"border",pts%border,dim1=xnm,dim2=ynm,pts_mapping="crs")
+        ! else 
+        !     call nc_write(fnm,"area",  pts%area,  dim1=xnm,dim2=ynm)
+        !     call nc_write(fnm,"border",pts%border,dim1=xnm,dim2=ynm)
+        ! end if
 
         return
+
     end subroutine points_write
 
     subroutine grid_print(grid)

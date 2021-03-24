@@ -183,10 +183,10 @@ program test_ccsm3
 
     ! Write new regional data to grid file
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
-    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
-    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
-    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
-    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc",grid_mapping="crs") 
+    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc",grid_mapping="crs")
+    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc",grid_mapping="crs")
+    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc",grid_mapping="crs")
     
     ! Write new CCSM3 data to grid file 
     call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.)
@@ -219,10 +219,10 @@ program test_ccsm3
 
     ! Write new regional data to grid file
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
-    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
-    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
-    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
-    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc",grid_mapping="crs") 
+    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc",grid_mapping="crs")
+    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc",grid_mapping="crs")
+    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc",grid_mapping="crs")
 
     ! Write new CCSM3 data to grid file 
     call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.)
@@ -256,10 +256,10 @@ program test_ccsm3
     
     ! Write new regional data to grid file
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
-    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
-    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
-    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
-    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc",grid_mapping="crs") 
+    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc",grid_mapping="crs")
+    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc",grid_mapping="crs")
+    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc",grid_mapping="crs")
 
     ! Write new CCSM3 data to grid file 
     call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.)
@@ -298,10 +298,10 @@ program test_ccsm3
 
     ! Write new regional data to grid file
     call grid_write(gREG,file_gREG,xnm="xc",ynm="yc",create=.TRUE.) 
-    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc") 
-    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc")
-    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc")
-    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc")
+    call nc_write(file_gREG,"Ts",  REG%Ts,  dim1="xc",dim2="yc",grid_mapping="crs") 
+    call nc_write(file_gREG,"MB",  REG%MB,  dim1="xc",dim2="yc",grid_mapping="crs")
+    call nc_write(file_gREG,"Hs",  REG%Hs,  dim1="xc",dim2="yc",grid_mapping="crs")
+    call nc_write(file_gREG,"mask",REG%mask,dim1="xc",dim2="yc",grid_mapping="crs")
 
     ! Write new CCSM3 data to grid file 
     call grid_write(gCCSM3,file_gCCSM3b,xnm="lon",ynm="lat",create=.TRUE.)
