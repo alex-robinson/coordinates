@@ -398,6 +398,10 @@ contains
 
                     call fill_weighted(var2,missing_val,n=6,mask=maskp2d)
 
+                case("nn")
+                    
+                    call fill_nearest(var2,missing_val,mask=maskp2d)
+
                 case("none") ! eg "none"
 
                     ! Pass - no filling applied 
@@ -405,7 +409,7 @@ contains
                 case DEFAULT 
 
                     write(*,*) "map_scrip_field:: Error: fill method not recognized: "//trim(fill_method)
-                    write(*,*) "  fill_method = [weighted,none]."
+                    write(*,*) "  fill_method = [weighted,nn,none]."
                     write(*,*) 
                     stop 
                     

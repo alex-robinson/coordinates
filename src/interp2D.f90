@@ -616,7 +616,7 @@ contains
 
     end function interp_nearest_fast_float
 
-    subroutine fill_nearest_dble_new(var,missing_value,fill_value,fill_dist,n,dx)
+    subroutine fill_nearest_dble_new(var,missing_value,fill_value,fill_dist,n,dx,mask)
 
         implicit none 
 
@@ -626,6 +626,7 @@ contains
         real(8), intent(IN)    :: fill_dist             ! [km] Distance to nearest neighbor at which value=fill_value
         integer, intent(IN)    :: n                     ! Average of n neighbors 
         real(8), intent(IN)    :: dx                    ! [m] 
+        logical, intent(IN), optional :: mask(:,:)      ! Mask for where to apply filling 
 
         ! Local variables 
         integer :: i, j, nx, ny, i1, j1, q, n_now, ij(2) 
@@ -635,6 +636,7 @@ contains
 
         real(8), allocatable :: var0(:,:) 
         real(8), allocatable :: dist(:,:) 
+        logical, allocatable :: mask_apply(:,:) 
 
         nx = size(var,1)
         ny = size(var,2) 
@@ -719,12 +721,16 @@ contains
 
     end subroutine fill_nearest_dble_new
 
-    subroutine fill_nearest_dble(z,missing_value,fill_value,n)
+    subroutine fill_nearest_dble(z,missing_value,fill_value,mask,n)
         implicit none 
-        double precision, dimension(:,:) :: z 
+        double precision :: z(:,:) 
         double precision :: missing_value 
         double precision, optional :: fill_value
+        logical, optional :: mask(:,:) 
+
         integer, optional :: n 
+
+        ! Local variables 
         integer :: nr 
 
         integer :: q, nx, ny, i, j
@@ -733,6 +739,12 @@ contains
         double precision :: wtot, mval 
         double precision, dimension(:,:), allocatable :: filled
         integer :: ij(2)
+        logical, allocatable :: mask_apply(:,:) 
+
+        allocate(mask_apply(nx,ny)) 
+
+        mask_apply = .TRUE. 
+        if (present(mask)) mask_apply = mask 
 
         nr = 4
         if (present(n)) nr = n 
@@ -744,7 +756,7 @@ contains
         allocate(neighb(2*nr+1,2*nr+1),weight(2*nr+1,2*nr+1),weight0(2*nr+1,2*nr+1))
 
         if (present(fill_value)) then
-            where(z .eq. missing_value) z = fill_value 
+            where(z .eq. missing_value .and. mask_apply) z = fill_value 
         end if 
 
         ! Define the default neighbor weighting 
@@ -764,7 +776,7 @@ contains
             do i = 1+nr, nx-nr
                 do j = 1+nr, ny-nr
                     
-                    if (z(i,j) .eq. missing_value) then 
+                    if (z(i,j) .eq. missing_value .and. mask_apply(i,j)) then 
 
                         neighb = z(i-nr:i+nr,j-nr:j+nr)
 
@@ -797,21 +809,22 @@ contains
 
         ! Fill in boundaries too 
         do i = 1+nr, 1, -1
-            where(z(i,:) .eq. missing_value) z(i,:) = z(i+1,:)
+            where(z(i,:) .eq. missing_value .and. mask_apply(i,:)) z(i,:) = z(i+1,:)
         end do 
         do i = nx-nr, nx
-            where(z(i,:) .eq. missing_value) z(i,:) = z(i-1,:)
+            where(z(i,:) .eq. missing_value .and. mask_apply(i,:)) z(i,:) = z(i-1,:)
         end do 
         do j = 1+nr, 1, -1
-            where(z(:,j) .eq. missing_value) z(:,j) = z(:,j+1)
+            where(z(:,j) .eq. missing_value .and. mask_apply(:,j)) z(:,j) = z(:,j+1)
         end do 
         do j = ny-nr, ny
-            where(z(:,j) .eq. missing_value) z(:,j) = z(:,j-1)
+            where(z(:,j) .eq. missing_value .and. mask_apply(:,j)) z(:,j) = z(:,j-1)
         end do 
 
 
-!         if (count(z .eq. missing_value) .gt. 0) then 
-!             where(z .eq. missing_value) z = minval(z,mask=z .ne. missing_value)
+!         if (count(z .eq. missing_value .and. mask_apply) .gt. 0) then 
+!             where(z .eq. missing_value .and. mask_apply) &
+                             ! z = minval(z,mask=z .ne. missing_value .and. mask_apply)
 !         end if 
 
 !         write(*,*) "Fill iterations: ",q 
@@ -1287,19 +1300,20 @@ contains
 
     end function interp_nearest_int
 
-    subroutine fill_nearest_int(z,missing_value,fill_value,n)
+    subroutine fill_nearest_int(z,missing_value,fill_value,mask,n)
 
         implicit none 
         
-        integer, dimension(:,:) :: z 
+        integer :: z(:,:) 
         integer :: missing_value 
         double precision, optional :: fill_value
+        logical, optional :: mask(:,:) 
         integer, optional :: n
 
         double precision, dimension(size(z,1),size(z,2)) :: z_dble 
 
         z_dble = dble(z) 
-        call fill_nearest_dble(z_dble,dble(missing_value),fill_value,n)
+        call fill_nearest_dble(z_dble,dble(missing_value),fill_value,mask,n)
         z = nint(z_dble)
 
         return 
