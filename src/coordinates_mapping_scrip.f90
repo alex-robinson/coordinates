@@ -299,8 +299,10 @@ contains
             num_links_now = j2-j1+1
 
             if (num_links_now>max_num_links_now) then
-              write(*,*) "map_scrip_field:: Error: num_links_now>max_num_links_now: ",num_links_now,max_num_links_now
-              write(*,*) " increase max_num_links_now"
+              write(*,*) "map_scrip_field:: Error: num_links_now>max_num_links_now: ", &
+                                                            num_links_now, max_num_links_now
+              write(*,*) " To avoid this error, increase hard-coded variable 'max_num_links_now' &
+                         &in coordinates_mapping_scrip.f90."
               write(*,*) 
               stop 
             endif
@@ -490,6 +492,7 @@ contains
         character(len=256) :: mapmethod
         character(len=256) :: mapfldr 
         character(len=512) :: src_nc 
+        character(len=512) :: tgt_nc
         character(len=12)  :: xnm, ynm 
         character(len=512) :: filename, cmd 
 
@@ -544,6 +547,16 @@ end if
             
             ! == Write grid description files to mapfldr
 
+            ! Notes:
+            ! It seems that the newest versions of cdo (>1.9.9) do
+            ! not need a grid desc file, the grid information ca be obtained 
+            ! by the netcdf file directly. However, following the new approach 
+            ! can lead to a failure in the `cdo gencon` command, since it 
+            ! says "Target grid cell corner coordinates missing!". This can 
+            ! be circumvented by writing simple grid description files as below, 
+            ! and then using the explicit call to map_scrip_init_from_griddesc. 
+
+            ! Generate source and target grid description files 
             call grid_cdo_write_desc_short(grid1,fldr=mapfldr) 
             call grid_cdo_write_desc_short(grid2,fldr=mapfldr) 
 
@@ -600,7 +613,7 @@ if (.FALSE.) then
             end if 
 end if 
 
-            ! == Generate source-grid file for use with `cdo gencon` call
+            ! == Generate source-grid file for use with `cdo gen*` call
 
             src_nc = trim(mapfldr)//"/grid_"//trim(grid1%name)//".nc"
             if ( (.not. grid1%is_projection) .and. (.not. grid1%is_cartesian) ) then 
@@ -613,8 +626,23 @@ end if
 
             call grid_write(grid1,fnm=src_nc,xnm=xnm,ynm=ynm,create=.TRUE.)
 
+            ! ! == Generate target-grid file for use with `cdo gen*` call
+
+            ! tgt_nc = trim(mapfldr)//"/grid_"//trim(grid2%name)//".nc"
+            ! if ( (.not. grid2%is_projection) .and. (.not. grid2%is_cartesian) ) then 
+            !     xnm = "lon"
+            !     ynm = "lat"
+            ! else 
+            !     xnm = "xc"
+            !     ynm = "yc"
+            ! end if 
+
+            ! call grid_write(grid2,fnm=tgt_nc,xnm=xnm,ynm=ynm,create=.TRUE.)
+
 
             ! == Generate the SCRIP map via a cdo call:
+
+            ! call map_scrip_init_from_gridnc(mps,grid1%name,grid2%name,mapfldr,mapmethod,load=.FALSE.)
 
             call map_scrip_init_from_griddesc(mps,grid1%name,grid2%name,mapfldr,src_nc,mapmethod,load=.FALSE.)
 
@@ -655,6 +683,69 @@ end if
         return 
 
     end subroutine map_scrip_init
+
+    subroutine map_scrip_init_from_gridnc(map,src_name,dst_name,fldr,method,load)
+        ! Use cdo to generate scrip map based on grid 
+        ! definitions. 
+
+        ! 1. Assume that grid description text files already exist
+        !    for each grid. 
+
+        implicit none 
+
+        type(map_scrip_class), intent(INOUT) :: map     ! map object to be initialized
+        character(len=*), intent(IN) :: src_name        ! Source grid name
+        character(len=*), intent(IN) :: dst_name        ! Dest./target grid name
+        character(len=*), intent(IN) :: fldr            ! Folder where grid desciptions can be found
+        character(len=*), intent(IN) :: method          ! Interpolation method (con,bil,bic)
+        logical,          intent(IN), optional :: load  ! Load map from file if available? 
+
+        ! Local variables 
+        character(len=512)  :: fnm1
+        character(len=512)  :: fnm2
+        character(len=512)  :: fnm_map 
+        character(len=2048) :: cdo_cmd
+        logical :: load_map 
+        logical :: map_exists  
+        logical :: cdo_success 
+
+        ! Determine whether map file should be loaded if available 
+        load_map = .TRUE. 
+        if (present(load)) load_map = load 
+
+        ! Step 1: call cdo to generate mapping weights in a scrip file 
+
+        ! Generate grid description filenames 
+        fnm1 = trim(fldr)//"/"//"grid_"//trim(src_name)//".nc"
+        fnm2 = trim(fldr)//"/"//"grid_"//trim(dst_name)//".nc"
+
+        ! Determine map filename from grid names and folder 
+        fnm_map = gen_map_filename(src_name,dst_name,fldr,method)
+        
+        ! Check if scrip weights file already exists  
+        inquire(file=trim(fnm_map),exist=map_exists)
+
+        if ( (.not. map_exists) .or. (.not. load_map) ) then 
+            ! If no map exists yet, or loading is not desired, 
+            ! then call cdo to generate a new map file. 
+
+            ! Define cdo command to generate mapping weights from 
+            ! src grid (fnm1) to dest grid (fnm2) using example netcdf 
+            ! grid file (src_nc) and storing weights in map file (fnm_map).
+            cdo_cmd = "cdo gen"//trim(method)//","//trim(fnm2)// &
+                            " "//trim(fnm1)//" "//trim(fnm_map)
+
+            ! Call cdo command via system call
+            call call_system_cdo(cdo_cmd)
+
+        end if 
+
+        ! Step 2: load map weights and initialize map_scrip_class object 
+        call map_scrip_load(map,src_name,dst_name,fldr,method)
+
+        return 
+
+    end subroutine map_scrip_init_from_gridnc
 
     subroutine map_scrip_init_from_griddesc(map,src_name,dst_name,fldr,src_nc,method,load)
         ! Use cdo to generate scrip map based on grid 

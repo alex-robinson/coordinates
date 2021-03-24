@@ -282,8 +282,8 @@ program test_ccsm3
     
     write(*,*) "=== SCRIP method ==="
     
-    call map_scrip_init(mps1,gCCSM3,gREG,fldr="maps",load=.FALSE.,clean=.FALSE.,method="bic")
-    call map_scrip_init(mps2,gREG,gCCSM3,fldr="maps",load=.FALSE.,clean=.FALSE.,method="bic")
+    call map_scrip_init(mps1,gCCSM3,gREG,fldr="maps",load=.FALSE.,clean=.FALSE.,method="con")
+    call map_scrip_init(mps2,gREG,gCCSM3,fldr="maps",load=.FALSE.,clean=.FALSE.,method="con")
 
     call map_scrip_field(mps1,"Ts",  CCSM3a%Ts,  REG%Ts,  REG%mask, method="mean")
     call map_scrip_field(mps1,"MB",  CCSM3a%MB,  REG%MB,  REG%mask, method="mean")
