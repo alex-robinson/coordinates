@@ -487,7 +487,7 @@ contains
 
         ! Local variables 
         logical :: load_file, fldr_exists, file_exists 
-        character(len=256) :: meth
+        character(len=256) :: mapmethod
         character(len=256) :: mapfldr 
         character(len=512) :: src_nc 
         character(len=12)  :: xnm, ynm 
@@ -500,8 +500,8 @@ contains
         mapfldr = "maps"
         if (present(fldr)) mapfldr = trim(fldr)
 
-        meth = "con"
-        if (present(method)) meth = trim(method)
+        mapmethod = "con"
+        if (present(method)) mapmethod = trim(method)
 
 if (.FALSE.) then
     ! To do - add to scrip file? 
@@ -531,14 +531,14 @@ end if
         ! when the max_distance changes.
 
         ! Determine if file matching these characteristics exists
-        inquire(file=gen_map_filename(grid1%name,grid2%name,mapfldr,meth),exist=file_exists)
+        inquire(file=gen_map_filename(grid1%name,grid2%name,mapfldr,mapmethod),exist=file_exists)
 
         !! Now load map information from file if exists and is desired
         !! or else calculate weights and store in file. 
         if ( load_file .and. file_exists ) then 
 
             ! Read map from file
-            call map_scrip_load(mps,grid1%name,grid2%name,mapfldr,meth)
+            call map_scrip_load(mps,grid1%name,grid2%name,mapfldr,mapmethod)
 
         else
             
@@ -616,7 +616,7 @@ end if
 
             ! == Generate the SCRIP map via a cdo call:
 
-            call map_scrip_init_from_griddesc(mps,grid1%name,grid2%name,mapfldr,src_nc,meth,load=.FALSE.)
+            call map_scrip_init_from_griddesc(mps,grid1%name,grid2%name,mapfldr,src_nc,mapmethod,load=.FALSE.)
 
 
             ! ==  Delete intermediate files if desired
