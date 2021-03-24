@@ -193,8 +193,9 @@ contains
         integer, allocatable  :: mask2_vec(:) 
         real(dp) :: area_tot, pt_ave, pt_var   
         integer  :: npt_now, num_links_now 
-        real(dp), allocatable :: var1_now(:) 
-        real(dp), allocatable :: wts1_now(:) 
+        integer, parameter :: max_num_links_now = 10000
+        real(dp), dimension(max_num_links_now) :: var1_now 
+        real(dp), dimension(max_num_links_now) :: wts1_now 
         real(dp) :: wts1_tot 
 
         logical, allocatable  :: maskp2d(:,:) 
@@ -297,20 +298,23 @@ contains
             ! Determine the number of links 
             num_links_now = j2-j1+1
 
+            if (num_links_now>max_num_links_now) then
+              write(*,*) "map_scrip_field:: Error: num_links_now>max_num_links_now: ",num_links_now,max_num_links_now
+              write(*,*) " increase max_num_links_now"
+              write(*,*) 
+              stop 
+            endif
+
             if (maskp(k)) then 
                 ! Only interpolate for desired target points 
             
-                ! Allocate vectors to hold input data and weights
-                allocate(var1_now(num_links_now))
-                allocate(wts1_now(num_links_now))
-
                 ! Assign data and weights to pointers
-                var1_now = var1_vec(map%src_address(j1:j2))
-                wts1_now = map%remap_matrix(1,j1:j2)
+                var1_now(1:num_links_now) = var1_vec(map%src_address(j1:j2))
+                wts1_now(1:num_links_now) = map%remap_matrix(1,j1:j2)
 
                 ! Calculate the total weight associated with this point,
                 ! accounting for missing values in the source array.
-                wts1_tot = sum(wts1_now,mask=var1_now .ne. missing_val)
+                wts1_tot = sum(wts1_now(1:num_links_now),mask=var1_now(1:num_links_now) .ne. missing_val)
 
                 if (wts1_tot .gt. 0.0d0) then 
                     ! Interpolation data found, proceed to interpolate this point
@@ -323,26 +327,26 @@ contains
                         case("mean")
                             ! Calculate the area-weighted mean 
 
-                            var2_vec(k) = sum((wts1_now/wts1_tot)*var1_now,mask=var1_now .ne. missing_val)
+                            var2_vec(k) = sum((wts1_now(1:num_links_now)/wts1_tot)*var1_now(1:num_links_now),mask=var1_now(1:num_links_now) .ne. missing_val)
 
                         case("count")
                             ! Choose the most frequently occurring value, weighted by area
 
-                            var2_vec(k) = maxcount(var1_now,wts1_now,missing_val)
+                            var2_vec(k) = maxcount(var1_now(1:num_links_now),wts1_now(1:num_links_now),missing_val)
 
                         case("stdev")
                             ! Calculate the weighted standard deviation 
                             ! using unbiased estimator correction 
 
-                            npt_now = count(var1_now .ne. missing_val)
+                            npt_now = count(var1_now(1:num_links_now) .ne. missing_val)
 
                             if (npt_now .gt. 2) then
                                 ! Only calculate stdev for 2 or more input points
 
-                                pt_ave      = sum((wts1_now/wts1_tot)*var1_now,mask=var1_now .ne. missing_val)
+                                pt_ave      = sum((wts1_now(1:num_links_now)/wts1_tot)*var1_now(1:num_links_now),mask=var1_now(1:num_links_now) .ne. missing_val)
                                 var2_vec(k) = (npt_now/(npt_now - 1.0)) &
-                                               * sum((wts1_now/wts1_tot)*(var1_now-pt_ave)**2, & 
-                                                                            mask=var1_now .ne. missing_val)
+                                               * sum((wts1_now(1:num_links_now)/wts1_tot)*(var1_now(1:num_links_now)-pt_ave)**2, & 
+                                                                            mask=var1_now(1:num_links_now) .ne. missing_val)
                                 var2_vec(k) = sqrt(var2_vec(k))
                                 
                             else
@@ -360,10 +364,6 @@ contains
                     end select 
 
                 end if 
-
-                ! Deallocate temporary vectors for reallocation in loop
-                deallocate(var1_now)
-                deallocate(wts1_now)
 
             end if 
 
@@ -472,7 +472,7 @@ contains
 
     end subroutine map_scrip_field_double
 
-    subroutine map_scrip_init(mps,grid1,grid2,fldr,load,clean)
+    subroutine map_scrip_init(mps,grid1,grid2,method,fldr,load,clean)
         ! Generate mapping weights from grid1 to grid2
 
         implicit none 
@@ -480,12 +480,14 @@ contains
         type(map_scrip_class), intent(INOUT) :: mps 
         type(grid_class), intent(IN)    :: grid1
         type(grid_class), intent(IN)    :: grid2 
+        character(len=*), intent(IN), optional :: method
         character(len=*), intent(IN), optional :: fldr      ! Directory in which to save/load map
         logical,          intent(IN), optional :: load      ! Whether loading is desired if map exists already
         logical,          intent(IN), optional :: clean     ! Whether to delete intermediate grid desc / grid files
 
         ! Local variables 
         logical :: load_file, fldr_exists, file_exists 
+        character(len=256) :: meth
         character(len=256) :: mapfldr 
         character(len=512) :: src_nc 
         character(len=12)  :: xnm, ynm 
@@ -497,6 +499,9 @@ contains
 
         mapfldr = "maps"
         if (present(fldr)) mapfldr = trim(fldr)
+
+        meth = "con"
+        if (present(method)) meth = trim(method)
 
 if (.FALSE.) then
     ! To do - add to scrip file? 
@@ -526,14 +531,14 @@ end if
         ! when the max_distance changes.
 
         ! Determine if file matching these characteristics exists
-        inquire(file=gen_map_filename(grid1%name,grid2%name,mapfldr),exist=file_exists)
+        inquire(file=gen_map_filename(grid1%name,grid2%name,mapfldr,meth),exist=file_exists)
 
         !! Now load map information from file if exists and is desired
         !! or else calculate weights and store in file. 
         if ( load_file .and. file_exists ) then 
 
             ! Read map from file
-            call map_scrip_load(mps,grid1%name,grid2%name,mapfldr)
+            call map_scrip_load(mps,grid1%name,grid2%name,mapfldr,meth)
 
         else
             
@@ -611,7 +616,7 @@ end if
 
             ! == Generate the SCRIP map via a cdo call:
 
-            call map_scrip_init_from_griddesc(mps,grid1%name,grid2%name,mapfldr,src_nc,load=.FALSE.)
+            call map_scrip_init_from_griddesc(mps,grid1%name,grid2%name,mapfldr,src_nc,meth,load=.FALSE.)
 
 
             ! ==  Delete intermediate files if desired
@@ -651,7 +656,7 @@ end if
 
     end subroutine map_scrip_init
 
-    subroutine map_scrip_init_from_griddesc(map,src_name,dst_name,fldr,src_nc,load)
+    subroutine map_scrip_init_from_griddesc(map,src_name,dst_name,fldr,src_nc,method,load)
         ! Use cdo to generate scrip map based on grid 
         ! definitions. 
 
@@ -665,6 +670,7 @@ end if
         character(len=*), intent(IN) :: dst_name        ! Dest./target grid name
         character(len=*), intent(IN) :: fldr            ! Folder where grid desciptions can be found
         character(len=*), intent(IN) :: src_nc          ! Path to source netcdf file containing grid/variables (needed by cdo) 
+        character(len=*), intent(IN) :: method
         logical,          intent(IN), optional :: load  ! Load map from file if available? 
 
         ! Local variables 
@@ -687,7 +693,7 @@ end if
         fnm2 = trim(fldr)//"/"//"grid_"//trim(dst_name)//".txt"
 
         ! Determine map filename from grid names and folder 
-        fnm_map = gen_map_filename(src_name,dst_name,fldr)
+        fnm_map = gen_map_filename(src_name,dst_name,fldr,method)
         
         ! Check if scrip weights file already exists  
         inquire(file=trim(fnm_map),exist=map_exists)
@@ -699,7 +705,7 @@ end if
             ! Define cdo command to generate mapping weights from 
             ! src grid (fnm1) to dest grid (fnm2) using example netcdf 
             ! grid file (src_nc) and storing weights in map file (fnm_map).
-            cdo_cmd = "cdo gencon,"//trim(fnm2)//" -setgrid,"//trim(fnm1)// &
+            cdo_cmd = "cdo gen"//trim(method)//","//trim(fnm2)//" -setgrid,"//trim(fnm1)// &
                     " "//trim(src_nc)//" "//trim(fnm_map)
 
             ! Call cdo command via system call
@@ -708,13 +714,13 @@ end if
         end if 
 
         ! Step 2: load map weights and initialize map_scrip_class object 
-        call map_scrip_load(map,src_name,dst_name,fldr)
+        call map_scrip_load(map,src_name,dst_name,fldr,method)
 
         return 
 
     end subroutine map_scrip_init_from_griddesc
 
-    subroutine map_scrip_load(map,src_name,dst_name,fldr)
+    subroutine map_scrip_load(map,src_name,dst_name,fldr,method)
         ! Load a map_scrip_class object into memory
         ! from a netcdf file. 
 
@@ -724,6 +730,7 @@ end if
         character(len=*), intent(IN) :: src_name
         character(len=*), intent(IN) :: dst_name 
         character(len=*), intent(IN) :: fldr  
+        character(len=*), intent(IN) :: method
         
         ! Local variables 
         integer, allocatable :: dims(:) 
@@ -734,7 +741,7 @@ end if
         map%dst_name = trim(dst_name) 
 
         ! Determine filename from grid names and folder 
-        map%map_fname = gen_map_filename(src_name,dst_name,fldr)
+        map%map_fname = gen_map_filename(src_name,dst_name,fldr,method)
         
         !write(*,*) "Loading SCRIP map from file: "//trim(filename) 
         !write(*,*) "" 
@@ -788,8 +795,12 @@ end if
         end if
         call nc_read(map%map_fname,"src_grid_imask",map%src_grid_imask)
         call nc_read(map%map_fname,"dst_grid_imask",map%dst_grid_imask)
-        call nc_read(map%map_fname,"src_grid_area",map%src_grid_area)
-        call nc_read(map%map_fname,"dst_grid_area",map%dst_grid_area)
+        if (nc_exists_var(map%map_fname,"src_grid_area")) then 
+          call nc_read(map%map_fname,"src_grid_area",map%src_grid_area)
+        endif
+        if (nc_exists_var(map%map_fname,"dst_grid_area")) then 
+          call nc_read(map%map_fname,"dst_grid_area",map%dst_grid_area)
+        endif
         call nc_read(map%map_fname,"src_grid_frac",map%src_grid_frac)
         call nc_read(map%map_fname,"dst_grid_frac",map%dst_grid_frac)
         call nc_read(map%map_fname,"src_address",map%src_address)
@@ -801,7 +812,7 @@ end if
 
         ! Summary print line
         !write(*,*) "Loaded SCRIP map from file: "//trim(filename) 
-        write(*,*) "Loaded SCRIP map: "//trim(map%src_name)//" => "//trim(map%dst_name) 
+        write(*,*) "Loaded "//trim(method)//" SCRIP map: "//trim(map%src_name)//" => "//trim(map%dst_name) 
 
         return 
 
@@ -893,16 +904,17 @@ end if
 
     end subroutine map_scrip_dealloc
 
-    function gen_map_filename(src_name,dst_name,fldr) result(filename)
+    function gen_map_filename(src_name,dst_name,fldr,method) result(filename)
         ! Output the standard map filename with input folder name
         implicit none 
 
         character(len=*), intent(IN) :: src_name
         character(len=*), intent(IN) :: dst_name 
         character(len=*), intent(IN) :: fldr 
+        character(len=*), intent(IN) :: method
         character(len=256) :: filename
 
-        filename = trim(fldr)//"/scrip_"//trim(src_name)//"_"//trim(dst_name)//".nc"
+        filename = trim(fldr)//"/scrip-"//trim(method)//"_"//trim(src_name)//"_"//trim(dst_name)//".nc"
 
         return
 
