@@ -5,11 +5,13 @@ module grid_to_cdo
 
     implicit none 
 
+    private 
     public :: grid_cdo_write_desc_short 
     public :: grid_cdo_write_desc_explicit_proj
     public :: grid_cdo_write_desc_explicit_latlon
     public :: grid_cdo_write_desc_via_cdo
     public :: call_system_cdo
+
 contains 
     
     

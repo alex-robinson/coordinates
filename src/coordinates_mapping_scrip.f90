@@ -765,7 +765,7 @@ end if
         character(len=*), intent(IN) :: dst_name        ! Dest./target grid name
         character(len=*), intent(IN) :: fldr            ! Folder where grid desciptions can be found
         character(len=*), intent(IN) :: src_nc          ! Path to source netcdf file containing grid/variables (needed by cdo) 
-        character(len=*), intent(IN) :: method
+        character(len=*), intent(IN) :: method          ! Interpolation method (con,bil,bic)
         logical,          intent(IN), optional :: load  ! Load map from file if available? 
 
         ! Local variables 

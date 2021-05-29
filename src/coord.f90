@@ -19,6 +19,7 @@ module coord
     use coordinates_mapping
     use coordinates_mapping_conservative 
     use coordinates_mapping_scrip
+    use grid_to_cdo 
 
     use subset2 
 !     use subset1 
@@ -47,4 +48,4 @@ contains
 
     end function 
 
-end module coord 
+end module coord
