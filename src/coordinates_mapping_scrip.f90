@@ -653,6 +653,7 @@ end if
 
             ! ==  Delete intermediate files if desired
 
+            if (present(clean)) then 
             if (clean) then 
 
                 ! Remove source grid file 
@@ -680,6 +681,7 @@ end if
                 call system(cmd)
                 write(*,*) "done." 
 
+            end if 
             end if 
 
         end if 
