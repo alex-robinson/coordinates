@@ -1360,7 +1360,7 @@ contains
             write(*,"(a16,2g12.5)")    "range(lon) = ",minval(pts%lon),maxval(pts%lon)
             write(*,"(a16,2g12.5)")    "range(lat) = ",minval(pts%lat),maxval(pts%lat)
         end if 
-
+        
         if (pts%is_projection) then 
 !             write(*,*) "Projection information"
             write(*,"(a16,a)")         "proj method = ", trim(pts%proj%method)
