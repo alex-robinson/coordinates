@@ -1,0 +1,16 @@
+FC = gfortran
+
+
+NC_CROOT=/opt/homebrew/Cellar/netcdf/4.9.2_1
+NC_FROOT=/opt/homebrew/Cellar/netcdf-fortran/4.6.1
+INC_NC  = -I${NC_FROOT}/include
+LIB_NC  = -L${NC_FROOT}/lib -lnetcdff -L${NC_CROOT}/lib -lnetcdf
+
+DFLAGS_NODEBUG = -O3
+DFLAGS_DEBUG   = -w -g -p -ggdb -ffpe-trap=invalid,zero,overflow,underflow -fbacktrace -fcheck=all
+DFLAGS_PROFILE = -pg
+
+FFLAGS_DEFAULT = -ffree-line-length-none -fbackslash -I$(objdir) -J$(objdir) $(INC_NC)
+FFLAGS_OPENMP  = $(FFLAGS_DEFAULT) -fopenmp
+
+LFLAGS  = $(LIB_NC)
